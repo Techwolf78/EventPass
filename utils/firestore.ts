@@ -98,12 +98,7 @@ export async function validateAndRegisterAttendee(
     const guestDoc = guestSnap.docs[0];
     const guestData = guestDoc.data() as GuestListItem;
 
-    // Step 2: Check if name matches
-    if (guestData.nameLower !== nameLower) {
-      return { success: false, message: 'Name does not match' };
-    }
-
-    // Step 3: Check if already registered
+    // Step 2: Check if already registered
     if (guestData.status === 'registered') {
       return {
         success: true,
@@ -112,7 +107,7 @@ export async function validateAndRegisterAttendee(
       };
     }
 
-    // Step 4: Generate QR token and perform batch write
+    // Step 3: Generate QR token and perform batch write
     const qrToken = generateToken();
     const batch = writeBatch(db);
 
@@ -202,6 +197,77 @@ export async function validateAndCheckIn(
   } catch (error) {
     console.error('Check-in error:', error);
     return { success: false, message: 'Check-in failed. Please try again.' };
+  }
+}
+
+/**
+ * Check if attendee has already checked in (for any event or specific event)
+ */
+export interface CheckInStatusResult {
+  hasCheckedIn: boolean;
+  checkedInAt?: Timestamp;
+  candidateName?: string;
+  candidateEmail?: string;
+}
+
+export async function getCheckInStatus(
+  qrToken: string,
+  eventId?: string
+): Promise<CheckInStatusResult> {
+  try {
+    // Step 1: Find candidate by QR token
+    const candidateQuery = query(
+      collection(db, 'candidates'),
+      where('qrToken', '==', qrToken)
+    );
+    const candidateSnap = await getDocs(candidateQuery);
+
+    if (candidateSnap.empty) {
+      return { hasCheckedIn: false };
+    }
+
+    const candidateDoc = candidateSnap.docs[0];
+    const candidateData = candidateDoc.data() as Candidate;
+
+    // Step 2: Check if already checked in
+    // If eventId provided, check for that specific event
+    // Otherwise, check if checked in for ANY event
+    let attendanceQuery;
+    
+    if (eventId) {
+      attendanceQuery = query(
+        collection(db, 'attendance'),
+        where('candidateId', '==', candidateDoc.id),
+        where('eventId', '==', eventId)
+      );
+    } else {
+      // Check if already checked in for any event
+      attendanceQuery = query(
+        collection(db, 'attendance'),
+        where('candidateId', '==', candidateDoc.id)
+      );
+    }
+
+    const attendanceSnap = await getDocs(attendanceQuery);
+
+    if (!attendanceSnap.empty) {
+      const attendanceData = attendanceSnap.docs[0].data() as AttendanceRecord;
+      return {
+        hasCheckedIn: true,
+        checkedInAt: attendanceData.scannedAt,
+        candidateName: candidateData.name,
+        candidateEmail: candidateData.email,
+      };
+    }
+
+    return {
+      hasCheckedIn: false,
+      candidateName: candidateData.name,
+      candidateEmail: candidateData.email,
+    };
+  } catch (error) {
+    console.error('Check-in status error:', error);
+    return { hasCheckedIn: false };
   }
 }
 

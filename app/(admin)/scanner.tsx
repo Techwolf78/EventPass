@@ -38,11 +38,11 @@ export default function QRScannerScreen() {
       console.log('Check-in result:', result.message);
 
       if (result.success) {
-        Alert.alert('Check-in Success', result.message, [
+        Alert.alert('✓ Check-in Successful', result.message, [
           { text: 'OK', onPress: () => setScanned(false) },
         ]);
       } else {
-        Alert.alert('Check-in Failed', result.message, [
+        Alert.alert('✗ Check-in Failed', result.message, [
           { text: 'Try Again', onPress: () => setScanned(false) },
         ]);
       }
@@ -57,26 +57,34 @@ export default function QRScannerScreen() {
 
   if (!permission) {
     return (
-      <View style={styles.container}>
-        <Text>Requesting camera permission...</Text>
+      <View style={styles.centerContainer}>
+        <Ionicons name="camera" size={48} color="#6366f1" />
+        <Text style={styles.loadingText}>Requesting camera access...</Text>
       </View>
     );
   }
 
   if (!permission.granted) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.errorText}>Camera permission denied</Text>
-        <Text style={styles.errorSubText}>Please enable camera access in settings</Text>
+      <View style={styles.centerContainer}>
+        <Ionicons name="alert-circle" size={64} color="#ef4444" />
+        <Text style={styles.errorTitle}>Camera Access Denied</Text>
+        <Text style={styles.errorSubText}>
+          Please enable camera access in your device settings to scan QR codes
+        </Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
+      {/* Header Section */}
       {events.length > 0 && (
-        <View style={styles.eventSelector}>
-          <Text style={styles.selectorLabel}>Select Event:</Text>
+        <View style={styles.eventSelectorContainer}>
+          <View style={styles.selectorHeader}>
+            <Ionicons name="calendar" size={18} color="#6366f1" />
+            <Text style={styles.selectorLabel}>Select Event</Text>
+          </View>
           <View style={styles.eventButtons}>
             {events.map((event) => (
               <TouchableOpacity
@@ -92,6 +100,7 @@ export default function QRScannerScreen() {
                     styles.eventButtonText,
                     selectedEventId === event.id && styles.eventButtonTextActive,
                   ]}
+                  numberOfLines={1}
                 >
                   {event.title}
                 </Text>
@@ -101,32 +110,52 @@ export default function QRScannerScreen() {
         </View>
       )}
 
-      <CameraView
-        style={styles.camera}
-        facing="back"
-        onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
-      >
-        <View style={styles.overlay}>
-          <View style={styles.scannerFrame}>
-            <View style={[styles.corner, styles.topLeft]} />
-            <View style={[styles.corner, styles.topRight]} />
-            <View style={[styles.corner, styles.bottomLeft]} />
-            <View style={[styles.corner, styles.bottomRight]} />
-          </View>
-          <Text style={styles.scanText}>Position QR code in frame</Text>
-        </View>
-      </CameraView>
+      <View style={styles.cameraSection}>
+        <CameraView
+          style={styles.camera}
+          facing="back"
+          onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+        />
 
+        <View style={styles.overlay} pointerEvents="none">
+          {/* Scanner Frame */}
+          <View style={styles.scannerContainer}>
+            <View style={styles.scannerFrame}>
+              <View style={[styles.corner, styles.topLeft]} />
+              <View style={[styles.corner, styles.topRight]} />
+              <View style={[styles.corner, styles.bottomLeft]} />
+              <View style={[styles.corner, styles.bottomRight]} />
+            </View>
+
+            {/* Center Pulse Indicator */}
+            <View style={styles.pulseContainer}>
+              <View style={styles.pulseCircle} />
+            </View>
+          </View>
+
+          {/* Instructions */}
+          <View style={styles.instructionBox}>
+            <Ionicons name="qr-code" size={24} color="#fff" />
+            <Text style={styles.scanText}>Position QR code in frame</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Action Container - When Scanned */}
       {scanned && (
         <View style={styles.actionContainer}>
           <TouchableOpacity
-            style={styles.rescanButton}
+            style={[styles.rescanButton, processing && styles.rescanButtonDisabled]}
             onPress={() => setScanned(false)}
             disabled={processing}
           >
-            <Ionicons name="camera-reverse" size={24} color="#007AFF" />
+            <Ionicons
+              name={processing ? 'hourglass' : 'camera-reverse'}
+              size={22}
+              color="#fff"
+            />
             <Text style={styles.rescanText}>
-              {processing ? 'Processing...' : 'Scan Another'}
+              {processing ? 'Processing...' : 'Scan Next'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -140,37 +169,78 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000',
   },
-  eventSelector: {
+  cameraSection: {
+    flex: 1,
+    position: 'relative',
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f9fafb',
+    paddingHorizontal: 20,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#374151',
+    fontWeight: '600',
+  },
+  errorTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#ef4444',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  errorSubText: {
+    fontSize: 14,
+    color: '#6b7280',
+    textAlign: 'center',
+    marginTop: 8,
+    fontWeight: '500',
+  },
+  eventSelectorContainer: {
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    padding: 12,
-    zIndex: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  selectorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   selectorLabel: {
     color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 8,
+    fontSize: 13,
+    fontWeight: '700',
+    marginLeft: 8,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   eventButtons: {
     flexDirection: 'row',
     gap: 8,
   },
   eventButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
   },
   eventButtonActive: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+    backgroundColor: '#6366f1',
+    borderColor: '#6366f1',
   },
   eventButtonText: {
     color: '#ccc',
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   eventButtonTextActive: {
     color: '#fff',
@@ -180,73 +250,114 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   overlay: {
-    flex: 1,
-    justifyContent: 'center',
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    paddingVertical: 40,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  scannerContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
   },
   scannerFrame: {
-    width: 250,
-    height: 250,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0)',
+    width: 280,
+    height: 280,
     position: 'relative',
   },
   corner: {
     position: 'absolute',
-    width: 30,
-    height: 30,
-    borderColor: '#007AFF',
+    width: 40,
+    height: 40,
+    borderColor: '#6366f1',
   },
   topLeft: {
-    top: 0,
-    left: 0,
-    borderTopWidth: 3,
-    borderLeftWidth: 3,
+    top: -8,
+    left: -8,
+    borderTopWidth: 4,
+    borderLeftWidth: 4,
   },
   topRight: {
-    top: 0,
-    right: 0,
-    borderTopWidth: 3,
-    borderRightWidth: 3,
+    top: -8,
+    right: -8,
+    borderTopWidth: 4,
+    borderRightWidth: 4,
   },
   bottomLeft: {
-    bottom: 0,
-    left: 0,
-    borderBottomWidth: 3,
-    borderLeftWidth: 3,
+    bottom: -8,
+    left: -8,
+    borderBottomWidth: 4,
+    borderLeftWidth: 4,
   },
   bottomRight: {
-    bottom: 0,
-    right: 0,
-    borderBottomWidth: 3,
-    borderRightWidth: 3,
+    bottom: -8,
+    right: -8,
+    borderBottomWidth: 4,
+    borderRightWidth: 4,
+  },
+  pulseContainer: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pulseCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 2,
+    borderColor: 'rgba(99, 102, 241, 0.5)',
+  },
+  instructionBox: {
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   scanText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    marginTop: 32,
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   actionContainer: {
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    paddingBottom: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    paddingBottom: 24,
     paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
   },
   rescanButton: {
-    backgroundColor: '#fff',
+    backgroundColor: '#6366f1',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 8,
-    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 10,
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  rescanButtonDisabled: {
+    opacity: 0.6,
   },
   rescanText: {
-    color: '#007AFF',
-    fontSize: 16,
-    fontWeight: '600',
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
 });
 

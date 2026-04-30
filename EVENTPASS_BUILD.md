@@ -199,18 +199,16 @@ const admin = idTokenResult.claims.admin === true;
 1. Go to Authentication → Users
 2. Click on admin user's UID
 3. Set custom claim via Cloud Function or Admin SDK
-
 ---
 
 ## 📋 CSV Format
-
 ### Guest List Import
+
 ```csv
 name,email
 John Doe,john@example.com
 Jane Smith,jane@example.com
 ```
-
 ### Check-in Export
 ```csv
 Name,Email,Scanned At,Scanned By
@@ -218,16 +216,13 @@ John Doe,john@example.com,2026-04-29T10:30:00Z,admin-uid
 ```
 
 ---
-
 ## 🎯 Next Steps & Enhancements
-
 ### Phase 6 (Polish & Testing)
 - [ ] Error handling UI improvements
 - [ ] Loading state optimizations
 - [ ] Network retry logic
 - [ ] Offline support with local caching
 - [ ] Unit and integration testing
-
 ### Future Features
 - [ ] Email confirmations (Cloud Functions)
 - [ ] SMS notifications (Firebase Cloud Messaging)
@@ -237,34 +232,26 @@ John Doe,john@example.com,2026-04-29T10:30:00Z,admin-uid
 - [ ] Push notifications via FCM
 - [ ] Camera flash control options
 - [ ] Barcode format support (beyond QR)
-
 ---
-
 ## 🐛 Troubleshooting
-
 ### Camera Permission Issues
 **iOS:** Add to Info.plist:
 ```xml
 <key>NSCameraUsageDescription</key>
 <string>EventPass needs camera access to scan QR codes</string>
 ```
-
 **Android:** Already configured in Expo manifest
-
 ### Firebase Connection Issues
 - Verify firestore.rules allow read/write access for authenticated users
 - Check network connectivity
 - Enable emulator mode for local development
-
 ### CSV Import Failures
 - Verify CSV headers are exactly `name` and `email`
 - Ensure no empty rows between entries
 - Check for special characters (use UTF-8 encoding)
-
 ---
 
 ## 📚 Key Files Reference
-
 | File | Purpose |
 |------|---------|
 | `app/_layout.tsx` | Root layout with auth-based routing |
@@ -274,17 +261,13 @@ John Doe,john@example.com,2026-04-29T10:30:00Z,admin-uid
 | `app/(auth)/login.tsx` | Authentication UI |
 | `app/(admin)/*` | Admin screens (scanner, panel, guests) |
 | `app/(attendee)/*` | Attendee screens (register, QR, agenda) |
-
 ---
 
 ## 📞 Support & Questions
-
 For specific implementation questions, refer to:
 - [React Native Firebase Docs](https://rnfirebase.io)
 - [Expo Router Docs](https://docs.expo.dev/routing/introduction/)
 - [Firestore Documentation](https://firebase.google.com/docs/firestore)
-
 ---
 
-**Last Updated:** April 29, 2026
-**Status:** ✅ MVP Complete - Ready for Testing
+

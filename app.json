@@ -21,7 +21,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.EventPass",
+      "package": "Event.Pass",
       "googleServicesFile": "./google-services.json"
     },
     "web": {
@@ -46,6 +46,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "bf6a2c87-f3b5-4576-a915-87a188d1c6c9"
+      }
     }
   }
 }

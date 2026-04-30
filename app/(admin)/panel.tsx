@@ -7,11 +7,13 @@ import {
   Alert,
   ActivityIndicator,
   FlatList,
+  Platform,
 } from 'react-native';
 import {
   subscribeToAttendanceCount,
   subscribeToCheckInLog,
   AttendanceRecord,
+  Candidate,
   getCandidateById,
   getEvents,
   EventData,
@@ -25,7 +27,9 @@ export default function AdminPanelScreen() {
   const [selectedEventId, setSelectedEventId] = useState<string>('');
   const [count, setCount] = useState(0);
   const [checkInLog, setCheckInLog] = useState<AttendanceRecord[]>([]);
-  const [candidateNames, setCandidateNames] = useState<{ [key: string]: string }>({});
+  const [candidates, setCandidates] = useState<{
+    [key: string]: Partial<Candidate>;
+  }>({});
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
 
@@ -46,27 +50,40 @@ export default function AdminPanelScreen() {
   useEffect(() => {
     if (!selectedEventId) return;
 
+    // Reset state for the new event, but keep candidate cache
+    setCount(0);
+    setCheckInLog([]);
+
     const unsubscribeCount = subscribeToAttendanceCount(selectedEventId, setCount);
-    const unsubscribeLog = subscribeToCheckInLog(selectedEventId, async (records) => {
-      setCheckInLog(records);
-      // Fetch candidate names
-      const names: { [key: string]: string } = {};
-      for (const record of records) {
-        if (!names[record.candidateId]) {
-          const candidate = await getCandidateById(record.candidateId);
-          if (candidate) {
-            names[record.candidateId] = candidate.name;
-          }
-        }
-      }
-      setCandidateNames(names);
-    });
+    const unsubscribeLog = subscribeToCheckInLog(selectedEventId, setCheckInLog);
 
     return () => {
       unsubscribeCount();
       unsubscribeLog();
     };
   }, [selectedEventId]);
+
+  // Effect to fetch candidate details only for new check-ins
+  useEffect(() => {
+    const newCandidateIds = checkInLog
+      .map((record) => record.candidateId)
+      .filter((id) => !candidates[id]);
+
+    if (newCandidateIds.length > 0) {
+      const fetchNewCandidates = async () => {
+        const newCandidates: { [key: string]: Partial<Candidate> } = {};
+        const promises = newCandidateIds.map(async (id) => {
+          const candidate = await getCandidateById(id);
+          if (candidate) {
+            newCandidates[id] = candidate;
+          }
+        });
+        await Promise.all(promises);
+        setCandidates((prev) => ({ ...prev, ...newCandidates }));
+      };
+      fetchNewCandidates();
+    }
+  }, [checkInLog, candidates]);
 
   const handleExport = async () => {
     if (checkInLog.length === 0) {
@@ -80,10 +97,10 @@ export default function AdminPanelScreen() {
       let csvContent = 'Name,Email,Scanned At,Scanned By\n';
 
       for (const record of checkInLog) {
-        const candidate = await getCandidateById(record.candidateId);
-        if (candidate) {
-          const name = candidate.name.replace(/"/g, '""'); // Escape quotes
-          const email = candidate.email.replace(/"/g, '""');
+        const candidateInfo = candidates[record.candidateId];
+        if (candidateInfo) {
+          const name = (candidateInfo.name || 'N/A').replace(/"/g, '""');
+          const email = (candidateInfo.email || 'N/A').replace(/"/g, '""');
           const scannedAt = record.scannedAt.toDate().toISOString();
           csvContent += `"${name}","${email}","${scannedAt}","${record.scannedBy}"\n`;
         }
@@ -91,6 +108,20 @@ export default function AdminPanelScreen() {
 
       // Save to file
       const fileName = `checkin_${selectedEventId}_${new Date().getTime()}.csv`;
+
+      if (Platform.OS === 'web') {
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', fileName);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return;
+      }
+
       // eslint-disable-next-line import/namespace
       const fileDirectory = FileSystem.documentDirectory;
       if (!fileDirectory) {
@@ -190,15 +221,14 @@ export default function AdminPanelScreen() {
         <FlatList
           data={checkInLog}
           keyExtractor={(item) => item.id}
-          scrollEnabled={false}
           renderItem={({ item }) => (
             <View style={styles.logItem}>
               <View style={styles.logContent}>
                 <Text style={styles.logName}>
-                  {candidateNames[item.candidateId] || 'Loading...'}
+                  {candidates[item.candidateId]?.name || 'Loading...'}
                 </Text>
                 <Text style={styles.logTime}>
-                  {item.scannedAt.toDate().toLocaleTimeString()}
+                  {item.scannedAt?.toDate ? item.scannedAt.toDate().toLocaleTimeString() : 'Just now'}
                 </Text>
               </View>
               <View style={styles.logAction}>
@@ -341,4 +371,3 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
   },
 });
-
