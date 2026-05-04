@@ -19,7 +19,6 @@ App (Root with Auth Check)
     ├── qr-pass - QR Code Display
     └── agenda - Event Agenda
 ```
-
 ### Firebase Collections Structure
 - **guestList/** - Admin-managed invite list (pending → registered)
 - **candidates/** - Registered attendees with QR tokens
@@ -114,7 +113,6 @@ validateAndCheckIn(qrToken, eventId, adminUid)
 - Header detection (name, email columns required)
 - Batch write for efficient Firestore operations
 - Confirmation dialog before bulk upload
-
 ---
 
 ## 📦 Dependencies
@@ -183,7 +181,6 @@ Create test accounts via Firebase Auth Console and set custom claims:
 // In Firebase Cloud Function or Admin SDK
 admin.auth().setCustomUserClaims(uid, { admin: true });
 ```
-
 ---
 
 ## 🔐 Admin Claim Detection

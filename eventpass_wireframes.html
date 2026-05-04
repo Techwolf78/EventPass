@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EventPass — UI/UX Wireframes</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink:      #0D0D12;
+  --ink2:     #3A3A4A;
+  --ink3:     #7E7E96;
+  --ink4:     #B8B8CC;
+  --surface:  #F5F4FF;
+  --card:     #FFFFFF;
+  --border:   #E4E3F2;
+
+  --brand:    #4B3FD4;
+  --brand2:   #7166F0;
+  --brand-lt: #ECEAFF;
+  --accent:   #F05A28;
+  --accent-lt:#FEF0EA;
+  --green:    #12A87A;
+  --green-lt: #E3F9F2;
+  --amber:    #E5990B;
+  --amber-lt: #FEF6E3;
+  --red:      #E03E3E;
+  --red-lt:   #FEE8E8;
+
+  --r-phone:  16px;
+  --r-card:   12px;
+  --r-btn:    10px;
+  --shadow:   0 2px 16px rgba(75,63,212,.10);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--surface);
+  color: var(--ink);
+  min-height: 100vh;
+}
+
+/* ── HEADER ── */
+.site-header {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: 0 32px;
+  display: flex; align-items: center; gap: 24px;
+  height: 60px;
+  position: sticky; top: 0; z-index: 100;
+}
+.logo { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; color: var(--brand); letter-spacing: -.5px; }
+.logo span { color: var(--accent); }
+.badge { font-size: 11px; padding: 3px 9px; background: var(--brand-lt); color: var(--brand); border-radius: 20px; font-weight: 600; letter-spacing: .03em; }
+.nav-pills { display: flex; gap: 4px; margin-left: auto; }
+.nav-pill {
+  font-size: 12px; font-weight: 500; padding: 6px 14px; border-radius: 8px;
+  cursor: pointer; color: var(--ink3); background: transparent; border: none;
+  transition: all .18s;
+}
+.nav-pill:hover { background: var(--brand-lt); color: var(--brand); }
+.nav-pill.active { background: var(--brand); color: #fff; }
+
+/* ── LAYOUT ── */
+.wrapper { max-width: 1400px; margin: 0 auto; padding: 40px 32px; }
+.section-title {
+  font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--ink3);
+  margin-bottom: 24px; display: flex; align-items: center; gap: 10px;
+}
+.section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+.screen-group { display: none; }
+.screen-group.active { display: block; }
+
+.phones-row {
+  display: flex; flex-wrap: wrap; gap: 28px;
+  justify-content: flex-start;
+}
+
+/* ── PHONE SHELL ── */
+.phone-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.phone-label { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink3); }
+.phone-sub   { font-size: 10px; color: var(--ink4); margin-top: -8px; }
+
+.phone {
+  width: 220px;
+  background: #1A1A2E;
+  border-radius: 28px;
+  padding: 10px;
+  box-shadow: 0 24px 60px rgba(13,13,18,.22), 0 0 0 1px rgba(255,255,255,.06);
+  position: relative;
+}
+.phone-inner {
+  background: var(--card);
+  border-radius: 20px;
+  overflow: hidden;
+  min-height: 440px;
+  display: flex; flex-direction: column;
+  position: relative;
+}
+.phone-notch {
+  width: 60px; height: 6px;
+  background: #1A1A2E;
+  border-radius: 0 0 6px 6px;
+  margin: 0 auto 8px;
+  position: relative; z-index: 5;
+}
+
+/* ── STATUS BAR ── */
+.status-bar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 4px 12px 0;
+  font-size: 9px; font-weight: 600; color: var(--ink);
+}
+.status-icons { display: flex; gap: 4px; align-items: center; }
+.status-icons svg { width: 10px; height: 10px; }
+
+/* ── APP HEADER ── */
+.app-bar {
+  padding: 10px 14px 8px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+.app-bar-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 800; color: var(--ink); }
+.app-bar-sub   { font-size: 9px; color: var(--ink3); text-transform: uppercase; letter-spacing: .06em; margin-top: 1px; }
+.icon-btn {
+  width: 28px; height: 28px; border-radius: 8px;
+  background: var(--brand-lt); display: flex; align-items: center; justify-content: center;
+}
+.icon-btn svg { width: 14px; height: 14px; color: var(--brand); }
+
+/* ── SCREEN BODY ── */
+.screen-body { flex: 1; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+
+/* ── FORM ELEMENTS ── */
+.field { display: flex; flex-direction: column; gap: 3px; }
+.field-label { font-size: 9px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--ink3); }
+.field-input {
+  height: 30px; border-radius: 8px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  padding: 0 10px; font-size: 11px;
+  color: var(--ink); display: flex; align-items: center;
+  font-family: 'DM Sans', sans-serif;
+}
+.field-input.filled  { border-color: var(--brand); background: var(--brand-lt); color: var(--brand); }
+.field-input.error   { border-color: var(--red);   background: var(--red-lt);   color: var(--red); }
+.field-input.success { border-color: var(--green);  background: var(--green-lt); color: var(--green); }
+.field-input.placeholder { color: var(--ink4); }
+
+.chip-row { display: flex; gap: 5px; flex-wrap: wrap; }
+.chip {
+  font-size: 10px; padding: 4px 10px; border-radius: 20px;
+  border: 1.5px solid var(--border); color: var(--ink3);
+  background: var(--surface); font-weight: 500;
+}
+.chip.active { background: var(--brand); color: #fff; border-color: var(--brand); }
+
+/* ── BUTTONS ── */
+.btn {
+  height: 34px; border-radius: var(--r-btn); font-size: 12px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  cursor: pointer; border: none; font-family: 'DM Sans', sans-serif;
+  transition: opacity .15s;
+}
+.btn:hover { opacity: .88; }
+.btn-primary   { background: var(--brand);  color: #fff; }
+.btn-accent    { background: var(--accent); color: #fff; }
+.btn-green     { background: var(--green);  color: #fff; }
+.btn-outline   { background: transparent; border: 1.5px solid var(--border); color: var(--ink2); }
+.btn-ghost     { background: var(--brand-lt); color: var(--brand); }
+.btn svg       { width: 13px; height: 13px; }
+
+/* ── ALERT BANNERS ── */
+.alert { border-radius: 8px; padding: 7px 10px; }
+.alert-title { font-size: 11px; font-weight: 600; }
+.alert-sub   { font-size: 9px; margin-top: 1px; opacity: .8; }
+.alert.error   { background: var(--red-lt);   border-left: 3px solid var(--red);   }
+.alert.success { background: var(--green-lt); border-left: 3px solid var(--green); }
+.alert.info    { background: var(--brand-lt); border-left: 3px solid var(--brand); }
+.alert.warning { background: var(--amber-lt); border-left: 3px solid var(--amber); }
+.alert.error .alert-title   { color: var(--red); }
+.alert.success .alert-title { color: var(--green); }
+.alert.info .alert-title    { color: var(--brand); }
+.alert.warning .alert-title { color: var(--amber); }
+
+/* ── CARDS ── */
+.card {
+  background: var(--card); border-radius: var(--r-card);
+  border: 1px solid var(--border); padding: 10px 12px;
+}
+.card.brand-bg { background: var(--brand); border-color: var(--brand); }
+.card.brand-bg * { color: #fff !important; }
+
+/* ── NAV BAR ── */
+.nav-bar {
+  display: flex;
+  border-top: 1px solid var(--border);
+  padding: 6px 4px 4px;
+  background: var(--card);
+}
+.nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; }
+.nav-icon { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; border-radius: 6px; }
+.nav-icon svg { width: 14px; height: 14px; color: var(--ink4); }
+.nav-item.active .nav-icon { background: var(--brand-lt); }
+.nav-item.active .nav-icon svg { color: var(--brand); }
+.nav-lbl { font-size: 8px; font-weight: 600; color: var(--ink4); letter-spacing: .03em; }
+.nav-item.active .nav-lbl { color: var(--brand); }
+
+/* ── STAT GRID ── */
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.stat-card { background: var(--surface); border-radius: 8px; padding: 8px 10px; }
+.stat-val  { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; color: var(--ink); }
+.stat-lbl  { font-size: 9px; color: var(--ink3); margin-top: 1px; font-weight: 500; }
+.stat-card.green .stat-val { color: var(--green); }
+.stat-card.amber .stat-val { color: var(--amber); }
+.stat-card.brand .stat-val { color: var(--brand); }
+
+/* ── LIST ROWS ── */
+.list-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 0; border-bottom: 1px solid var(--border);
+}
+.list-row:last-child { border-bottom: none; }
+.avatar {
+  width: 26px; height: 26px; border-radius: 50%;
+  font-size: 9px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.av-purple  { background: var(--brand-lt); color: var(--brand); }
+.av-green   { background: var(--green-lt); color: var(--green); }
+.av-amber   { background: var(--amber-lt); color: var(--amber); }
+.av-surface { background: var(--surface);  color: var(--ink3); }
+.row-name   { font-size: 11px; font-weight: 500; color: var(--ink); flex: 1; line-height: 1.3; }
+.row-sub    { font-size: 9px; color: var(--ink3); }
+.badge-pill {
+  font-size: 8px; font-weight: 600; padding: 2px 7px; border-radius: 20px; flex-shrink: 0;
+}
+.bp-green  { background: var(--green-lt); color: var(--green); }
+.bp-amber  { background: var(--amber-lt); color: var(--amber); }
+.bp-red    { background: var(--red-lt);   color: var(--red); }
+.bp-brand  { background: var(--brand-lt); color: var(--brand); }
+.bp-surface{ background: var(--surface);  color: var(--ink3); }
+
+/* ── SESSION CARDS ── */
+.session-card { border-radius: 8px; padding: 8px 10px; border-left: 3px solid; margin-bottom: 4px; background: var(--surface); }
+.session-card.keynote { border-color: var(--brand); }
+.session-card.workshop{ border-color: var(--green); }
+.session-card.panel   { border-color: var(--amber); }
+.session-card.break   { border-color: var(--ink4);  }
+.sess-time    { font-size: 9px; font-weight: 600; color: var(--ink3); letter-spacing: .04em; }
+.sess-title   { font-size: 11px; font-weight: 600; color: var(--ink); margin-top: 1px; }
+.sess-speaker { font-size: 9px; color: var(--ink3); margin-top: 1px; }
+.sess-tag     { display: inline-block; font-size: 8px; font-weight: 600; padding: 2px 6px; border-radius: 20px; margin-top: 4px; }
+.tag-keynote  { background: var(--brand-lt); color: var(--brand); }
+.tag-workshop { background: var(--green-lt); color: var(--green); }
+.tag-panel    { background: var(--amber-lt); color: var(--amber); }
+.tag-break    { background: var(--surface);  color: var(--ink3);  }
+
+/* ── QR CODE ── */
+.qr-wrap {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 14px 10px;
+}
+.qr-box {
+  width: 110px; height: 110px; border-radius: 10px;
+  border: 2px solid var(--brand);
+  display: flex; align-items: center; justify-content: center;
+  position: relative; background: var(--card);
+}
+.qr-corner {
+  position: absolute; width: 14px; height: 14px;
+  border-color: var(--accent); border-style: solid; border-width: 0;
+}
+.qr-corner.tl { top:-1px;left:-1px; border-top-width:3px; border-left-width:3px; border-radius:4px 0 0 0; }
+.qr-corner.tr { top:-1px;right:-1px;border-top-width:3px;border-right-width:3px;border-radius:0 4px 0 0; }
+.qr-corner.bl { bottom:-1px;left:-1px;border-bottom-width:3px;border-left-width:3px;border-radius:0 0 0 4px; }
+.qr-corner.br { bottom:-1px;right:-1px;border-bottom-width:3px;border-right-width:3px;border-radius:0 0 4px 0; }
+.qr-svg { width: 86px; height: 86px; }
+.qr-name { font-family:'Syne',sans-serif; font-size:13px; font-weight:800; color:var(--ink); }
+.qr-email{ font-size:9px; color:var(--ink3); }
+.qr-id   { font-size:8px; font-weight:600; letter-spacing:.1em; color:var(--brand); background:var(--brand-lt); padding:3px 9px; border-radius:20px; }
+
+/* ── SCAN CAMERA ── */
+.camera-view {
+  background: #0D0D12; border-radius: 10px;
+  height: 130px; display: flex; align-items: center; justify-content: center;
+  position: relative; overflow: hidden;
+}
+.camera-grid {
+  display: grid; grid-template-columns: repeat(6,1fr); gap: 2px; width: 80px; height: 80px;
+  position: relative; z-index: 2;
+}
+.cg-cell { border-radius: 1px; }
+.cg-on   { background: rgba(255,255,255,.9); }
+.cg-off  { background: rgba(255,255,255,.12); }
+.scan-frame {
+  position:absolute; inset:16px;
+  border: 2px solid rgba(240,90,40,.5); border-radius: 8px;
+}
+.scan-line {
+  position: absolute; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: scanMove 2s ease-in-out infinite;
+  top: 30%;
+}
+@keyframes scanMove { 0%,100%{top:20%} 50%{top:75%} }
+.scan-corners { position:absolute; inset:16px; pointer-events:none; }
+.sc { position:absolute; width:16px; height:16px; border-color:var(--accent); border-style:solid; border-width:0; }
+.sc.tl{top:0;left:0;border-top-width:3px;border-left-width:3px;border-radius:3px 0 0 0;}
+.sc.tr{top:0;right:0;border-top-width:3px;border-right-width:3px;border-radius:0 3px 0 0;}
+.sc.bl{bottom:0;left:0;border-bottom-width:3px;border-left-width:3px;border-radius:0 0 0 3px;}
+.sc.br{bottom:0;right:0;border-bottom-width:3px;border-right-width:3px;border-radius:0 0 3px 0;}
+.scan-hint { font-size:10px; color:var(--ink3); text-align:center; }
+
+/* ── SEARCH BAR ── */
+.search-bar {
+  height: 30px; border-radius: 8px; background: var(--surface);
+  border: 1.5px solid var(--border);
+  display: flex; align-items: center; gap: 6px; padding: 0 10px;
+  font-size: 11px; color: var(--ink4);
+}
+.search-bar svg { width: 12px; height: 12px; flex-shrink: 0; }
+
+/* ── NOTIFICATION PREVIEW ── */
+.notif-card {
+  background: var(--surface); border-radius: 10px;
+  border: 1px solid var(--border); padding: 10px 12px;
+}
+.notif-app  { font-size: 9px; color:var(--ink3); letter-spacing:.05em; text-transform:uppercase; font-weight:600; }
+.notif-title{ font-size:12px; font-weight:700; color:var(--ink); margin-top:3px; }
+.notif-body { font-size:10px; color:var(--ink2); margin-top:3px; line-height:1.45; }
+.notif-time { font-size:9px; color:var(--ink4); margin-top:4px; }
+
+/* ── UPLOAD AREA ── */
+.upload-area {
+  border: 2px dashed var(--brand2); border-radius: 10px;
+  padding: 14px 10px; text-align: center;
+  background: var(--brand-lt); cursor: pointer;
+}
+.upload-area svg { width: 20px; height: 20px; color: var(--brand); margin: 0 auto 4px; display: block; }
+.upload-title { font-size: 11px; font-weight: 600; color: var(--brand); }
+.upload-sub   { font-size: 9px; color: var(--brand2); margin-top: 2px; }
+
+/* ── DIVIDER ── */
+.divider { height: 1px; background: var(--border); margin: 2px 0; }
+.section-label { font-size: 9px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--ink3); margin: 2px 0; }
+
+/* ── SCROLLABLE AREA ── */
+.scrollable { overflow-y: auto; max-height: 220px; }
+.scrollable::-webkit-scrollbar { width: 3px; }
+.scrollable::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ── PROGRESS BAR ── */
+.progress-wrap { display: flex; flex-direction: column; gap: 3px; }
+.progress-label { display: flex; justify-content: space-between; font-size: 9px; color: var(--ink3); }
+.progress-track { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.progress-fill  { height: 100%; border-radius: 3px; background: var(--brand); }
+
+/* ── DESIGN ANNOTATIONS ── */
+.annotations { margin-top: 40px; }
+.anno-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-top: 16px; }
+.anno-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r-card); padding: 16px 18px;
+}
+.anno-label { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--brand); margin-bottom: 6px; }
+.anno-title { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
+.anno-body  { font-size: 12px; color: var(--ink2); line-height: 1.6; }
+.color-row  { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.color-swatch { display: flex; align-items: center; gap: 5px; }
+.swatch { width: 20px; height: 20px; border-radius: 5px; border: 1px solid var(--border); flex-shrink: 0; }
+.swatch-name{ font-size: 10px; color: var(--ink2); }
+
+/* ── TABS ── */
+.tab-row { display: flex; gap: 0; background: var(--surface); border-radius: 8px; padding: 3px; margin-bottom: 4px; }
+.tab {
+  flex: 1; font-size: 10px; font-weight: 600; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 6px; color: var(--ink3); cursor: pointer;
+}
+.tab.active { background: var(--card); color: var(--brand); box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+
+/* ── TOGGLE ── */
+.toggle-row { display: flex; align-items: center; justify-content: space-between; }
+.toggle-track { width: 30px; height: 17px; border-radius: 20px; background: var(--brand); position: relative; cursor: pointer; }
+.toggle-thumb { width: 13px; height: 13px; border-radius: 50%; background: #fff; position: absolute; top: 2px; right: 2px; }
+.toggle-label { font-size: 10px; color: var(--ink2); font-weight: 500; }
+
+/* ── SPLASH ── */
+.splash-screen {
+  background: linear-gradient(150deg, #2B1F9E 0%, #4B3FD4 50%, #6B5FFF 100%);
+  min-height: 440px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 8px; padding: 20px;
+}
+.splash-icon { width: 52px; height: 52px; background: rgba(255,255,255,.18); border-radius: 14px; display: flex; align-items: center; justify-content: center; }
+.splash-icon svg { width: 28px; height: 28px; color: #fff; }
+.splash-app  { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 800; color: #fff; letter-spacing: -1px; }
+.splash-tagline { font-size: 12px; color: rgba(255,255,255,.65); text-align: center; line-height: 1.5; }
+.splash-dot-row { display: flex; gap: 6px; margin-top: 12px; }
+.splash-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.3); }
+.splash-dot.active { background: #fff; width: 18px; border-radius: 3px; }
+
+/* ── EMPTY STATE ── */
+.empty-state { text-align: center; padding: 20px 10px; }
+.empty-icon { font-size: 28px; margin-bottom: 6px; }
+.empty-title { font-size: 12px; font-weight: 600; color: var(--ink2); }
+.empty-sub   { font-size: 10px; color: var(--ink3); margin-top: 3px; }
+
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="logo">Event<span>Pass</span></div>
+  <div class="badge">High-Fidelity Wireframes</div>
+  <nav class="nav-pills">
+    <button class="nav-pill active" onclick="show('onboarding')">Onboarding</button>
+    <button class="nav-pill" onclick="show('candidate')">Candidate</button>
+    <button class="nav-pill" onclick="show('admin')">Admin</button>
+    <button class="nav-pill" onclick="show('states')">States</button>
+    <button class="nav-pill" onclick="show('design')">Design System</button>
+  </nav>
+</header>
+
+<div class="wrapper">
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- ONBOARDING GROUP -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="screen-group active" id="onboarding">
+  <div class="section-title">Onboarding Flow</div>
+  <div class="phones-row">
+
+    <!-- Splash -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-inner">
+          <div class="splash-screen">
+            <div class="splash-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="12" cy="16" r="2"/></svg>
+            </div>
+            <div class="splash-app">EventPass</div>
+            <div class="splash-tagline">Your smart pass for internal events — register, scan, and go.</div>
+            <div class="splash-dot-row">
+              <div class="splash-dot active"></div>
+              <div class="splash-dot"></div>
+              <div class="splash-dot"></div>
+            </div>
+            <div style="margin-top:20px;width:100%;display:flex;flex-direction:column;gap:8px;">
+              <div class="btn btn-primary" style="background:rgba(255,255,255,.2);backdrop-filter:blur(4px);color:#fff;">Get Started</div>
+              <div class="btn btn-outline" style="border-color:rgba(255,255,255,.3);color:rgba(255,255,255,.75);">I have an account</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label">S1 — Splash</div>
+      <div class="phone-sub">Welcome & CTA</div>
+    </div>
+
+    <!-- Login -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-inner">
+          <div class="phone-notch"></div>
+          <div class="status-bar"><span>9:41</span><div class="status-icons"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="1" y="6" width="4" height="12" rx="1"/><rect x="6" y="4" width="4" height="14" rx="1"/><rect x="11" y="2" width="4" height="16" rx="1"/></svg></div></div>
+          <div class="app-bar">
+            <div><div class="app-bar-title">Sign In</div><div class="app-bar-sub">EventPass</div></div>
+          </div>
+          <div class="screen-body">
+            <div style="height:8px;"></div>
+            <div class="field">
+              <div class="field-label">Work Email</div>
+              <div class="field-input filled">priya@company.in</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Password</div>
+              <div class="field-input">••••••••</div>
+            </div>
+            <div style="font-size:10px;color:var(--brand);text-align:right;font-weight:500;">Forgot password?</div>
+            <div class="btn btn-primary" style="margin-top:4px;">Sign in with Email</div>
+            <div style="display:flex;align-items:center;gap:8px;margin:2px 0;">
+              <div style="flex:1;height:1px;background:var(--border);"></div>
+              <span style="font-size:10px;color:var(--ink4);">or</span>
+              <div style="flex:1;height:1px;background:var(--border);"></div>
+            </div>
+            <div class="btn btn-outline">
+              <svg viewBox="0 0 24 24" width="13" height="13"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+              Continue with Google
+            </div>
+            <div style="font-size:10px;color:var(--ink3);text-align:center;margin-top:auto;">
+              New candidate? <span style="color:var(--brand);font-weight:600;">Register here</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label">S2 — Login</div>
+      <div class="phone-sub">Email / Google sign-in</div>
+    </div>
+
+    <!-- Registration -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-inner">
+          <div class="phone-notch"></div>
+          <div class="status-bar"><span>9:41</span><div class="status-icons"></div></div>
+          <div class="app-bar">
+            <div><div class="app-bar-title">Register</div><div class="app-bar-sub">Step 1 of 1</div></div>
+            <div style="font-size:10px;color:var(--brand);font-weight:600;">InnovateSummit</div>
+          </div>
+          <div class="screen-body">
+            <div class="field">
+              <div class="field-label">Full Name</div>
+              <div class="field-input success">Priya Sharma</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Work Email</div>
+              <div class="field-input success">priya@company.in</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Department</div>
+              <div class="field-input filled">Engineering</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Role</div>
+              <div class="chip-row">
+                <div class="chip active">Attendee</div>
+                <div class="chip">Speaker</div>
+                <div class="chip">Volunteer</div>
+              </div>
+            </div>
+            <div class="alert success">
+              <div class="alert-title">✓ Guest confirmed</div>
+              <div class="alert-sub">Welcome, Priya! You're on the list.</div>
+            </div>
+            <div class="btn btn-green" style="margin-top:auto;">Complete Registration</div>
+          </div>
+          <div class="nav-bar">
+            <div class="nav-item active"><div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="nav-lbl">Register</div></div>
+            <div class="nav-item"><div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div><div class="nav-lbl">Agenda</div></div>
+            <div class="nav-item"><div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 13h4"/></svg></div><div class="nav-lbl">My Pass</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label">S3 — Register</div>
+      <div class="phone-sub">Guest validated ✓</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- CANDIDATE GROUP -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="screen-group" id="candidate">
+  <div class="section-title">Candidate Screens</div>
+  <div class="phones-row">
+
+    <!-- Agenda -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-inner">
+          <div class="phone-notch"></div>
+          <div class="status-bar"><span>9:41</span><div class="status-icons"></div></div>
+          <div class="app-bar">
+            <div><div class="app-bar-title">Agenda</div><div class="app-bar-sub">Mon, 12 May 2025</div></div>
+            <div class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div>
+          </div>
+          <div class="screen-body">
+            <div class="tab-row">
+              <div class="tab active">All</div>
+              <div class="tab">Keynote</div>
+              <div class="tab">Workshop</div>
+            </div>
+            <div class="scrollable">
+              <div class="session-card keynote">
+                <div class="sess-time">09:00 – 09:45</div>
+                <div class="sess-title">Opening Keynote</div>
+                <div class="sess-speaker">Arjun Mehta · CEO, Acme Corp</div>
+                <span class="sess-tag tag-keynote">Keynote</span>
+              </div>
+              <div class="session-card break">
+                <div class="sess-time">09:45 – 10:00</div>
+                <div class="sess-title">Networking break</div>
+                <span class="sess-tag tag-break">Break</span>
+              </div>
+              <div class="session-card workshop">
+                <div class="sess-time">10:00 – 11:00</div>
+                <div class="sess-title">Product Roadmap Deep-Dive</div>
+                <div class="sess-speaker">Product & Engineering team</div>
+                <span class="sess-tag tag-workshop">Workshop</span>
+              </div>
+              <div class="session-card panel">
+                <div class="sess-time">11:15 – 12:00</div>
+                <div class="sess-title">Engineering Culture Panel</div>
+                <div class="sess-speaker">4 panellists</div>
+                <span class="sess-tag tag-panel">Panel</span>
+              </div>
+              <div class="session-card keynote">
+                <div class="sess-time">14:00 – 15:00</div>
+                <div class="sess-title">Future of AI in Enterprise</div>
+                <div class="sess-speaker">Dr. Sana Kapoor · Head of AI</div>
+                <span class="sess-tag tag-keynote">Keynote</span>
+              </div>
+            </div>
+          </div>
+          <div class="nav-bar">
+            <div class="nav-item"><div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div class="nav-lbl">Register</div></div>
+            <div class="nav-item active"><div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div><div class="nav-lbl">Agenda</div></div>
+            <div class="nav-item"><div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div><div class="nav-lbl">My Pass</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label">C1 — Agenda</div>
+      <div class="phone-sub">Sessions with filter tabs</div>
+    </div>
+
+    <!-- My QR Pass -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-inner">
+          <div class="phone-notch"></div>
+          <div class="status-bar"><span>9:41</span><div class="status-icons"></div></div>
+          <div class="app-bar">
+            <div><div class="app-bar-title">My Pass</div><div class="app-bar-sub">Entry QR code</div></div>
+            <div class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></div>
+          </div>
+          <div class="screen-body">
+            <div class="card brand-bg" style="text-align:center;padding:10px;">
+              <div style="font-size:9px;opacity:.7;letter-spacing:.07em;text-transform:uppercase;">InnovateSummit 2025</div>
+              <div style="font-size:14px;font-weight:700;margin-top:2px;">Mon, 12 May · Hall A</div>
+            </div>
+            <div class="qr-wrap">
+              <div class="qr-box">
+                <div class="qr-corner tl"></div>
+                <div class="qr-corner tr"></div>
+                <div class="qr-corner bl"></div>
+                <div class="qr-corner br"></div>
+                <svg class="qr-svg" viewBox="0 0 86 86" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="4" y="4" width="24" height="24" rx="2" fill="none" stroke="#0D0D12" stroke-width="3"/>
+                  <rect x="10" y="10" width="12" height="12" rx="1" fill="#0D0D12"/>
+                  <rect x="58" y="4" width="24" height="24" rx="2" fill="none" stroke="#0D0D12" stroke-width="3"/>
+                  <rect x="64" y="10" width="12" height="12" rx="1" fill="#0D0D12"/>
+                  <rect x="4" y="58" width="24" height="24" rx="2" fill="none" stroke="#0D0D12" stroke-width="3"/>
+                  <rect x="10" y="64" width="12" height="12" rx="1" fill="#0D0D12"/>
+                  <rect x="34" y="4"  width="4" height="4" fill="#0D0D12"/>
+                  <rect x="40" y="4"  width="4" height="4" fill="#0D0D12"/>
+                  <rect x="46" y="4"  width="4" height="4" fill="#0D0D12"/>
+                  <rect x="34" y="10" width="4" height="4" fill="#0D0D12"/>
+                  <rect x="46" y="10" width="4" height="4" fill="#0D0D12"/>
+                  <rect x="40" y="16" width="4" height="4" fill="#0D0D12"/>
+                  <rect x="34" y="34" width="4" height="4" fill="#0D0D12"/>
+                  <rect x="40" y="40" width="4" height="4" fill="#0D0D12"/>
+                  <rect x="46" y="34" width="4" height="4" fill="#0D0D12"/>
+                  <rect x="52" y="46" width="4" height="4" fill="#0D0D12"/>
+                  <rect x="58" y="34" width="4" height="4" fill="#0D0D12"/>
+                  <rect x="64" y="40" width="4" height="4" fill="#0D0D12"/>
+                  <rect x="34" y="52" width="4" height="4" fill="#0D0D12"/>
+                  <rect x="40" y="58" width="4" height="4" fill="#0D0D12"/>
+                  <rect x="46" y="52" width="4" height="4" fill="#0D0D12"/>
+                  <rect x="52" y="64" width="4" height="4" fill="#0D0D12"/>
+                  <rect x="58" y="52" width="4" height="4" fill="#0D0D12"/>
+                  <rect x="64" y="64" width="4" height="4" fill="#0D0D12"/>
+                  <rect x="70" y="58" width="4" height="4" fill="#0D0D12"/>
+                  <rect x="76" y="70" width="4" height="4" fill="#0D0D12"/>
+                  <rect x="4"  y="34" width="4" height="4" fill="#0D0D12"/>
+                  <rect x="10" y="40" width="4" height="4" fill="#0D0D12"/>
+                  <rect x="16" y="34" width="4" height="4" fill="#0D0D12"/>
+                  <rect x="22" y="40" width="4" height="4" fill="#0D0D12"/>
+                  <rect x="4"  y="46" width="4" height="4" fill="#0D0D12"/>
+                  <rect x="16" y="46" width="4" height="4" fill="#0D0D12"/>
+                </svg>
+              </div>
+              <div class="qr-name">Priya Sharma</div>
+              <div class="qr-email">priya@company.in · Attendee</div>
+              <div class="qr-id">EVNT-2025-A4F9</div>
+            </div>
+            <div class="btn btn-outline" style="font-size:11px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+              Save to Photos
+            </div>
+          </div>
+          <div class="nav-bar">
+            <div class="nav-item"><div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div class="nav-lbl">Register</div></div>
+            <div class="nav-item"><div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div><div class="nav-lbl">Agenda</div></div>
+            <div class="nav-item active"><div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div><div class="nav-lbl">My Pass</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label">C2 — My QR Pass</div>
+      <div class="phone-sub">Entry ticket + share</div>
+    </div>
+
+    <!-- Post-event notification -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-inner">
+          <div class="phone-notch"></div>
+          <div class="status-bar"><span>6:00 PM</span><div class="status-icons"></div></div>
+          <div style="background:#F5F4FF;padding:10px 12px;flex:1;display:flex;flex-direction:column;gap:8px;">
+            <div class="section-label" style="margin-bottom:0;">Notifications</div>
+            <div class="notif-card">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+                <div style="width:16px;height:16px;background:var(--brand);border-radius:4px;display:flex;align-items:center;justify-content:center;">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" width="10" height="10"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                </div>
+                <div class="notif-app">EventPass</div>
+                <div class="notif-time" style="margin:0;margin-left:auto;">just now</div>
+              </div>
+              <div class="notif-title">Thanks for joining, Priya! 🎉</div>
+              <div class="notif-body">The InnovateSummit recap is ready — slides, recordings, and key highlights are waiting for you.</div>
+              <div style="display:flex;gap:6px;margin-top:8px;">
+                <div class="btn btn-ghost" style="height:26px;font-size:10px;flex:1;">View Recap</div>
+                <div class="btn btn-outline" style="height:26px;font-size:10px;flex:1;">Dismiss</div>
+              </div>
+            </div>
+            <div class="notif-card" style="opacity:.5;">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
+                <div class="notif-app">EventPass</div>
+                <div class="notif-time" style="margin:0;margin-left:auto;">2 hrs ago</div>
+              </div>
+              <div class="notif-title" style="font-size:11px;">Session starting in 10 min</div>
+              <div class="notif-body" style="font-size:9px;">Future of AI in Enterprise — Hall B, 2:00 PM</div>
+            </div>
+            <div class="notif-card" style="opacity:.35;">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
+                <div class="notif-app">EventPass</div>
+                <div class="notif-time" style="margin:0;margin-left:auto;">8:30 AM</div>
+              </div>
+              <div class="notif-title" style="font-size:11px;">Registration confirmed</div>
+              <div class="notif-body" style="font-size:9px;">Your QR pass for InnovateSummit is ready.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label">C3 — Notifications</div>
+      <div class="phone-sub">Post-event push + history</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- ADMIN GROUP -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="screen-group" id="admin">
+  <div class="section-title">Admin Screens</div>
+  <div class="phones-row">
+
+    <!-- Guest List Manager -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-inner">
+          <div class="phone-notch"></div>
+          <div class="status-bar"><span>9:41</span><div class="status-icons"></div></div>
+          <div class="app-bar">
+            <div><div class="app-bar-title">Guest List</div><div class="app-bar-sub">Admin · InnovateSummit</div></div>
+            <div class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          </div>
+          <div class="screen-body">
+            <div class="stat-grid">
+              <div class="stat-card"><div class="stat-val">142</div><div class="stat-lbl">Total guests</div></div>
+              <div class="stat-card green"><div class="stat-val">98</div><div class="stat-lbl">Registered</div></div>
+            </div>
+            <div class="upload-area">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <div class="upload-title">Upload CSV file</div>
+              <div class="upload-sub">name, email columns required</div>
+            </div>
+            <div class="search-bar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              Search by name or email…
+            </div>
+            <div class="section-label">All Guests</div>
+            <div class="scrollable">
+              <div class="list-row">
+                <div class="avatar av-green">PS</div>
+                <div style="flex:1;"><div class="row-name">Priya Sharma</div><div class="row-sub">priya@company.in</div></div>
+                <div class="badge-pill bp-green">Registered</div>
+              </div>
+              <div class="list-row">
+                <div class="avatar av-green">RK</div>
+                <div style="flex:1;"><div class="row-name">Rahul Kulkarni</div><div class="row-sub">rahul@company.in</div></div>
+                <div class="badge-pill bp-green">Registered</div>
+              </div>
+              <div class="list-row">
+                <div class="avatar av-surface">AM</div>
+                <div style="flex:1;"><div class="row-name">Anita Mehta</div><div class="row-sub">anita@company.in</div></div>
+                <div class="badge-pill bp-amber">Pending</div>
+              </div>
+              <div class="list-row">
+                <div class="avatar av-surface">VJ</div>
+                <div style="flex:1;"><div class="row-name">Vijay Joshi</div><div class="row-sub">vijay@company.in</div></div>
+                <div class="badge-pill bp-amber">Pending</div>
+              </div>
+              <div class="list-row">
+                <div class="avatar av-purple">SK</div>
+                <div style="flex:1;"><div class="row-name">Simran Kaur</div><div class="row-sub">simran@company.in</div></div>
+                <div class="badge-pill bp-green">Registered</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label">A1 — Guest List</div>
+      <div class="phone-sub">CSV upload + manual add</div>
+    </div>
+
+    <!-- QR Scanner -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-inner">
+          <div class="phone-notch"></div>
+          <div class="status-bar"><span>9:41</span><div class="status-icons"></div></div>
+          <div class="app-bar">
+            <div><div class="app-bar-title">Scan Entry</div><div class="app-bar-sub">Admin · Gate 1</div></div>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <div style="width:6px;height:6px;border-radius:50%;background:var(--green);"></div>
+              <span style="font-size:9px;color:var(--green);font-weight:600;">Live</span>
+            </div>
+          </div>
+          <div class="screen-body">
+            <div class="camera-view">
+              <div class="scan-frame"></div>
+              <div class="scan-line"></div>
+              <div class="scan-corners">
+                <div class="sc tl"></div><div class="sc tr"></div>
+                <div class="sc bl"></div><div class="sc br"></div>
+              </div>
+              <div class="camera-grid">
+                <div class="cg-cell cg-on"></div><div class="cg-cell cg-on"></div><div class="cg-cell cg-off"></div><div class="cg-cell cg-on"></div><div class="cg-cell cg-off"></div><div class="cg-cell cg-on"></div>
+                <div class="cg-cell cg-off"></div><div class="cg-cell cg-on"></div><div class="cg-cell cg-on"></div><div class="cg-cell cg-off"></div><div class="cg-cell cg-on"></div><div class="cg-cell cg-on"></div>
+                <div class="cg-cell cg-on"></div><div class="cg-cell cg-off"></div><div class="cg-cell cg-on"></div><div class="cg-cell cg-on"></div><div class="cg-cell cg-off"></div><div class="cg-cell cg-on"></div>
+                <div class="cg-cell cg-on"></div><div class="cg-cell cg-on"></div><div class="cg-cell cg-off"></div><div class="cg-cell cg-off"></div><div class="cg-cell cg-on"></div><div class="cg-cell cg-off"></div>
+                <div class="cg-cell cg-off"></div><div class="cg-cell cg-on"></div><div class="cg-cell cg-on"></div><div class="cg-cell cg-on"></div><div class="cg-cell cg-off"></div><div class="cg-cell cg-on"></div>
+                <div class="cg-cell cg-on"></div><div class="cg-cell cg-off"></div><div class="cg-cell cg-on"></div><div class="cg-cell cg-off"></div><div class="cg-cell cg-on"></div><div class="cg-cell cg-on"></div>
+              </div>
+            </div>
+            <div class="scan-hint">Point camera at attendee's QR pass</div>
+            <div class="alert success">
+              <div class="alert-title">✓ Priya Sharma · Attendee</div>
+              <div class="alert-sub">Engineering dept · EVNT-2025-A4F9</div>
+            </div>
+            <div class="btn btn-green">Confirm Check-In</div>
+            <div class="divider"></div>
+            <div class="section-label">Recent scans</div>
+            <div class="list-row">
+              <div class="avatar av-green">PS</div>
+              <div style="flex:1;"><div class="row-name">Priya Sharma</div><div class="row-sub">09:02 AM</div></div>
+              <div class="badge-pill bp-green">Checked in</div>
+            </div>
+            <div class="list-row">
+              <div class="avatar av-green">RK</div>
+              <div style="flex:1;"><div class="row-name">Rahul Kulkarni</div><div class="row-sub">09:08 AM</div></div>
+              <div class="badge-pill bp-green">Checked in</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label">A2 — QR Scanner</div>
+      <div class="phone-sub">Camera check-in + live log</div>
+    </div>
+
+    <!-- Admin Dashboard -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-inner">
+          <div class="phone-notch"></div>
+          <div class="status-bar"><span>9:41</span><div class="status-icons"></div></div>
+          <div class="app-bar">
+            <div><div class="app-bar-title">Attendance</div><div class="app-bar-sub">Admin · Live dashboard</div></div>
+            <div class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
+          </div>
+          <div class="screen-body">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;">
+              <div class="stat-card brand"><div class="stat-val" style="font-size:18px;">142</div><div class="stat-lbl">Registered</div></div>
+              <div class="stat-card green"><div class="stat-val" style="font-size:18px;">98</div><div class="stat-lbl">Checked in</div></div>
+              <div class="stat-card amber"><div class="stat-val" style="font-size:18px;">44</div><div class="stat-lbl">Not yet</div></div>
+            </div>
+            <div class="progress-wrap">
+              <div class="progress-label"><span>Attendance rate</span><span style="color:var(--brand);font-weight:600;">69%</span></div>
+              <div class="progress-track"><div class="progress-fill" style="width:69%;"></div></div>
+            </div>
+            <div class="section-label">Live check-in log</div>
+            <div class="scrollable">
+              <div class="list-row">
+                <div class="avatar av-green">PS</div>
+                <div style="flex:1;"><div class="row-name">Priya Sharma</div><div class="row-sub">Attendee · Eng</div></div>
+                <div style="text-align:right;"><div style="font-size:10px;font-weight:600;color:var(--ink);">09:02</div><div class="badge-pill bp-green" style="margin-top:2px;">In</div></div>
+              </div>
+              <div class="list-row">
+                <div class="avatar av-green">RK</div>
+                <div style="flex:1;"><div class="row-name">Rahul Kulkarni</div><div class="row-sub">Attendee · Design</div></div>
+                <div style="text-align:right;"><div style="font-size:10px;font-weight:600;color:var(--ink);">09:08</div><div class="badge-pill bp-green" style="margin-top:2px;">In</div></div>
+              </div>
+              <div class="list-row">
+                <div class="avatar av-purple">SK</div>
+                <div style="flex:1;"><div class="row-name">Simran Kaur</div><div class="row-sub">Speaker · AI</div></div>
+                <div style="text-align:right;"><div style="font-size:10px;font-weight:600;color:var(--ink);">09:15</div><div class="badge-pill bp-green" style="margin-top:2px;">In</div></div>
+              </div>
+              <div class="list-row">
+                <div class="avatar av-surface">AM</div>
+                <div style="flex:1;"><div class="row-name">Anita Mehta</div><div class="row-sub">Attendee · HR</div></div>
+                <div style="text-align:right;"><div style="font-size:10px;color:var(--ink4);">—</div><div class="badge-pill bp-surface" style="margin-top:2px;">Not yet</div></div>
+              </div>
+            </div>
+            <div class="btn btn-outline" style="font-size:11px;margin-top:auto;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/></svg>
+              Export attendance CSV
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label">A3 — Dashboard</div>
+      <div class="phone-sub">Real-time attendance + export</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- STATES GROUP -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="screen-group" id="states">
+  <div class="section-title">Validation States & Edge Cases</div>
+  <div class="phones-row">
+
+    <!-- Not on list -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-inner">
+          <div class="phone-notch"></div>
+          <div class="status-bar"><span>9:41</span><div class="status-icons"></div></div>
+          <div class="app-bar"><div><div class="app-bar-title">Register</div><div class="app-bar-sub">Guest check failed</div></div></div>
+          <div class="screen-body">
+            <div class="field">
+              <div class="field-label">Full Name</div>
+              <div class="field-input error">Vijay Joshii</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Work Email</div>
+              <div class="field-input error">vijay@company.in</div>
+            </div>
+            <div class="alert error">
+              <div class="alert-title">✕ Not on the guest list</div>
+              <div class="alert-sub">Check your name and email match your invite exactly. Contact the event organiser if you believe this is an error.</div>
+            </div>
+            <div class="btn btn-outline">Try Again</div>
+            <div style="font-size:10px;color:var(--ink3);text-align:center;margin-top:auto;">
+              Need help? <span style="color:var(--brand);font-weight:500;">Contact organiser</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label">E1 — Not on list</div>
+      <div class="phone-sub">Email not found</div>
+    </div>
+
+    <!-- Name mismatch -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-inner">
+          <div class="phone-notch"></div>
+          <div class="status-bar"><span>9:41</span><div class="status-icons"></div></div>
+          <div class="app-bar"><div><div class="app-bar-title">Register</div><div class="app-bar-sub">Name mismatch</div></div></div>
+          <div class="screen-body">
+            <div class="field">
+              <div class="field-label">Full Name</div>
+              <div class="field-input error">Vijay K Joshi</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Work Email</div>
+              <div class="field-input success">vijay@company.in</div>
+            </div>
+            <div class="alert error">
+              <div class="alert-title">✕ Name doesn't match the invite</div>
+              <div class="alert-sub">Email found but the name doesn't match. Enter your name exactly as it appears on the invite.</div>
+            </div>
+            <div class="alert info" style="margin-top:0;">
+              <div class="alert-title">Tip</div>
+              <div class="alert-sub">Try removing middle names or initials. Your invite may use a shortened version.</div>
+            </div>
+            <div class="btn btn-primary" style="margin-top:auto;">Try Again</div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label">E2 — Name mismatch</div>
+      <div class="phone-sub">Email OK, name wrong</div>
+    </div>
+
+    <!-- Already registered -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-inner">
+          <div class="phone-notch"></div>
+          <div class="status-bar"><span>9:41</span><div class="status-icons"></div></div>
+          <div class="app-bar"><div><div class="app-bar-title">Register</div><div class="app-bar-sub">Already registered</div></div></div>
+          <div class="screen-body">
+            <div class="alert warning">
+              <div class="alert-title">⚠ You're already registered</div>
+              <div class="alert-sub">Here is your existing QR entry pass.</div>
+            </div>
+            <div class="qr-wrap" style="padding:8px 0;">
+              <div class="qr-box" style="width:90px;height:90px;">
+                <div class="qr-corner tl"></div><div class="qr-corner tr"></div>
+                <div class="qr-corner bl"></div><div class="qr-corner br"></div>
+                <svg width="68" height="68" viewBox="0 0 86 86">
+                  <rect x="4" y="4" width="24" height="24" rx="2" fill="none" stroke="#0D0D12" stroke-width="3"/>
+                  <rect x="10" y="10" width="12" height="12" rx="1" fill="#0D0D12"/>
+                  <rect x="58" y="4" width="24" height="24" rx="2" fill="none" stroke="#0D0D12" stroke-width="3"/>
+                  <rect x="64" y="10" width="12" height="12" rx="1" fill="#0D0D12"/>
+                  <rect x="4" y="58" width="24" height="24" rx="2" fill="none" stroke="#0D0D12" stroke-width="3"/>
+                  <rect x="10" y="64" width="12" height="12" rx="1" fill="#0D0D12"/>
+                  <rect x="34" y="4" width="4" height="4" fill="#0D0D12"/>
+                  <rect x="40" y="10" width="4" height="4" fill="#0D0D12"/>
+                  <rect x="46" y="4" width="4" height="4" fill="#0D0D12"/>
+                </svg>
+              </div>
+              <div class="qr-name" style="font-size:11px;">Vijay Joshi</div>
+              <div class="qr-id">EVNT-2025-B7K2</div>
+            </div>
+            <div class="btn btn-ghost">Go to My Pass</div>
+            <div class="btn btn-outline" style="font-size:11px;">Save to Photos</div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label">E3 — Duplicate</div>
+      <div class="phone-sub">Shows existing QR pass</div>
+    </div>
+
+    <!-- Invalid QR scan -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-inner">
+          <div class="phone-notch"></div>
+          <div class="status-bar"><span>9:41</span><div class="status-icons"></div></div>
+          <div class="app-bar"><div><div class="app-bar-title">Scan Entry</div><div class="app-bar-sub">Admin · Gate 1</div></div></div>
+          <div class="screen-body">
+            <div class="camera-view">
+              <div class="scan-frame" style="border-color:rgba(224,62,62,.5);"></div>
+              <div class="scan-corners">
+                <div class="sc tl" style="border-color:var(--red);"></div>
+                <div class="sc tr" style="border-color:var(--red);"></div>
+                <div class="sc bl" style="border-color:var(--red);"></div>
+                <div class="sc br" style="border-color:var(--red);"></div>
+              </div>
+              <div class="empty-state" style="padding:10px;">
+                <div style="font-size:22px;">⚠️</div>
+              </div>
+            </div>
+            <div class="alert error">
+              <div class="alert-title">✕ Invalid QR code</div>
+              <div class="alert-sub">This QR code is not registered for this event. Do not allow entry.</div>
+            </div>
+            <div class="btn btn-accent">Scan Next</div>
+            <div class="divider"></div>
+            <div class="alert warning">
+              <div class="alert-title">Already checked in</div>
+              <div class="alert-sub">If re-scan: Priya Sharma checked in at 09:02 AM. Duplicate entry blocked.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label">E4 — Invalid / Duplicate scan</div>
+      <div class="phone-sub">Admin error states</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- DESIGN SYSTEM GROUP -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="screen-group" id="design">
+  <div class="section-title">Design System</div>
+  <div class="anno-grid">
+
+    <div class="anno-card">
+      <div class="anno-label">Typography</div>
+      <div class="anno-title">Syne + DM Sans</div>
+      <div style="margin-top:8px;">
+        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--ink);letter-spacing:-.5px;">Syne 800</div>
+        <div style="font-size:11px;color:var(--ink3);margin-bottom:8px;">Headlines, app name, stat values</div>
+        <div style="font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;color:var(--ink);">DM Sans 500</div>
+        <div style="font-size:11px;color:var(--ink3);margin-bottom:4px;">Body, labels, UI copy</div>
+        <div style="font-family:'DM Sans',sans-serif;font-size:12px;color:var(--ink3);">DM Sans 400 — secondary text, hints</div>
+      </div>
+    </div>
+
+    <div class="anno-card">
+      <div class="anno-label">Colour Palette</div>
+      <div class="anno-title">Brand + Semantic</div>
+      <div class="color-row">
+        <div class="color-swatch"><div class="swatch" style="background:#4B3FD4;"></div><span class="swatch-name">Brand #4B3FD4</span></div>
+        <div class="color-swatch"><div class="swatch" style="background:#F05A28;"></div><span class="swatch-name">Accent #F05A28</span></div>
+        <div class="color-swatch"><div class="swatch" style="background:#12A87A;"></div><span class="swatch-name">Success #12A87A</span></div>
+        <div class="color-swatch"><div class="swatch" style="background:#E5990B;"></div><span class="swatch-name">Warning #E5990B</span></div>
+        <div class="color-swatch"><div class="swatch" style="background:#E03E3E;"></div><span class="swatch-name">Error #E03E3E</span></div>
+        <div class="color-swatch"><div class="swatch" style="background:#0D0D12;"></div><span class="swatch-name">Ink #0D0D12</span></div>
+        <div class="color-swatch"><div class="swatch" style="background:#F5F4FF;"></div><span class="swatch-name">Surface #F5F4FF</span></div>
+      </div>
+    </div>
+
+    <div class="anno-card">
+      <div class="anno-label">Component States</div>
+      <div class="anno-title">Input Fields</div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
+        <div><div class="field-label">Default</div><div class="field-input placeholder">Enter your name…</div></div>
+        <div><div class="field-label">Focused</div><div class="field-input" style="border-color:var(--brand);">Priya Sharma</div></div>
+        <div><div class="field-label">Valid</div><div class="field-input success">priya@company.in</div></div>
+        <div><div class="field-label">Error</div><div class="field-input error">Vijay Joshii</div></div>
+      </div>
+    </div>
+
+    <div class="anno-card">
+      <div class="anno-label">Buttons</div>
+      <div class="anno-title">Button Variants</div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
+        <div class="btn btn-primary">Primary — Register</div>
+        <div class="btn btn-green">Success — Confirm Check-In</div>
+        <div class="btn btn-accent">Accent — Scan Next</div>
+        <div class="btn btn-ghost">Ghost — View Recap</div>
+        <div class="btn btn-outline">Outline — Save to Photos</div>
+      </div>
+    </div>
+
+    <div class="anno-card">
+      <div class="anno-label">Alert / Feedback</div>
+      <div class="anno-title">Alert Variants</div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
+        <div class="alert success"><div class="alert-title">✓ Guest confirmed</div><div class="alert-sub">You're on the list, Priya!</div></div>
+        <div class="alert error"><div class="alert-title">✕ Not on guest list</div><div class="alert-sub">Check your invite details.</div></div>
+        <div class="alert warning"><div class="alert-title">⚠ Already registered</div><div class="alert-sub">Here's your existing pass.</div></div>
+        <div class="alert info"><div class="alert-title">ℹ Tip</div><div class="alert-sub">Try removing middle initials.</div></div>
+      </div>
+    </div>
+
+    <div class="anno-card">
+      <div class="anno-label">Session Tags</div>
+      <div class="anno-title">Agenda Tag System</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">
+        <span class="sess-tag tag-keynote">Keynote</span>
+        <span class="sess-tag tag-workshop">Workshop</span>
+        <span class="sess-tag tag-panel">Panel</span>
+        <span class="sess-tag tag-break">Break</span>
+      </div>
+      <div style="margin-top:12px;">
+        <div class="anno-label">Attendance Badges</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
+          <span class="badge-pill bp-green">Registered</span>
+          <span class="badge-pill bp-amber">Pending</span>
+          <span class="badge-pill bp-surface">Not yet</span>
+          <span class="badge-pill bp-brand">Admin</span>
+          <span class="badge-pill bp-red">Invalid</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="anno-card">
+      <div class="anno-label">Spacing & Radius</div>
+      <div class="anno-title">Design Tokens</div>
+      <div class="anno-body" style="margin-top:8px;">
+        <div style="display:flex;flex-direction:column;gap:5px;font-size:11px;font-family:monospace;color:var(--ink2);">
+          <div>--r-phone: 28px &nbsp;·&nbsp; Phone shell</div>
+          <div>--r-card:  12px &nbsp;·&nbsp; Cards, modals</div>
+          <div>--r-btn:   10px &nbsp;·&nbsp; Buttons</div>
+          <div>--r-input:  8px &nbsp;·&nbsp; Form inputs</div>
+          <div>Gap-xs:    4px</div>
+          <div>Gap-sm:    8px</div>
+          <div>Gap-md:   12px</div>
+          <div>Gap-lg:   20px</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="anno-card">
+      <div class="anno-label">Navigation</div>
+      <div class="anno-title">Bottom Tab Bar</div>
+      <div style="margin-top:10px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 4px;">
+        <div class="nav-bar" style="border:none;padding:0;">
+          <div class="nav-item active"><div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div class="nav-lbl">Register</div></div>
+          <div class="nav-item"><div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div><div class="nav-lbl">Agenda</div></div>
+          <div class="nav-item"><div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div><div class="nav-lbl">My Pass</div></div>
+        </div>
+      </div>
+      <div class="anno-body" style="margin-top:8px;font-size:11px;">3-tab structure for candidates. Admin screens accessible via role-based routing — not in bottom nav for security.</div>
+    </div>
+
+  </div>
+</div>
+
+</div><!-- /wrapper -->
+
+<script>
+function show(id) {
+  document.querySelectorAll('.screen-group').forEach(g => g.classList.remove('active'));
+  document.querySelectorAll('.nav-pill').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>
