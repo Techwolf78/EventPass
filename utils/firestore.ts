@@ -115,15 +115,28 @@ export async function validateAndRegisterAttendee(
     // Step 3: Generate QR token
     const qrToken = generateToken();
 
-    // Step 4: Create Firebase auth user with provided password
-    try {
-      await createUserWithEmailAndPassword(auth, lowerEmail, password);
-    } catch (authError: any) {
-      // If user already exists, just sign them in
-      if (authError.code === 'auth/email-already-in-use') {
-        await signInWithEmailAndPassword(auth, lowerEmail, password);
-      } else {
-        throw authError;
+    // Step 4: Create or verify Firebase auth user
+    const currentUser = auth.currentUser;
+    const alreadyAuthenticated = currentUser && currentUser.email?.toLowerCase() === lowerEmail;
+
+    if (!alreadyAuthenticated) {
+      // Only create auth account if user is not already signed in
+      if (!password || password.length < 6) {
+        return { success: false, message: 'Password must be at least 6 characters' };
+      }
+      try {
+        await createUserWithEmailAndPassword(auth, lowerEmail, password);
+      } catch (authError: any) {
+        // If user already exists, try signing them in
+        if (authError.code === 'auth/email-already-in-use') {
+          try {
+            await signInWithEmailAndPassword(auth, lowerEmail, password);
+          } catch (signInError: any) {
+            return { success: false, message: 'Account exists but password is incorrect. Please use the correct password or reset it.' };
+          }
+        } else {
+          throw authError;
+        }
       }
     }
 
@@ -360,6 +373,62 @@ export async function getEventAgenda(): Promise<EventData | null> {
 }
 
 /**
+ * Get all agendas (masterclass + event) for admin management
+ */
+export async function getAllAgendas(): Promise<(EventData & { type: string })[]> {
+  try {
+    const snapshot = await getDocs(collection(db, 'agenda'));
+    return snapshot.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+    } as EventData & { type: string }));
+  } catch (error) {
+    console.error('Error fetching all agendas:', error);
+    return [];
+  }
+}
+
+/**
+ * Save (create or update) an agenda for masterclass or event
+ */
+export async function saveAgenda(
+  type: 'masterclass' | 'event',
+  title: string,
+  date: Date,
+  agendaItems: Array<{ time: string; title: string; speaker: string; tag: string }>
+): Promise<{ success: boolean; message: string }> {
+  try {
+    // Find existing agenda document of this type
+    const existingQuery = query(
+      collection(db, 'agenda'),
+      where('type', '==', type)
+    );
+    const existingSnap = await getDocs(existingQuery);
+
+    const data = {
+      type,
+      title: title.trim(),
+      date: Timestamp.fromDate(date),
+      agenda: agendaItems,
+    };
+
+    if (!existingSnap.empty) {
+      // Update existing
+      const docId = existingSnap.docs[0].id;
+      await setDoc(doc(db, 'agenda', docId), data, { merge: true });
+    } else {
+      // Create new
+      await setDoc(doc(collection(db, 'agenda')), data);
+    }
+
+    return { success: true, message: 'Agenda saved successfully' };
+  } catch (error) {
+    console.error('Error saving agenda:', error);
+    return { success: false, message: 'Failed to save agenda' };
+  }
+}
+
+/**
  * Get candidate by QR token
  */
 export async function getCandidateByQRToken(qrToken: string): Promise<Candidate | null> {
@@ -380,6 +449,31 @@ export async function getCandidateByQRToken(qrToken: string): Promise<Candidate 
     } as Candidate;
   } catch (error) {
     console.error('Error fetching candidate by QR token:', error);
+    return null;
+  }
+}
+
+/**
+ * Get candidate by email (used after login to retrieve QR token)
+ */
+export async function getCandidateByEmail(email: string): Promise<Candidate | null> {
+  try {
+    const snapshot = await getDocs(query(
+      collection(db, 'candidates'),
+      where('email', '==', email.toLowerCase().trim())
+    ));
+    
+    if (snapshot.empty) {
+      return null;
+    }
+    
+    const doc = snapshot.docs[0];
+    return {
+      id: doc.id,
+      ...doc.data(),
+    } as Candidate;
+  } catch (error) {
+    console.error('Error fetching candidate by email:', error);
     return null;
   }
 }

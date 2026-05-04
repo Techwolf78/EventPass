@@ -1,22 +1,48 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Alert, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Alert,
+  TouchableOpacity,
+  ScrollView,
+  useWindowDimensions,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useAuth } from '@/context/AuthContext';
 import { validateAndCheckIn, getEvents } from '@/utils/firestore';
 import { Ionicons } from '@expo/vector-icons';
 
+interface RecentScan {
+  id: string;
+  name: string;
+  time: string;
+  status: 'success' | 'failed';
+}
+
+const getInitials = (name: string) => {
+  const parts = name.split(' ').filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return name.substring(0, 2).toUpperCase();
+};
+
 export default function QRScannerScreen() {
   const { user } = useAuth();
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const scannerSize = Math.min(width * 0.65, 260);
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [events, setEvents] = useState<any[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string>('');
+  const [lastScan, setLastScan] = useState<{ name: string; email: string; success: boolean; message: string } | null>(null);
+  const [recentScans, setRecentScans] = useState<RecentScan[]>([]);
 
   useEffect(() => {
     requestPermission();
     loadEvents();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadEvents = async () => {
@@ -35,30 +61,63 @@ export default function QRScannerScreen() {
 
     try {
       const result = await validateAndCheckIn(data, selectedEventId, user?.uid || '');
-      console.log('Check-in result:', result.message);
+      const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-      if (result.success) {
-        Alert.alert('✓ Check-in Successful', result.message, [
-          { text: 'OK', onPress: () => setScanned(false) },
-        ]);
-      } else {
-        Alert.alert('✗ Check-in Failed', result.message, [
-          { text: 'Try Again', onPress: () => setScanned(false) },
-        ]);
-      }
+      const scanName = result.candidate?.name || 'Attendee';
+      setLastScan({
+        name: scanName,
+        email: result.candidate?.email || '',
+        success: result.success,
+        message: result.message || '',
+      });
+
+      setRecentScans((prev) => [
+        {
+          id: Date.now().toString(),
+          name: scanName,
+          time: now,
+          status: (result.success ? 'success' : 'failed') as 'success' | 'failed',
+        },
+        ...prev,
+      ].slice(0, 10));
+
+      Alert.alert(result.success ? '✓ Check-in Successful' : '✗ Check-in Failed', result.message, [
+        { text: 'OK' },
+      ]);
     } catch (error: any) {
+      setLastScan({
+        name: 'Unknown',
+        email: '',
+        success: false,
+        message: error.message || 'Check-in failed',
+      });
+      setRecentScans((prev) => [
+        {
+          id: Date.now().toString(),
+          name: 'Unknown',
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          status: 'failed' as const,
+        },
+        ...prev,
+      ].slice(0, 10));
+
       Alert.alert('Error', error.message || 'Check-in failed', [
-        { text: 'Try Again', onPress: () => setScanned(false) },
+        { text: 'Try Again' },
       ]);
     } finally {
       setProcessing(false);
     }
   };
 
+  const resetScanner = () => {
+    setScanned(false);
+    setLastScan(null);
+  };
+
   if (!permission) {
     return (
-      <View style={styles.centerContainer}>
-        <Ionicons name="camera" size={48} color="#6366f1" />
+      <View style={[styles.centerContainer, { paddingTop: insets.top }]}>
+        <Ionicons name="camera" size={48} color="#8B5CF6" />
         <Text style={styles.loadingText}>Requesting camera access...</Text>
       </View>
     );
@@ -66,7 +125,7 @@ export default function QRScannerScreen() {
 
   if (!permission.granted) {
     return (
-      <View style={styles.centerContainer}>
+      <View style={[styles.centerContainer, { paddingTop: insets.top }]}>
         <Ionicons name="alert-circle" size={64} color="#ef4444" />
         <Text style={styles.errorTitle}>Camera Access Denied</Text>
         <Text style={styles.errorSubText}>
@@ -77,39 +136,28 @@ export default function QRScannerScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      {/* Header Section */}
-      {events.length > 0 && (
-        <View style={styles.eventSelectorContainer}>
-          <View style={styles.selectorHeader}>
-            <Ionicons name="calendar" size={18} color="#6366f1" />
-            <Text style={styles.selectorLabel}>Select Event</Text>
-          </View>
-          <View style={styles.eventButtons}>
-            {events.map((event) => (
-              <TouchableOpacity
-                key={event.id}
-                style={[
-                  styles.eventButton,
-                  selectedEventId === event.id && styles.eventButtonActive,
-                ]}
-                onPress={() => setSelectedEventId(event.id)}
-              >
-                <Text
-                  style={[
-                    styles.eventButtonText,
-                    selectedEventId === event.id && styles.eventButtonTextActive,
-                  ]}
-                  numberOfLines={1}
-                >
-                  {event.title}
-                </Text>
-              </TouchableOpacity>
-            ))}
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Text style={styles.headerTitle}>Scan Entry</Text>
+          <View style={styles.headerSubtitleRow}>
+            <Text style={styles.headerSubtitle}>ADMIN • GATE 1</Text>
+            <View style={styles.liveDot} />
+            <Text style={styles.liveText}>Live</Text>
           </View>
         </View>
-      )}
+        {events.length > 0 && (
+          <View style={styles.eventBadge}>
+            <Ionicons name="calendar" size={14} color="#8B5CF6" />
+            <Text style={styles.eventBadgeText} numberOfLines={1}>
+              {events.find((e) => e.id === selectedEventId)?.title || 'Event'}
+            </Text>
+          </View>
+        )}
+      </View>
 
+      {/* Camera Section */}
       <View style={styles.cameraSection}>
         <CameraView
           style={styles.camera}
@@ -118,46 +166,117 @@ export default function QRScannerScreen() {
         />
 
         <View style={styles.overlay} pointerEvents="none">
-          {/* Scanner Frame */}
           <View style={styles.scannerContainer}>
-            <View style={styles.scannerFrame}>
+            <View style={[styles.scannerFrame, { width: scannerSize, height: scannerSize }]}>
               <View style={[styles.corner, styles.topLeft]} />
               <View style={[styles.corner, styles.topRight]} />
               <View style={[styles.corner, styles.bottomLeft]} />
               <View style={[styles.corner, styles.bottomRight]} />
             </View>
-
-            {/* Center Pulse Indicator */}
-            <View style={styles.pulseContainer}>
-              <View style={styles.pulseCircle} />
-            </View>
           </View>
 
-          {/* Instructions */}
           <View style={styles.instructionBox}>
-            <Ionicons name="qr-code" size={24} color="#fff" />
-            <Text style={styles.scanText}>Position QR code in frame</Text>
+            <Ionicons name="qr-code" size={20} color="#fff" />
+            <Text style={styles.scanText}>Point camera at attendee's QR pass</Text>
           </View>
         </View>
       </View>
 
-      {/* Action Container - When Scanned */}
-      {scanned && (
-        <View style={styles.actionContainer}>
+      {/* Confirmation Card */}
+      {scanned && lastScan && (
+        <View style={styles.confirmSection}>
+          <View style={[
+            styles.confirmCard,
+            lastScan.success ? styles.confirmCardSuccess : styles.confirmCardFailed,
+          ]}>
+            <View style={[
+              styles.confirmIconBg,
+              { backgroundColor: lastScan.success ? '#D1FAE5' : '#FEE2E2' },
+            ]}>
+              <Ionicons
+                name={lastScan.success ? 'checkmark' : 'close'}
+                size={28}
+                color={lastScan.success ? '#10B981' : '#EF4444'}
+              />
+            </View>
+            <View style={styles.confirmInfo}>
+              <Text style={styles.confirmName}>{lastScan.name}</Text>
+              {lastScan.email ? (
+                <Text style={styles.confirmEmail}>{lastScan.email}</Text>
+              ) : null}
+              <Text style={[
+                styles.confirmStatus,
+                { color: lastScan.success ? '#10B981' : '#EF4444' },
+              ]}>
+                {lastScan.success ? 'Check-in successful' : 'Check-in failed'}
+              </Text>
+            </View>
+          </View>
+
           <TouchableOpacity
-            style={[styles.rescanButton, processing && styles.rescanButtonDisabled]}
-            onPress={() => setScanned(false)}
+            style={[styles.scanNextBtn, processing && styles.scanNextBtnDisabled]}
+            onPress={resetScanner}
             disabled={processing}
           >
             <Ionicons
-              name={processing ? 'hourglass' : 'camera-reverse'}
-              size={22}
+              name={processing ? 'hourglass' : 'scan'}
+              size={20}
               color="#fff"
             />
-            <Text style={styles.rescanText}>
+            <Text style={styles.scanNextBtnText}>
               {processing ? 'Processing...' : 'Scan Next'}
             </Text>
           </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Recent Scans */}
+      {recentScans.length > 0 && (
+        <View style={styles.recentSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>RECENT SCANS</Text>
+            <Text style={styles.sectionCount}>{recentScans.length}</Text>
+          </View>
+          <ScrollView
+            style={styles.recentList}
+            showsVerticalScrollIndicator={false}
+          >
+            {recentScans.map((scan) => (
+              <View key={scan.id} style={styles.recentItem}>
+                <View style={[
+                  styles.recentAvatar,
+                  { backgroundColor: scan.status === 'success' ? '#D1FAE5' : '#FEE2E2' },
+                ]}>
+                  <Text style={[
+                    styles.recentAvatarText,
+                    { color: scan.status === 'success' ? '#065F46' : '#991B1B' },
+                  ]}>
+                    {getInitials(scan.name)}
+                  </Text>
+                </View>
+                <View style={styles.recentInfo}>
+                  <Text style={styles.recentName} numberOfLines={1}>{scan.name}</Text>
+                  <Text style={styles.recentTime}>{scan.time}</Text>
+                </View>
+                <View style={[
+                  styles.recentStatus,
+                  { backgroundColor: scan.status === 'success' ? '#D1FAE5' : '#FEE2E2' },
+                ]}>
+                  <Ionicons
+                    name={scan.status === 'success' ? 'checkmark' : 'close'}
+                    size={14}
+                    color={scan.status === 'success' ? '#10B981' : '#EF4444'}
+                  />
+                  <Text style={[
+                    styles.recentStatusText,
+                    { color: scan.status === 'success' ? '#065F46' : '#991B1B' },
+                  ]}>
+                    {scan.status === 'success' ? 'In' : 'Fail'}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </ScrollView>
         </View>
       )}
     </View>
@@ -167,19 +286,76 @@ export default function QRScannerScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#F5F4FA',
   },
   cameraSection: {
     flex: 1,
+    minHeight: 300,
     position: 'relative',
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#F5F4FA',
     paddingHorizontal: 20,
   },
+  // Header
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#1f2937',
+  },
+  headerSubtitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    gap: 6,
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#8B5CF6',
+    letterSpacing: 0.5,
+  },
+  liveDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#10B981',
+  },
+  liveText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#10B981',
+  },
+  eventBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f5f3ff',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    gap: 4,
+    maxWidth: 140,
+  },
+  eventBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#8B5CF6',
+    flexShrink: 1,
+  },
+  // Loading/Error states
   loadingText: {
     marginTop: 16,
     fontSize: 16,
@@ -201,76 +377,30 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontWeight: '500',
   },
-  eventSelectorContainer: {
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  selectorHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  selectorLabel: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '700',
-    marginLeft: 8,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  eventButtons: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  eventButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.25)',
-  },
-  eventButtonActive: {
-    backgroundColor: '#6366f1',
-    borderColor: '#6366f1',
-  },
-  eventButtonText: {
-    color: '#ccc',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  eventButtonTextActive: {
-    color: '#fff',
-  },
+  // Camera
   camera: {
     flex: 1,
     width: '100%',
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
     paddingVertical: 40,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   scannerContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
   },
   scannerFrame: {
-    width: 280,
-    height: 280,
     position: 'relative',
   },
   corner: {
     position: 'absolute',
     width: 40,
     height: 40,
-    borderColor: '#6366f1',
+    borderColor: '#F97316',
   },
   topLeft: {
     top: -8,
@@ -296,68 +426,172 @@ const styles = StyleSheet.create({
     borderBottomWidth: 4,
     borderRightWidth: 4,
   },
-  pulseContainer: {
-    position: 'absolute',
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pulseCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    borderWidth: 2,
-    borderColor: 'rgba(99, 102, 241, 0.5)',
-  },
   instructionBox: {
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    gap: 10,
+    position: 'absolute',
+    bottom: 60,
   },
   scanText: {
     color: '#fff',
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: 0.3,
+    fontSize: 14,
+    fontWeight: '600',
   },
-  actionContainer: {
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
-    paddingBottom: 24,
+  // Confirmation Section
+  confirmSection: {
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    borderTopColor: '#f3f4f6',
   },
-  rescanButton: {
-    backgroundColor: '#6366f1',
+  confirmCard: {
     flexDirection: 'row',
     alignItems: 'center',
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    marginBottom: 10,
+  },
+  confirmCardSuccess: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#BBF7D0',
+  },
+  confirmCardFailed: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+  },
+  confirmIconBg: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     justifyContent: 'center',
-    paddingVertical: 14,
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  confirmInfo: {
+    flex: 1,
+  },
+  confirmName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1f2937',
+  },
+  confirmEmail: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  confirmStatus: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  scanNextBtn: {
+    backgroundColor: '#8B5CF6',
     borderRadius: 12,
-    gap: 10,
-    shadowColor: '#6366f1',
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    shadowColor: '#8B5CF6',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 5,
+    elevation: 4,
   },
-  rescanButtonDisabled: {
+  scanNextBtnDisabled: {
     opacity: 0.6,
   },
-  rescanText: {
+  scanNextBtnText: {
     color: '#fff',
     fontSize: 15,
     fontWeight: '700',
-    letterSpacing: 0.3,
+  },
+  // Recent Scans
+  recentSection: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 16,
+    paddingHorizontal: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#6b7280',
+    letterSpacing: 0.5,
+  },
+  sectionCount: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#8B5CF6',
+  },
+  recentList: {
+    maxHeight: 200,
+  },
+  recentItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  recentAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  recentAvatarText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  recentInfo: {
+    flex: 1,
+  },
+  recentName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1f2937',
+  },
+  recentTime: {
+    fontSize: 11,
+    color: '#9ca3af',
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  recentStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    gap: 4,
+  },
+  recentStatusText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
 });
-

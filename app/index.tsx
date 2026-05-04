@@ -18,8 +18,8 @@ export default function Index() {
   }
 
   if (isAdmin) {
-    return <Redirect href="/panel" />;
+    return <Redirect href="/(admin)/panel" />;
   }
 
-  return <Redirect href="/register" />;
+  return <Redirect href="/(attendee)/agenda" />;
 }

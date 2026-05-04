@@ -24,16 +24,9 @@ function RootLayoutInner() {
     
     if (!user && !inAuthGroup) {
       // Redirect to login if not authenticated
-      router.replace('/login');
-    } else if (user && inAuthGroup) {
-      // Redirect away from login if authenticated
-      if (isAdmin) {
-        router.replace('/panel');
-      } else {
-        router.replace('/register');
-      }
+      router.replace('/(auth)/login');
     }
-  }, [user, loading, isAdmin, segments]);
+  }, [user, loading, segments]);
 
   if (loading) {
     return (

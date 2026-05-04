@@ -11,6 +11,7 @@ import {
   Platform,
   Modal,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +19,7 @@ import { validateAndRegisterAttendee, checkIfEmailInGuestList } from '@/utils/fi
 
 export default function RegistrationScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [department, setDepartment] = useState('');
@@ -27,19 +29,19 @@ export default function RegistrationScreen() {
   const [errorTitle, setErrorTitle] = useState('');
   const [guestConfirmed, setGuestConfirmed] = useState(false);
   const [checkingEmail, setCheckingEmail] = useState(false);
-  const emailCheckTimeout = useRef<NodeJS.Timeout | null>(null);
+  const emailCheckTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
-  // Debounced email check function
   const handleEmailChange = (text: string) => {
     setEmail(text);
     setGuestConfirmed(false);
 
-    // Clear previous timeout
     if (emailCheckTimeout.current) {
       clearTimeout(emailCheckTimeout.current);
     }
 
-    // Only check if email has at least 5 characters
     if (text.length >= 5) {
       setCheckingEmail(true);
       emailCheckTimeout.current = setTimeout(async () => {
@@ -52,7 +54,7 @@ export default function RegistrationScreen() {
         } finally {
           setCheckingEmail(false);
         }
-      }, 500); // 500ms debounce
+      }, 500);
     }
   };
 
@@ -105,11 +107,32 @@ export default function RegistrationScreen() {
       return;
     }
 
+    if (!password) {
+      setErrorTitle('Missing Password');
+      setErrorMessage('Please enter a password to secure your account.');
+      setErrorModal(true);
+      return;
+    }
+
+    if (password.length < 6) {
+      setErrorTitle('Weak Password');
+      setErrorMessage('Password must be at least 6 characters long.');
+      setErrorModal(true);
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setErrorTitle('Password Mismatch');
+      setErrorMessage('Passwords do not match. Please try again.');
+      setErrorModal(true);
+      return;
+    }
+
     setLoading(true);
     try {
-      let fcmToken = 'mocked-fcm-token-for-web-or-expo-go';
+      const fcmToken = 'mocked-fcm-token-for-web-or-expo-go';
 
-      const result = await validateAndRegisterAttendee(name, email, fcmToken);
+      const result = await validateAndRegisterAttendee(name, email, fcmToken, password, department);
 
       if (result.success) {
         if (result.qrToken) {
@@ -119,7 +142,6 @@ export default function RegistrationScreen() {
           });
         }
       } else {
-        // Show specific error messages
         if (result.message === 'Not on the guest list') {
           setErrorTitle('Not Registered');
           setErrorMessage(
@@ -152,18 +174,13 @@ export default function RegistrationScreen() {
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-      <LinearGradient colors={['#06b6d4', '#0891b2']} style={styles.gradient}>
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <LinearGradient colors={['#7c3aed', '#6d28d9']} style={styles.gradient}>
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top, paddingBottom: insets.bottom + 20 }]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           <View style={styles.container}>
-            {/* Header with Back Button */}
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => router.back()}
-              disabled={loading}
-            >
-              <Ionicons name="chevron-back" size={24} color="#fff" />
-            </TouchableOpacity>
-
             {/* Header */}
             <View style={styles.header}>
               <View style={styles.headerBg}>
@@ -171,7 +188,7 @@ export default function RegistrationScreen() {
               </View>
               <Text style={styles.headerTitle}>Register</Text>
               <Text style={styles.headerSubtitle}>
-                EventPass PrivateSummit
+                INNOVATESUMMIT 2025
               </Text>
             </View>
 
@@ -184,7 +201,7 @@ export default function RegistrationScreen() {
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Full Name <Text style={styles.requiredLabel}>*</Text></Text>
                 <View style={styles.inputWrapper}>
-                  <Ionicons name="person" size={20} color="#06b6d4" style={styles.inputIcon} />
+                  <Ionicons name="person" size={20} color="#7c3aed" style={styles.inputIcon} />
                   <TextInput
                     style={styles.input}
                     placeholder="Priya Sharma"
@@ -200,7 +217,7 @@ export default function RegistrationScreen() {
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Work Email <Text style={styles.requiredLabel}>*</Text></Text>
                 <View style={styles.inputWrapper}>
-                  <Ionicons name="mail" size={20} color="#06b6d4" style={styles.inputIcon} />
+                  <Ionicons name="mail" size={20} color="#7c3aed" style={styles.inputIcon} />
                   <TextInput
                     style={styles.input}
                     placeholder="priya@company.in"
@@ -218,7 +235,7 @@ export default function RegistrationScreen() {
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Department <Text style={styles.requiredLabel}>*</Text></Text>
                 <View style={styles.inputWrapper}>
-                  <Ionicons name="briefcase" size={20} color="#06b6d4" style={styles.inputIcon} />
+                  <Ionicons name="briefcase" size={20} color="#7c3aed" style={styles.inputIcon} />
                   <TextInput
                     style={styles.input}
                     placeholder="Engineering"
@@ -230,10 +247,58 @@ export default function RegistrationScreen() {
                 </View>
               </View>
 
+              {/* Password Input */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Password <Text style={styles.requiredLabel}>*</Text></Text>
+                <View style={styles.inputWrapper}>
+                  <Ionicons name="lock-closed" size={20} color="#7c3aed" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Create a password (min. 6 chars)"
+                    placeholderTextColor="#b4b4b4"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    editable={!loading}
+                  />
+                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)} disabled={loading}>
+                    <Ionicons
+                      name={showPassword ? 'eye-off' : 'eye'}
+                      size={20}
+                      color="#9ca3af"
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Confirm Password Input */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Confirm Password <Text style={styles.requiredLabel}>*</Text></Text>
+                <View style={styles.inputWrapper}>
+                  <Ionicons name="lock-closed" size={20} color="#7c3aed" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Re-enter your password"
+                    placeholderTextColor="#b4b4b4"
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry={!showPassword}
+                    editable={!loading}
+                  />
+                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)} disabled={loading}>
+                    <Ionicons
+                      name={showPassword ? 'eye-off' : 'eye'}
+                      size={20}
+                      color="#9ca3af"
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
               {/* Email Checking Status */}
               {checkingEmail && email.length > 0 && (
                 <View style={styles.checkingBox}>
-                  <ActivityIndicator size="small" color="#06b6d4" />
+                  <ActivityIndicator size="small" color="#7c3aed" />
                   <Text style={styles.checkingText}>Verifying email...</Text>
                 </View>
               )}
@@ -299,18 +364,11 @@ export default function RegistrationScreen() {
       <Modal visible={errorModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            {/* Error Icon */}
             <View style={styles.modalIconContainer}>
               <Ionicons name={getErrorIconName() as any} size={64} color={getErrorIconColor()} />
             </View>
-
-            {/* Error Title */}
             <Text style={styles.modalTitle}>{errorTitle}</Text>
-
-            {/* Error Message */}
             <Text style={styles.modalMessage}>{errorMessage}</Text>
-
-            {/* Close Button */}
             <TouchableOpacity
               style={styles.modalButton}
               onPress={() => setErrorModal(false)}
@@ -335,12 +393,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'space-between',
     paddingHorizontal: 24,
-    paddingVertical: 40,
+    paddingVertical: 20,
   },
   header: {
     alignItems: 'center',
     marginBottom: 32,
-    marginTop: 20,
   },
   headerBg: {
     width: 80,
@@ -376,7 +433,7 @@ const styles = StyleSheet.create({
   },
   stepIndicator: {
     fontSize: 12,
-    color: '#06b6d4',
+    color: '#7c3aed',
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -440,11 +497,12 @@ const styles = StyleSheet.create({
     color: '#059669',
     fontWeight: '500',
     flex: 1,
+    flexShrink: 1,
   },
   checkingBox: {
-    backgroundColor: '#f0f9ff',
+    backgroundColor: '#f5f3ff',
     borderLeftWidth: 4,
-    borderLeftColor: '#06b6d4',
+    borderLeftColor: '#7c3aed',
     borderRadius: 8,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -455,9 +513,10 @@ const styles = StyleSheet.create({
   checkingText: {
     marginLeft: 12,
     fontSize: 14,
-    color: '#0369a1',
+    color: '#5b21b6',
     fontWeight: '500',
     flex: 1,
+    flexShrink: 1,
   },
   errorBox: {
     backgroundColor: '#fef2f2',
@@ -476,15 +535,16 @@ const styles = StyleSheet.create({
     color: '#dc2626',
     fontWeight: '500',
     flex: 1,
+    flexShrink: 1,
   },
   button: {
-    backgroundColor: '#06b6d4',
+    backgroundColor: '#7c3aed',
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
-    shadowColor: '#06b6d4',
+    shadowColor: '#7c3aed',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -509,15 +569,6 @@ const styles = StyleSheet.create({
     marginTop: 20,
     fontWeight: '500',
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
   footerContainer: {
     alignItems: 'center',
   },
@@ -534,7 +585,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
   },
-  // Modal Styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
@@ -548,6 +598,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 32,
     alignItems: 'center',
+    width: '90%',
+    maxWidth: 400,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.3,
@@ -573,7 +625,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   modalButton: {
-    backgroundColor: '#06b6d4',
+    backgroundColor: '#7c3aed',
     borderRadius: 12,
     paddingHorizontal: 32,
     paddingVertical: 12,

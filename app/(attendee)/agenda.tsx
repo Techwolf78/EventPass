@@ -1,11 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ActivityIndicator,
   SectionList,
+  TouchableOpacity,
+  ScrollView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
@@ -14,25 +17,41 @@ import {
   getEventAgenda,
   EventData,
   getCandidateByQRToken,
+  getCandidateByEmail,
 } from '@/utils/firestore';
+import { useAuth } from '@/context/AuthContext';
+
+const FILTER_TABS = ['All', 'Keynote', 'Workshop', 'Networking', 'Technical'] as const;
+type FilterTab = (typeof FILTER_TABS)[number];
 
 export default function AgendaScreen() {
   const { qrToken } = useLocalSearchParams();
+  const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const [agenda, setAgenda] = useState<EventData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeFilter, setActiveFilter] = useState<FilterTab>('All');
 
   useEffect(() => {
     loadAgenda();
-  }, [qrToken]);
+  }, [qrToken, user]);
 
   const loadAgenda = async () => {
     setLoading(true);
     try {
-      // Step 1: Get enrollment type from QR token
-      if (qrToken) {
-        const candidate = await getCandidateByQRToken(qrToken as string);
+      let token = (qrToken as string) || null;
+
+      // If no QR token in route params, fetch candidate by auth email
+      if (!token && user?.email) {
+        const candidateByEmail = await getCandidateByEmail(user.email);
+        if (candidateByEmail) {
+          token = candidateByEmail.qrToken;
+        }
+      }
+
+      if (token) {
+        const candidate = await getCandidateByQRToken(token);
         if (candidate) {
-          // Step 2: Fetch appropriate agenda based on enrollment type
           if (candidate.enrollmentType === 'masterclass') {
             const masterclassAgenda = await getMasterclassAgenda();
             setAgenda(masterclassAgenda);
@@ -49,9 +68,17 @@ export default function AgendaScreen() {
     }
   };
 
+  const filteredItems = useMemo(() => {
+    if (!agenda?.agenda) return [];
+    if (activeFilter === 'All') return agenda.agenda;
+    return agenda.agenda.filter(
+      (item) => item.tag?.toLowerCase() === activeFilter.toLowerCase()
+    );
+  }, [agenda, activeFilter]);
+
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={[styles.loadingContainer, { paddingTop: insets.top }]}>
         <ActivityIndicator size="large" color="#667eea" />
         <Text style={styles.loadingText}>Loading agenda...</Text>
       </View>
@@ -62,7 +89,7 @@ export default function AgendaScreen() {
     ? [
         {
           title: agenda.title,
-          data: agenda.agenda || [],
+          data: filteredItems,
           date: agenda.date,
         },
       ]
@@ -70,8 +97,46 @@ export default function AgendaScreen() {
 
   return (
     <LinearGradient colors={['#f9fafb', '#f3f4f6']} style={styles.container}>
+      {/* Search & Filter Header */}
+      {agenda && eventsSections[0]?.data.length > 0 && (
+        <View style={[styles.filterHeader, { paddingTop: insets.top + 16 }]}>
+          <View style={styles.headerTopRow}>
+            <Text style={styles.screenTitle}>Agenda</Text>
+            <TouchableOpacity style={styles.searchButton}>
+              <Ionicons name="search" size={20} color="#6b7280" />
+            </TouchableOpacity>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterTabsContainer}
+          >
+            {FILTER_TABS.map((tab) => (
+              <TouchableOpacity
+                key={tab}
+                style={[
+                  styles.filterTab,
+                  activeFilter === tab && styles.filterTabActive,
+                ]}
+                onPress={() => setActiveFilter(tab)}
+              >
+                <Text
+                  style={[
+                    styles.filterTabText,
+                    activeFilter === tab && styles.filterTabTextActive,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {tab}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
       {!agenda || eventsSections[0]?.data.length === 0 ? (
-        <View style={styles.emptyContainer}>
+        <View style={[styles.emptyContainer, { paddingTop: insets.top }]}>
           <Ionicons name="calendar-outline" size={64} color="#d1d5db" />
           <Text style={styles.emptyText}>No agenda scheduled</Text>
           <Text style={styles.emptySubtext}>
@@ -82,14 +147,15 @@ export default function AgendaScreen() {
         <SectionList
           sections={eventsSections}
           keyExtractor={(item, index) => item.title + index}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 20 }]}
           showsVerticalScrollIndicator={false}
+          stickySectionHeadersEnabled={false}
           renderItem={({ item, section }) => (
             <View style={styles.agendaCard}>
               <View style={styles.timeSection}>
                 <View style={styles.timeBadge}>
-                  <Ionicons name="time" size={16} color="#667eea" />
-                  <Text style={styles.time}>{item.time}</Text>
+                  <Ionicons name="time" size={14} color="#667eea" />
+                  <Text style={styles.time} numberOfLines={1}>{item.time}</Text>
                 </View>
               </View>
               <View style={styles.contentSection}>
@@ -98,7 +164,7 @@ export default function AgendaScreen() {
                 </Text>
                 <View style={styles.speakerRow}>
                   <Ionicons name="person-circle" size={14} color="#9ca3af" />
-                  <Text style={styles.speaker}>{item.speaker}</Text>
+                  <Text style={styles.speaker} numberOfLines={1}>{item.speaker}</Text>
                 </View>
                 <View style={styles.tagContainer}>
                   <View style={[styles.tag, getTagStyle(item.tag)]}>
@@ -120,11 +186,11 @@ export default function AgendaScreen() {
                 style={styles.eventHeader}
               >
                 <View style={styles.eventHeaderContent}>
-                  <View>
-                    <Text style={styles.eventTitle}>{title}</Text>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={styles.eventTitle} numberOfLines={2}>{title}</Text>
                     <View style={styles.eventDateRow}>
                       <Ionicons name="calendar" size={14} color="rgba(255,255,255,0.8)" />
-                      <Text style={styles.eventDate}>
+                      <Text style={styles.eventDate} numberOfLines={1}>
                         {date?.toDate ? date.toDate().toLocaleDateString('en-US', {
                           weekday: 'long',
                           month: 'long',
@@ -149,7 +215,7 @@ export default function AgendaScreen() {
 
 const getTagStyle = (tag: string | undefined) => {
   if (!tag) return styles.tagDefault;
-  
+
   const tagStyles: { [key: string]: any } = {
     general: styles.tagGeneral,
     workshop: styles.tagWorkshop,
@@ -217,6 +283,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
     color: '#fff',
+    flexShrink: 1,
   },
   eventDateRow: {
     flexDirection: 'row',
@@ -228,6 +295,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.85)',
     fontWeight: '600',
+    flexShrink: 1,
   },
   eventBadge: {
     width: 40,
@@ -236,6 +304,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
+    flexShrink: 0,
+    marginLeft: 12,
   },
   agendaCard: {
     backgroundColor: '#fff',
@@ -257,23 +327,26 @@ const styles = StyleSheet.create({
   timeSection: {
     marginRight: 12,
     justifyContent: 'center',
+    flexShrink: 0,
   },
   timeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f0f4ff',
     borderRadius: 8,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 6,
     gap: 4,
   },
   time: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: '#667eea',
+    flexShrink: 1,
   },
   contentSection: {
     flex: 1,
+    minWidth: 0,
   },
   sessionTitle: {
     fontSize: 14,
@@ -291,6 +364,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6b7280',
     fontWeight: '500',
+    flexShrink: 1,
+    flex: 1,
   },
   tagContainer: {
     marginTop: 4,
@@ -325,9 +400,62 @@ const styles = StyleSheet.create({
   rightArrow: {
     marginLeft: 8,
     justifyContent: 'center',
+    flexShrink: 0,
   },
   sectionDivider: {
     height: 12,
     backgroundColor: 'transparent',
+  },
+  // Filter Header Styles
+  filterHeader: {
+    paddingHorizontal: 16,
+    paddingBottom: 4,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  screenTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#1f2937',
+  },
+  searchButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f3f4f6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  filterTabsContainer: {
+    paddingRight: 16,
+    gap: 8,
+    paddingBottom: 12,
+  },
+  filterTab: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#f3f4f6',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  filterTabActive: {
+    backgroundColor: '#7c3aed',
+    borderColor: '#7c3aed',
+  },
+  filterTabText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6b7280',
+  },
+  filterTabTextActive: {
+    color: '#fff',
   },
 });

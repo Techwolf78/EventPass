@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 interface Notification {
@@ -17,29 +17,33 @@ interface Notification {
   timestamp: string;
   type: 'info' | 'alert' | 'success' | 'reminder';
   read: boolean;
+  actions?: { label: string; type: 'primary' | 'secondary' }[];
 }
 
 export default function NotificationsScreen() {
+  const insets = useSafeAreaInsets();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Load notifications (can be connected to Firestore later)
     loadNotifications();
   }, []);
 
   const loadNotifications = async () => {
     setLoading(true);
     try {
-      // Mock notifications for now
       const mockNotifications: Notification[] = [
         {
           id: '1',
           title: 'Thanks for Joining!',
-          message: 'The InnovateSummit recap is ready - slides, recordings, and key highlights are waiting for you.',
+          message: 'The InnovateSummit recap is ready \u2014 slides, recordings, and key highlights are waiting for you.',
           timestamp: 'Just now',
           type: 'success',
           read: false,
+          actions: [
+            { label: 'View Recap', type: 'primary' },
+            { label: 'Dismiss', type: 'secondary' },
+          ],
         },
         {
           id: '2',
@@ -88,162 +92,238 @@ export default function NotificationsScreen() {
       case 'reminder':
         return '#f59e0b';
       default:
-        return '#06b6d4';
+        return '#7c3aed';
     }
   };
 
   const markAsRead = (id: string) => {
-    setNotifications(notifications.map(notif =>
+    setNotifications(notifications.map((notif) =>
       notif.id === id ? { ...notif, read: true } : notif
     ));
   };
 
+  const dismissNotification = (id: string) => {
+    setNotifications(notifications.filter((notif) => notif.id !== id));
+  };
+
   if (loading) {
     return (
-      <LinearGradient colors={['#06b6d4', '#0891b2']} style={styles.gradient}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#fff" />
-          <Text style={styles.loadingText}>Loading notifications...</Text>
-        </View>
-      </LinearGradient>
+      <View style={[styles.loadingContainer, { paddingTop: insets.top }]}>
+        <ActivityIndicator size="large" color="#7c3aed" />
+        <Text style={styles.loadingText}>Loading notifications...</Text>
+      </View>
     );
   }
 
   return (
-    <LinearGradient colors={['#06b6d4', '#0891b2']} style={styles.gradient}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20 }]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.container}>
-          {notifications.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <View style={styles.emptyIconBg}>
-                <Ionicons name="notifications-off" size={60} color="#fff" />
-              </View>
-              <Text style={styles.emptyTitle}>No Notifications</Text>
-              <Text style={styles.emptyText}>
-                You're all caught up! Come back later for updates.
-              </Text>
+        {/* Header */}
+        <View style={styles.screenHeader}>
+          <Text style={styles.screenTitle}>Notifications</Text>
+          {notifications.length > 0 && (
+            <Text style={styles.notifCount}>
+              {notifications.filter((n) => !n.read).length} new
+            </Text>
+          )}
+        </View>
+
+        {notifications.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIconBg}>
+              <Ionicons name="notifications-off" size={48} color="#d1d5db" />
             </View>
-          ) : (
-            <View style={styles.notificationsList}>
-              {notifications.map((notification) => (
-                <TouchableOpacity
-                  key={notification.id}
-                  style={[
-                    styles.notificationCard,
-                    !notification.read && styles.notificationCardUnread,
-                  ]}
-                  onPress={() => markAsRead(notification.id)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.notificationHeader}>
-                    <View style={styles.notificationIconBg}>
-                      <Ionicons
-                        name={getNotificationIcon(notification.type) as any}
-                        size={24}
-                        color={getNotificationColor(notification.type)}
-                      />
-                    </View>
-                    <View style={styles.notificationContent}>
+            <Text style={styles.emptyTitle}>No Notifications</Text>
+            <Text style={styles.emptyText}>
+              You're all caught up! Come back later for updates.
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.notificationsList}>
+            {notifications.map((notification) => (
+              <TouchableOpacity
+                key={notification.id}
+                style={[
+                  styles.notificationCard,
+                  !notification.read && styles.notificationCardUnread,
+                ]}
+                onPress={() => markAsRead(notification.id)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.notificationHeader}>
+                  <View style={[
+                    styles.notificationIconBg,
+                    { backgroundColor: `${getNotificationColor(notification.type)}15` },
+                  ]}>
+                    <Ionicons
+                      name={getNotificationIcon(notification.type) as any}
+                      size={22}
+                      color={getNotificationColor(notification.type)}
+                    />
+                  </View>
+                  <View style={styles.notificationContent}>
+                    <View style={styles.titleRow}>
                       <Text
                         style={[
                           styles.notificationTitle,
                           !notification.read && styles.notificationTitleBold,
                         ]}
+                        numberOfLines={1}
                       >
                         {notification.title}
                       </Text>
-                      <Text style={styles.notificationTimestamp}>
-                        {notification.timestamp}
-                      </Text>
+                      {!notification.read && <View style={styles.unreadDot} />}
                     </View>
-                    {!notification.read && (
-                      <View style={styles.unreadDot} />
-                    )}
+                    <Text style={styles.notificationTimestamp}>
+                      {notification.timestamp}
+                    </Text>
                   </View>
-                  <Text style={styles.notificationMessage}>
-                    {notification.message}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
+                </View>
+
+                <Text style={styles.notificationMessage} numberOfLines={3}>
+                  {notification.message}
+                </Text>
+
+                {/* Action Buttons */}
+                {notification.actions && notification.actions.length > 0 && (
+                  <View style={styles.actionRow}>
+                    {notification.actions.map((action, idx) => (
+                      <TouchableOpacity
+                        key={idx}
+                        style={[
+                          styles.actionBtn,
+                          action.type === 'primary'
+                            ? styles.actionBtnPrimary
+                            : styles.actionBtnSecondary,
+                        ]}
+                        onPress={() => {
+                          if (action.label === 'Dismiss') {
+                            dismissNotification(notification.id);
+                          }
+                          markAsRead(notification.id);
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.actionBtnText,
+                            action.type === 'primary'
+                              ? styles.actionBtnTextPrimary
+                              : styles.actionBtnTextSecondary,
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {action.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </ScrollView>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  gradient: {
-    flex: 1,
-  },
   container: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    backgroundColor: '#f9fafb',
   },
   scrollContent: {
     flexGrow: 1,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 20,
   },
+  // Screen Header
+  screenHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 4,
+  },
+  screenTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#1f2937',
+  },
+  notifCount: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#7c3aed',
+    backgroundColor: '#f5f3ff',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  // Loading
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#f9fafb',
   },
   loadingText: {
-    fontSize: 16,
-    color: '#fff',
+    fontSize: 14,
+    color: '#6b7280',
     marginTop: 12,
     fontWeight: '500',
   },
+  // Empty
   emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
+    justifyContent: 'center',
+    paddingVertical: 80,
   },
   emptyIconBg: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#f3f4f6',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   emptyTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#fff',
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#374151',
     marginBottom: 8,
     textAlign: 'center',
   },
   emptyText: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: '#9ca3af',
     textAlign: 'center',
     fontWeight: '500',
+    paddingHorizontal: 20,
   },
+  // Notifications List
   notificationsList: {
-    gap: 12,
+    gap: 10,
   },
   notificationCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: '#fff',
     borderRadius: 14,
     padding: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
   },
   notificationCardUnread: {
-    backgroundColor: '#fff',
     borderLeftWidth: 4,
-    borderLeftColor: '#06b6d4',
+    borderLeftColor: '#7c3aed',
+    backgroundColor: '#fff',
   },
   notificationHeader: {
     flexDirection: 'row',
@@ -251,43 +331,85 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   notificationIconBg: {
-    width: 50,
-    height: 50,
+    width: 44,
+    height: 44,
     borderRadius: 10,
-    backgroundColor: '#f0f9ff',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
-    flex: 0,
+    flexShrink: 0,
   },
   notificationContent: {
     flex: 1,
+    minWidth: 0,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 3,
   },
   notificationTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#1f2937',
-    marginBottom: 4,
+    flex: 1,
+    flexShrink: 1,
   },
   notificationTitleBold: {
     fontWeight: '800',
   },
+  unreadDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#7c3aed',
+    marginLeft: 8,
+    flexShrink: 0,
+  },
   notificationTimestamp: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#9ca3af',
     fontWeight: '500',
   },
-  unreadDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#06b6d4',
-    marginLeft: 8,
-  },
   notificationMessage: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#6b7280',
-    lineHeight: 20,
+    lineHeight: 19,
     fontWeight: '500',
+    marginBottom: 4,
+  },
+  // Action Buttons
+  actionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f3f4f6',
+  },
+  actionBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionBtnPrimary: {
+    backgroundColor: '#7c3aed',
+  },
+  actionBtnSecondary: {
+    backgroundColor: '#f3f4f6',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  actionBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  actionBtnTextPrimary: {
+    color: '#fff',
+  },
+  actionBtnTextSecondary: {
+    color: '#6b7280',
   },
 });

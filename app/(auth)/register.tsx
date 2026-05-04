@@ -11,6 +11,7 @@ import {
   Platform,
   Modal,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +19,7 @@ import { validateAndRegisterAttendee, checkIfEmailInGuestList } from '@/utils/fi
 
 export default function RegistrationScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [department, setDepartment] = useState('');
@@ -33,7 +35,7 @@ export default function RegistrationScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const emailCheckTimeout = useRef<NodeJS.Timeout | number | null>(null);
+  const emailCheckTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Debounced email check function
   const handleEmailChange = (text: string) => {
@@ -206,7 +208,7 @@ export default function RegistrationScreen() {
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
       <LinearGradient colors={['#06b6d4', '#0891b2']} style={styles.gradient}>
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top, paddingBottom: insets.bottom + 20 }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <View style={styles.container}>
             {/* Header with Back Button */}
             <TouchableOpacity
@@ -351,7 +353,7 @@ export default function RegistrationScreen() {
       {/* Password Setup Modal */}
       <Modal visible={passwordModal} transparent animationType="fade">
         <View style={styles.passwordModalOverlay}>
-          <View style={styles.passwordModalContent}>
+          <View style={[styles.passwordModalContent, { paddingBottom: insets.bottom + 40 }]}>
             {/* Header */}
             <View style={styles.passwordModalHeader}>
               <View style={styles.passwordIconBg}>
@@ -524,12 +526,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'space-between',
     paddingHorizontal: 24,
-    paddingVertical: 40,
+    paddingVertical: 20,
   },
   header: {
     alignItems: 'center',
     marginBottom: 32,
-    marginTop: 20,
   },
   headerBg: {
     width: 80,

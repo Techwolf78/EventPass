@@ -5,49 +5,76 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Dimensions,
+  useWindowDimensions,
   ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
 import * as Sharing from 'expo-sharing';
-import { getCheckInStatus, CheckInStatusResult } from '@/utils/firestore';
-
-const { width } = Dimensions.get('window');
+import { getCheckInStatus, CheckInStatusResult, getCandidateByQRToken, getCandidateByEmail, Candidate } from '@/utils/firestore';
+import { useAuth } from '@/context/AuthContext';
 
 export default function QRPassScreen() {
   const router = useRouter();
   const { qrToken } = useLocalSearchParams();
+  const { user } = useAuth();
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [qrRef, setQrRef] = useState<any>(null);
   const [checkInStatus, setCheckInStatus] = useState<CheckInStatusResult | null>(null);
+  const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [loading, setLoading] = useState(true);
+  const [resolvedToken, setResolvedToken] = useState<string | null>((qrToken as string) || null);
+
+  const qrSize = Math.min(width * 0.5, 220);
+  const activeToken = resolvedToken || (qrToken as string);
 
   useEffect(() => {
-    const fetchCheckInStatus = async () => {
-      if (!qrToken) {
+    const fetchData = async () => {
+      let token: string | null = (qrToken as string) || null;
+
+      // If no QR token in route params, fetch from Firestore using auth email
+      if (!token && user?.email) {
+        try {
+          const candidateByEmail = await getCandidateByEmail(user.email);
+          if (candidateByEmail) {
+            token = candidateByEmail.qrToken;
+            setResolvedToken(token);
+          }
+        } catch (error) {
+          console.error('Error fetching candidate by email:', error);
+        }
+      }
+
+      if (!token) {
         setLoading(false);
         return;
       }
+
       try {
-        // Check if already checked in for ANY event
-        const status = await getCheckInStatus(qrToken as string);
+        const [status, candidateData] = await Promise.all([
+          getCheckInStatus(token),
+          getCandidateByQRToken(token),
+        ]);
         setCheckInStatus(status);
+        setCandidate(candidateData);
       } catch (error) {
-        console.error('Error fetching check-in status:', error);
+        console.error('Error fetching data:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchCheckInStatus();
-  }, [qrToken]);
+    fetchData();
+  }, [qrToken, user]);
 
-  if (!qrToken) {
+  if (!activeToken) {
     return (
       <LinearGradient colors={['#f43f5e', '#e11d48']} style={styles.gradient}>
-        <View style={styles.errorContainer}>
+        <View style={[styles.errorContainer, { paddingTop: insets.top }]}>
           <View style={styles.errorIconBg}>
             <Ionicons name="alert-circle" size={50} color="#fff" />
           </View>
@@ -65,13 +92,12 @@ export default function QRPassScreen() {
     );
   }
 
-  // Show loading state while fetching check-in status
   if (loading) {
     return (
-      <LinearGradient colors={['#667eea', '#764ba2']} style={styles.gradient}>
-        <View style={styles.loadingContainer}>
+      <LinearGradient colors={['#7c3aed', '#6d28d9']} style={styles.gradient}>
+        <View style={[styles.loadingContainer, { paddingTop: insets.top }]}>
           <ActivityIndicator size="large" color="#fff" />
-          <Text style={styles.loadingText}>Checking your status...</Text>
+          <Text style={styles.loadingText}>Loading your pass...</Text>
         </View>
       </LinearGradient>
     );
@@ -81,19 +107,14 @@ export default function QRPassScreen() {
   if (checkInStatus?.hasCheckedIn) {
     return (
       <LinearGradient colors={['#10b981', '#059669']} style={styles.gradient}>
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          {/* Header */}
+        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 40 }]} showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
             <Ionicons name="checkmark-circle" size={48} color="#fff" />
             <Text style={styles.headerTitle}>Already Checked In!</Text>
-            <Text style={styles.headerSubtitle}>
-              Welcome to the event
-            </Text>
+            <Text style={styles.headerSubtitle}>Welcome to the event</Text>
           </View>
 
-          {/* Main Card */}
           <View style={styles.card}>
-            {/* Success Icon */}
             <View style={styles.successContainer}>
               <View style={styles.successIconBg}>
                 <Ionicons name="checkmark" size={60} color="#fff" />
@@ -104,31 +125,30 @@ export default function QRPassScreen() {
               </Text>
             </View>
 
-            {/* Details Box */}
-            <View style={styles.detailsBox}>
-              <View style={styles.detailItem}>
-                <View style={styles.detailLabel}>
+            <View style={styles.checkedInDetailsBox}>
+              <View style={styles.checkedInDetailItem}>
+                <View style={styles.checkedInDetailLabel}>
                   <Ionicons name="person" size={20} color="#10b981" />
-                  <Text style={styles.detailLabelText}>Name</Text>
+                  <Text style={styles.checkedInDetailLabelText}>Name</Text>
                 </View>
-                <Text style={styles.detailValue}>{checkInStatus.candidateName}</Text>
+                <Text style={styles.checkedInDetailValue} numberOfLines={1}>{checkInStatus.candidateName}</Text>
               </View>
 
-              <View style={styles.detailItem}>
-                <View style={styles.detailLabel}>
+              <View style={styles.checkedInDetailItem}>
+                <View style={styles.checkedInDetailLabel}>
                   <Ionicons name="mail" size={20} color="#10b981" />
-                  <Text style={styles.detailLabelText}>Email</Text>
+                  <Text style={styles.checkedInDetailLabelText}>Email</Text>
                 </View>
-                <Text style={styles.detailValue}>{checkInStatus.candidateEmail}</Text>
+                <Text style={styles.checkedInDetailValue} numberOfLines={1}>{checkInStatus.candidateEmail}</Text>
               </View>
 
               {checkInStatus.checkedInAt && (
-                <View style={styles.detailItem}>
-                  <View style={styles.detailLabel}>
+                <View style={styles.checkedInDetailItem}>
+                  <View style={styles.checkedInDetailLabel}>
                     <Ionicons name="time" size={20} color="#10b981" />
-                    <Text style={styles.detailLabelText}>Check-In Time</Text>
+                    <Text style={styles.checkedInDetailLabelText}>Check-In Time</Text>
                   </View>
-                  <Text style={styles.detailValue}>
+                  <Text style={styles.checkedInDetailValue}>
                     {checkInStatus.checkedInAt instanceof Object && 'toDate' in checkInStatus.checkedInAt
                       ? checkInStatus.checkedInAt.toDate().toLocaleString()
                       : 'Today'}
@@ -137,7 +157,6 @@ export default function QRPassScreen() {
               )}
             </View>
 
-            {/* Action Buttons */}
             <View style={styles.buttonGroup}>
               <TouchableOpacity style={styles.checkedInPrimaryBtn} onPress={() => router.push('/(attendee)/agenda')}>
                 <Ionicons name="calendar" size={20} color="#fff" />
@@ -154,8 +173,7 @@ export default function QRPassScreen() {
             </View>
           </View>
 
-          {/* Footer Note */}
-          <Text style={styles.footerNote}>
+          <Text style={[styles.footerNote, { paddingBottom: insets.bottom + 20 }]}>
             Enjoy the event! If you need any assistance, contact the organizers.
           </Text>
         </ScrollView>
@@ -163,34 +181,61 @@ export default function QRPassScreen() {
     );
   }
 
-  const handleShare = async () => {
+  const handleSaveToPhotos = async () => {
     try {
       if (qrRef) {
         qrRef.toDataURL((dataURL: string) => {
           Sharing.shareAsync(dataURL, {
             mimeType: 'image/png',
-            dialogTitle: 'Share your EventPass QR Code',
+            dialogTitle: 'Save your EventPass QR Code',
           });
         });
       }
     } catch (error) {
-      console.error('Error sharing QR code:', error);
+      console.error('Error saving QR code:', error);
     }
   };
+
+  const uniqueId = candidate?.qrToken
+    ? `EVNT-2025-${candidate.qrToken.substring(0, 4).toUpperCase()}`
+    : 'EVNT-2025-XXXX';
 
   const handleViewAgenda = () => {
     router.push('/(attendee)/agenda');
   };
 
   return (
-    <LinearGradient colors={['#667eea', '#764ba2']} style={styles.gradient}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Ionicons name="ticket-sharp" size={48} color="#fff" />
-          <Text style={styles.headerTitle}>Your Event Pass</Text>
-          <Text style={styles.headerSubtitle}>Ready to check in!</Text>
-        </View>
+    <LinearGradient colors={['#f9fafb', '#f3f4f6']} style={styles.gradient}>
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20 }]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Event Banner */}
+        <LinearGradient
+          colors={['#7c3aed', '#6d28d9']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={[styles.eventBanner, { paddingTop: insets.top + 24 }]}
+        >
+          <View style={styles.bannerContent}>
+            <View style={styles.bannerTextBlock}>
+              <Text style={styles.bannerEventName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+                INNOVATESUMMIT 2025
+              </Text>
+              <View style={styles.bannerDetailRow}>
+                <Ionicons name="calendar" size={13} color="rgba(255,255,255,0.85)" />
+                <Text style={styles.bannerDetailText}>May 15, 2025</Text>
+              </View>
+              <View style={styles.bannerDetailRow}>
+                <Ionicons name="location" size={13} color="rgba(255,255,255,0.85)" />
+                <Text style={styles.bannerDetailText} numberOfLines={1}>Convention Center, Hall A</Text>
+              </View>
+            </View>
+            <View style={styles.bannerBadge}>
+              <Ionicons name="ticket" size={28} color="#fff" />
+            </View>
+          </View>
+        </LinearGradient>
 
         {/* Main Card */}
         <View style={styles.card}>
@@ -198,9 +243,9 @@ export default function QRPassScreen() {
           <View style={styles.qrSection}>
             <View style={styles.qrBackground}>
               <QRCode
-                ref={setQrRef}
-                value={qrToken as string}
-                size={240}
+                getRef={setQrRef}
+                value={activeToken}
+                size={qrSize}
                 color="#000"
                 backgroundColor="#fff"
               />
@@ -208,58 +253,51 @@ export default function QRPassScreen() {
             <Text style={styles.qrLabel}>Scan at entrance</Text>
           </View>
 
-          {/* Info Box */}
-          <View style={styles.infoBox}>
-            <View style={styles.infoBadge}>
-              <Ionicons name="checkmark-circle" size={24} color="#10b981" />
+          {/* Divider */}
+          <View style={styles.divider} />
+
+          {/* Attendee Details */}
+          <View style={styles.detailsSection}>
+            <Text style={styles.detailsTitle}>Attendee</Text>
+            <View style={styles.attendeeRow}>
+              <View style={styles.attendeeItem}>
+                <Text style={styles.attendeeLabel}>Name</Text>
+                <Text style={styles.attendeeValue} numberOfLines={1}>{candidate?.name || '\u2014'}</Text>
+              </View>
+              <View style={styles.attendeeItem}>
+                <Text style={styles.attendeeLabel}>Email</Text>
+                <Text style={styles.attendeeValue} numberOfLines={1}>{candidate?.email || '\u2014'}</Text>
+              </View>
             </View>
-            <View style={styles.infoContent}>
-              <Text style={styles.infoTitle}>Pass Generated</Text>
-              <Text style={styles.infoSubtitle}>
-                Your unique QR code is ready
-              </Text>
+            <View style={styles.attendeeRow}>
+              <View style={styles.attendeeItem}>
+                <Text style={styles.attendeeLabel}>Role</Text>
+                <Text style={styles.attendeeValue}>{candidate?.role || 'Attendee'}</Text>
+              </View>
+              <View style={styles.attendeeItem}>
+                <Text style={styles.attendeeLabel}>Pass ID</Text>
+                <Text style={styles.attendeeValueMono} numberOfLines={1}>{uniqueId}</Text>
+              </View>
             </View>
           </View>
 
           {/* Action Buttons */}
           <View style={styles.buttonGroup}>
-            <TouchableOpacity style={styles.primaryBtn} onPress={handleViewAgenda}>
-              <Ionicons name="calendar" size={20} color="#fff" />
-              <Text style={styles.primaryBtnText}>View Agenda</Text>
+            <TouchableOpacity style={styles.primaryBtn} onPress={handleSaveToPhotos}>
+              <Ionicons name="download" size={20} color="#fff" />
+              <Text style={styles.primaryBtnText}>Save to Photos</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.secondaryBtn} onPress={handleShare}>
-              <Ionicons name="share-social" size={20} color="#667eea" />
-              <Text style={styles.secondaryBtnText}>Share Pass</Text>
+            <TouchableOpacity style={styles.secondaryBtn} onPress={handleViewAgenda}>
+              <Ionicons name="calendar" size={20} color="#7c3aed" />
+              <Text style={styles.secondaryBtnText}>View Agenda</Text>
             </TouchableOpacity>
-          </View>
-
-          {/* Tips Section */}
-          <View style={styles.tipsSection}>
-            <View style={styles.tipItem}>
-              <View style={styles.tipNumber}>
-                <Text style={styles.tipNumberText}>1</Text>
-              </View>
-              <View style={styles.tipContent}>
-                <Text style={styles.tipTitle}>Save your pass</Text>
-                <Text style={styles.tipDesc}>Screenshot this screen for backup</Text>
-              </View>
-            </View>
-            <View style={styles.tipItem}>
-              <View style={styles.tipNumber}>
-                <Text style={styles.tipNumberText}>2</Text>
-              </View>
-              <View style={styles.tipContent}>
-                <Text style={styles.tipTitle}>Arrive early</Text>
-                <Text style={styles.tipDesc}>Queue starts 15 mins before event</Text>
-              </View>
-            </View>
           </View>
         </View>
 
         {/* Footer Note */}
         <Text style={styles.footerNote}>
-          Don&apos;t lose this pass. You&apos;ll need it to check in at the event.
+          Present this QR code at the entrance for check-in.
         </Text>
       </ScrollView>
     </LinearGradient>
@@ -271,8 +309,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 40,
     paddingBottom: 20,
   },
   header: {
@@ -291,20 +327,74 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 8,
   },
+  // Event Banner
+  eventBanner: {
+    marginHorizontal: 0,
+    paddingHorizontal: 20,
+    paddingVertical: 24,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: '#7c3aed',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  bannerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  bannerTextBlock: {
+    flex: 1,
+  },
+  bannerEventName: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#fff',
+    marginBottom: 10,
+    letterSpacing: 0.5,
+    flexShrink: 1,
+  },
+  bannerDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+    gap: 6,
+  },
+  bannerDetailText: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontWeight: '500',
+    flexShrink: 1,
+  },
+  bannerBadge: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  // Card
   card: {
     backgroundColor: '#fff',
-    borderRadius: 24,
+    borderRadius: 20,
+    marginHorizontal: 16,
+    marginTop: 20,
     paddingHorizontal: 20,
-    paddingVertical: 28,
+    paddingVertical: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
+  // QR Section
   qrSection: {
     alignItems: 'center',
-    marginBottom: 28,
+    marginBottom: 20,
   },
   qrBackground: {
     backgroundColor: '#f9fafb',
@@ -312,126 +402,116 @@ const styles = StyleSheet.create({
     borderColor: '#e5e7eb',
     borderRadius: 16,
     padding: 16,
-    marginBottom: 12,
+    marginBottom: 10,
+    alignSelf: 'center',
   },
   qrLabel: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#6b7280',
     fontWeight: '600',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
-  infoBox: {
-    backgroundColor: '#ecfdf5',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
+  // Divider
+  divider: {
+    height: 1,
+    backgroundColor: '#f3f4f6',
+    marginBottom: 20,
+  },
+  // Attendee Details
+  detailsSection: {
     marginBottom: 24,
-    borderLeftWidth: 4,
-    borderLeftColor: '#10b981',
   },
-  infoBadge: {
-    marginRight: 12,
-  },
-  infoContent: {
-    flex: 1,
-  },
-  infoTitle: {
+  detailsTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#065f46',
-    marginBottom: 2,
+    color: '#7c3aed',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 14,
   },
-  infoSubtitle: {
-    fontSize: 13,
-    color: '#047857',
-    fontWeight: '500',
-  },
-  buttonGroup: {
+  attendeeRow: {
+    flexDirection: 'row',
+    marginBottom: 14,
     gap: 12,
-    marginBottom: 24,
+  },
+  attendeeItem: {
+    flex: 1,
+    minWidth: 0,
+  },
+  attendeeLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#9ca3af',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  attendeeValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1f2937',
+    flexShrink: 1,
+  },
+  attendeeValueMono: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#7c3aed',
+    fontFamily: 'monospace',
+    flexShrink: 1,
+  },
+  // Action Buttons
+  buttonGroup: {
+    gap: 10,
   },
   primaryBtn: {
-    backgroundColor: '#667eea',
+    backgroundColor: '#7c3aed',
     borderRadius: 12,
-    paddingVertical: 16,
+    paddingVertical: 15,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
-    shadowColor: '#667eea',
+    shadowColor: '#7c3aed',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 5,
+    elevation: 4,
   },
   primaryBtnText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     marginLeft: 8,
+    flexShrink: 1,
   },
   secondaryBtn: {
-    backgroundColor: '#f9fafb',
-    borderWidth: 2,
-    borderColor: '#667eea',
+    backgroundColor: '#f5f3ff',
+    borderWidth: 1.5,
+    borderColor: '#7c3aed',
     borderRadius: 12,
-    paddingVertical: 16,
+    paddingVertical: 15,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
   },
   secondaryBtnText: {
-    color: '#667eea',
-    fontSize: 16,
+    color: '#7c3aed',
+    fontSize: 15,
     fontWeight: '700',
     marginLeft: 8,
+    flexShrink: 1,
   },
-  tipsSection: {
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-    paddingTop: 20,
-  },
-  tipItem: {
-    flexDirection: 'row',
-    marginBottom: 16,
-  },
-  tipNumber: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#f0f4ff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  tipNumberText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#667eea',
-  },
-  tipContent: {
-    flex: 1,
-  },
-  tipTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1f2937',
-    marginBottom: 2,
-  },
-  tipDesc: {
-    fontSize: 12,
-    color: '#6b7280',
-    fontWeight: '500',
-  },
+  // Footer
   footerNote: {
     textAlign: 'center',
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.85)',
+    color: '#9ca3af',
     marginTop: 20,
+    marginBottom: 20,
     fontWeight: '500',
+    paddingHorizontal: 20,
   },
+  // Error state
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -458,6 +538,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.9)',
     marginBottom: 32,
     fontWeight: '500',
+    textAlign: 'center',
   },
   errorButton: {
     backgroundColor: '#fff',
@@ -473,6 +554,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginRight: 8,
   },
+  // Loading state
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -485,6 +567,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 16,
   },
+  // Checked-in state
   successContainer: {
     alignItems: 'center',
     marginBottom: 28,
@@ -511,7 +594,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textAlign: 'center',
   },
-  detailsBox: {
+  checkedInDetailsBox: {
     backgroundColor: '#f0fdf4',
     borderRadius: 12,
     paddingHorizontal: 16,
@@ -520,15 +603,15 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
     borderLeftColor: '#10b981',
   },
-  detailItem: {
+  checkedInDetailItem: {
     marginBottom: 16,
   },
-  detailLabel: {
+  checkedInDetailLabel: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 6,
   },
-  detailLabelText: {
+  checkedInDetailLabelText: {
     fontSize: 12,
     fontWeight: '700',
     color: '#6b7280',
@@ -536,11 +619,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginLeft: 8,
   },
-  detailValue: {
+  checkedInDetailValue: {
     fontSize: 15,
     fontWeight: '600',
     color: '#1f2937',
     marginLeft: 28,
+    flexShrink: 1,
   },
   checkedInPrimaryBtn: {
     backgroundColor: '#10b981',
@@ -578,4 +662,3 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
 });
-
