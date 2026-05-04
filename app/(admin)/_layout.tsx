@@ -84,7 +84,7 @@ export default function AdminLayout() {
         name="guests"
         options={{
           title: 'Guests',
-          headerRight: () => null,
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="people" size={size} color={color} />
           ),

@@ -142,7 +142,7 @@ export default function AdminPanelScreen() {
         return;
       }
 
-      const fileDirectory = FileSystem.documentDirectory;
+      const fileDirectory = (FileSystem as any).documentDirectory;
       if (!fileDirectory) {
         Alert.alert('Error', 'Unable to access file system');
         return;

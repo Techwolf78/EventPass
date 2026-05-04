@@ -164,25 +164,42 @@ export default function GuestListScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Text style={styles.headerTitle}>Guest List</Text>
+          <Text style={styles.headerSubtitle}>ADMIN • INNOVATESUMMIT</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => setShowForm(!showForm)}
+        >
+          <Ionicons name={showForm ? 'close' : 'add'} size={24} color="#fff" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Search Bar (fixed above scroll) */}
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={18} color="#9ca3af" style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search by name or email..."
+          placeholderTextColor="#9ca3af"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <Ionicons name="close-circle" size={18} color="#9ca3af" />
+          </TouchableOpacity>
+        )}
+      </View>
+
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        stickyHeaderIndices={[3]}
+        keyboardShouldPersistTaps="handled"
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.headerTitle}>Guest List</Text>
-            <Text style={styles.headerSubtitle}>ADMIN • INNOVATESUMMIT</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => setShowForm(!showForm)}
-          >
-            <Ionicons name={showForm ? 'close' : 'add'} size={24} color="#fff" />
-          </TouchableOpacity>
-        </View>
-
         {/* Stats Cards */}
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
@@ -264,28 +281,11 @@ export default function GuestListScreen() {
             </View>
             <View style={styles.uploadTextBlock}>
               <Text style={styles.uploadTitle}>Upload CSV file</Text>
-              <Text style={styles.uploadSubtitle}>name, email columns required</Text>
+              <Text style={styles.uploadSubtitle}>name, email,columns required</Text>
             </View>
           </View>
           <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
         </TouchableOpacity>
-
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={18} color="#9ca3af" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search by name or email..."
-            placeholderTextColor="#9ca3af"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={18} color="#9ca3af" />
-            </TouchableOpacity>
-          )}
-        </View>
 
         {/* Section Header */}
         <View style={styles.sectionHeader}>

@@ -3,6 +3,7 @@ import {
   getAuth,
   initializeAuth,
   connectAuthEmulator,
+  // @ts-ignore — getReactNativePersistence is exported at runtime but missing from Firebase v12 types
   getReactNativePersistence,
 } from 'firebase/auth';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';

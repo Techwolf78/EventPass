@@ -7,6 +7,7 @@ import {
   doc,
   getDoc,
   setDoc,
+  deleteDoc,
   writeBatch,
   Timestamp,
   onSnapshot,
@@ -425,6 +426,32 @@ export async function saveAgenda(
   } catch (error) {
     console.error('Error saving agenda:', error);
     return { success: false, message: 'Failed to save agenda' };
+  }
+}
+
+/**
+ * Delete an entire agenda document by type (masterclass or event)
+ */
+export async function deleteAgenda(
+  type: 'masterclass' | 'event'
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const existingQuery = query(
+      collection(db, 'agenda'),
+      where('type', '==', type)
+    );
+    const existingSnap = await getDocs(existingQuery);
+
+    if (existingSnap.empty) {
+      return { success: false, message: `No ${type} agenda found to delete` };
+    }
+
+    const docId = existingSnap.docs[0].id;
+    await deleteDoc(doc(db, 'agenda', docId));
+    return { success: true, message: `${type.charAt(0).toUpperCase() + type.slice(1)} agenda deleted successfully` };
+  } catch (error) {
+    console.error('Error deleting agenda:', error);
+    return { success: false, message: 'Failed to delete agenda' };
   }
 }
 

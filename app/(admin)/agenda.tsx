@@ -11,12 +11,34 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { getAllAgendas, saveAgenda, EventData } from '@/utils/firestore';
+import { getAllAgendas, saveAgenda, deleteAgenda, EventData } from '@/utils/firestore';
 
 const AGENDA_TYPES = ['masterclass', 'event'] as const;
 type AgendaType = (typeof AGENDA_TYPES)[number];
 
 const TAG_OPTIONS = ['Keynote', 'Workshop', 'Networking', 'Technical', 'General'] as const;
+
+const MASTERCLASS_TITLES = [
+  'Opening Keynote',
+  'Technical Deep Dive',
+  'Hands-on Workshop',
+  'Expert Panel Discussion',
+  'Q&A Session',
+  'Networking Break',
+  'Case Study Presentation',
+  'Closing Remarks',
+];
+
+const EVENT_TITLES = [
+  'Welcome Address',
+  'Guest Speaker Session',
+  'Panel Discussion',
+  'Networking Break',
+  'Workshop Session',
+  'Fireside Chat',
+  'Demo Session',
+  'Closing Ceremony',
+];
 
 interface AgendaItemForm {
   time: string;
@@ -67,10 +89,15 @@ export default function AgendaScreen() {
   };
 
   const handleAddItem = () => {
-    setItems((prev) => [
-      ...prev,
-      { time: '', title: '', speaker: '', tag: 'General' },
-    ]);
+    setItems((prev) => {
+      const nextIndex = prev.length;
+      const defaultTitles = activeType === 'masterclass' ? MASTERCLASS_TITLES : EVENT_TITLES;
+      const defaultTitle = defaultTitles[nextIndex % defaultTitles.length];
+      return [
+        ...prev,
+        { time: '', title: defaultTitle, speaker: '', tag: 'General' },
+      ];
+    });
   };
 
   const handleRemoveItem = (index: number) => {
@@ -79,7 +106,51 @@ export default function AgendaScreen() {
       {
         text: 'Delete',
         style: 'destructive',
-        onPress: () => setItems((prev) => prev.filter((_, i) => i !== index)),
+        onPress: async () => {
+          // Remove from local state immediately
+          const updatedItems = items.filter((_, i) => i !== index);
+          setItems(updatedItems);
+
+          // Auto-save to Firestore if we have valid event details
+          if (!eventTitle.trim() || !eventDate.trim()) {
+            Alert.alert(
+              'Removed Locally',
+              'Please fill in the event title and date, then tap Save to persist this change to the database.'
+            );
+            return;
+          }
+
+          const parsedDate = new Date(eventDate.trim());
+          if (isNaN(parsedDate.getTime())) {
+            Alert.alert(
+              'Removed Locally',
+              'Please fix the event date, then tap Save to persist this change to the database.'
+            );
+            return;
+          }
+
+          setSaving(true);
+          try {
+            const result = await saveAgenda(
+              activeType,
+              eventTitle.trim(),
+              parsedDate,
+              updatedItems.map((item) => ({
+                time: item.time.trim(),
+                title: item.title.trim(),
+                speaker: item.speaker.trim(),
+                tag: item.tag,
+              }))
+            );
+            if (!result.success) {
+              Alert.alert('Delete Error', 'Item removed locally but failed to save to database. Please try saving manually.');
+            }
+          } catch (error: any) {
+            Alert.alert('Delete Error', error.message || 'Item removed locally but failed to save to database.');
+          } finally {
+            setSaving(false);
+          }
+        },
       },
     ]);
   };
@@ -245,8 +316,10 @@ export default function AgendaScreen() {
                   <Text style={styles.itemNumberText}>#{index + 1}</Text>
                 </View>
                 <TouchableOpacity
+                  style={styles.deleteItemBtn}
                   onPress={() => handleRemoveItem(index)}
                   disabled={saving}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
                   <Ionicons name="trash-outline" size={18} color="#ef4444" />
                 </TouchableOpacity>
@@ -348,6 +421,46 @@ export default function AgendaScreen() {
             </>
           )}
         </TouchableOpacity>
+
+        {/* Delete Entire Agenda */}
+        {existingId && (
+          <View style={styles.deleteSection}>
+            <TouchableOpacity
+              style={styles.deleteAgendaBtn}
+              onPress={() => {
+                Alert.alert(
+                  'Delete Entire Agenda',
+                  `Are you sure you want to delete the entire ${typeLabel.toLowerCase()} agenda? This cannot be undone.`,
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Delete',
+                      style: 'destructive',
+                      onPress: async () => {
+                        setSaving(true);
+                        try {
+                          const result = await deleteAgenda(activeType);
+                          Alert.alert(result.success ? 'Deleted' : 'Error', result.message);
+                          if (result.success) {
+                            loadAgenda(activeType);
+                          }
+                        } catch (error: any) {
+                          Alert.alert('Error', error.message || 'Failed to delete agenda');
+                        } finally {
+                          setSaving(false);
+                        }
+                      },
+                    },
+                  ]
+                );
+              }}
+              disabled={saving}
+            >
+              <Ionicons name="trash-bin" size={18} color="#ef4444" style={{ marginRight: 8 }} />
+              <Text style={styles.deleteAgendaBtnText}>Delete This {typeLabel} Agenda</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         <View style={{ height: insets.bottom + 20 }} />
       </ScrollView>
@@ -498,6 +611,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
   },
+  deleteItemBtn: {
+    padding: 8,
+  },
   itemNumberBadge: {
     backgroundColor: '#8B5CF6',
     borderRadius: 8,
@@ -587,6 +703,29 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: '700',
+  },
+  // Delete Section
+  deleteSection: {
+    marginHorizontal: 20,
+    marginTop: 8,
+    marginBottom: 8,
+    alignItems: 'center',
+  },
+  deleteAgendaBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#fecaca',
+    backgroundColor: '#fef2f2',
+  },
+  deleteAgendaBtnText: {
+    color: '#ef4444',
+    fontSize: 14,
     fontWeight: '700',
   },
 });

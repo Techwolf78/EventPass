@@ -26,7 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
+    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser: User | null) => {
       if (firebaseUser) {
         // Get custom claims to check admin status, or fallback to hardcoded admin email for testing
         const idTokenResult = await firebaseUser.getIdTokenResult();
