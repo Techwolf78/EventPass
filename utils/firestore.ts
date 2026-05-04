@@ -1,4 +1,4 @@
-import { db } from '@/config/firebase';
+import { db, auth } from '@/config/firebase';
 import {
   collection,
   query,
@@ -7,14 +7,15 @@ import {
   doc,
   getDoc,
   setDoc,
-  updateDoc,
   writeBatch,
   Timestamp,
   onSnapshot,
   orderBy,
-  Query,
-  QueryConstraint,
 } from 'firebase/firestore';
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+} from 'firebase/auth';
 // Custom random token generator for Expo compatibility (avoids crypto error)
 const generateToken = () => {
   return Math.random().toString(36).substring(2, 15) + 
@@ -30,6 +31,7 @@ export interface GuestListItem {
   status: 'pending' | 'registered';
   registeredAt: Timestamp | null;
   qrToken: string | null;
+  enrollmentType: 'masterclass' | 'event';
 }
 
 export interface Candidate {
@@ -41,6 +43,7 @@ export interface Candidate {
   qrToken: string;
   fcmToken: string;
   registeredAt: Timestamp;
+  enrollmentType: 'masterclass' | 'event';
 }
 
 export interface EventData {
@@ -71,17 +74,19 @@ export interface RegistrationResult {
 }
 
 /**
- * Validates and registers a new attendee
+ * Validates and registers a new attendee with user-provided password
  * Returns QR token on success or error message on failure
  */
 export async function validateAndRegisterAttendee(
   inputName: string,
   inputEmail: string,
-  fcmToken: string
+  fcmToken: string,
+  password: string,
+  department: string = ''
 ): Promise<RegistrationResult> {
   const trimmedName = inputName.trim();
   const lowerEmail = inputEmail.toLowerCase().trim();
-  const nameLower = trimmedName.toLowerCase();
+  const deptToStore = department.trim();
 
   try {
     // Step 1: Query guestList by email
@@ -107,8 +112,22 @@ export async function validateAndRegisterAttendee(
       };
     }
 
-    // Step 3: Generate QR token and perform batch write
+    // Step 3: Generate QR token
     const qrToken = generateToken();
+
+    // Step 4: Create Firebase auth user with provided password
+    try {
+      await createUserWithEmailAndPassword(auth, lowerEmail, password);
+    } catch (authError: any) {
+      // If user already exists, just sign them in
+      if (authError.code === 'auth/email-already-in-use') {
+        await signInWithEmailAndPassword(auth, lowerEmail, password);
+      } else {
+        throw authError;
+      }
+    }
+
+    // Step 5: Perform batch write for Firestore
     const batch = writeBatch(db);
 
     // Update guestList doc
@@ -118,14 +137,15 @@ export async function validateAndRegisterAttendee(
       qrToken: qrToken,
     });
 
-    // Create candidates doc
+    // Create candidates doc with enrollmentType
     batch.set(doc(db, 'candidates', guestDoc.id), {
       name: trimmedName,
       email: lowerEmail,
-      role: 'attendee', // Default role
-      department: '', // Could be enhanced with form input
+      role: 'attendee',
+      department: deptToStore,
       qrToken: qrToken,
       fcmToken: fcmToken,
+      enrollmentType: guestData.enrollmentType,
       registeredAt: Timestamp.now(),
     });
 
@@ -290,6 +310,81 @@ export async function getEvents(): Promise<EventData[]> {
 }
 
 /**
+ * Get masterclass agenda
+ */
+export async function getMasterclassAgenda(): Promise<EventData | null> {
+  try {
+    const snapshot = await getDocs(query(
+      collection(db, 'agenda'),
+      where('type', '==', 'masterclass')
+    ));
+    
+    if (snapshot.empty) {
+      return null;
+    }
+    
+    const doc = snapshot.docs[0];
+    return {
+      id: doc.id,
+      ...doc.data(),
+    } as EventData;
+  } catch (error) {
+    console.error('Error fetching masterclass agenda:', error);
+    return null;
+  }
+}
+
+/**
+ * Get event agenda
+ */
+export async function getEventAgenda(): Promise<EventData | null> {
+  try {
+    const snapshot = await getDocs(query(
+      collection(db, 'agenda'),
+      where('type', '==', 'event')
+    ));
+    
+    if (snapshot.empty) {
+      return null;
+    }
+    
+    const doc = snapshot.docs[0];
+    return {
+      id: doc.id,
+      ...doc.data(),
+    } as EventData;
+  } catch (error) {
+    console.error('Error fetching event agenda:', error);
+    return null;
+  }
+}
+
+/**
+ * Get candidate by QR token
+ */
+export async function getCandidateByQRToken(qrToken: string): Promise<Candidate | null> {
+  try {
+    const snapshot = await getDocs(query(
+      collection(db, 'candidates'),
+      where('qrToken', '==', qrToken)
+    ));
+    
+    if (snapshot.empty) {
+      return null;
+    }
+    
+    const doc = snapshot.docs[0];
+    return {
+      id: doc.id,
+      ...doc.data(),
+    } as Candidate;
+  } catch (error) {
+    console.error('Error fetching candidate by QR token:', error);
+    return null;
+  }
+}
+
+/**
  * Subscribe to real-time attendance count
  */
 export function subscribeToAttendanceCount(
@@ -365,7 +460,8 @@ export async function getGuestList(): Promise<GuestListItem[]> {
  */
 export async function addGuest(
   name: string,
-  email: string
+  email: string,
+  enrollmentType: 'masterclass' | 'event'
 ): Promise<{ success: boolean; message: string }> {
   try {
     const docRef = doc(collection(db, 'guestList'));
@@ -373,6 +469,7 @@ export async function addGuest(
       name: name.trim(),
       nameLower: name.trim().toLowerCase(),
       email: email.toLowerCase().trim(),
+      enrollmentType,
       status: 'pending',
       registeredAt: null,
       qrToken: null,
@@ -388,7 +485,7 @@ export async function addGuest(
  * Batch add guests from CSV
  */
 export async function addGuestsFromCSV(
-  guests: Array<{ name: string; email: string }>
+  guests: Array<{ name: string; email: string; enrollmentType: 'masterclass' | 'event' }>
 ): Promise<{ success: boolean; added: number; failed: number; message: string }> {
   try {
     const batch = writeBatch(db);
@@ -402,6 +499,7 @@ export async function addGuestsFromCSV(
           name: guest.name.trim(),
           nameLower: guest.name.trim().toLowerCase(),
           email: guest.email.toLowerCase().trim(),
+          enrollmentType: guest.enrollmentType,
           status: 'pending',
           registeredAt: null,
           qrToken: null,
@@ -414,11 +512,12 @@ export async function addGuestsFromCSV(
     }
 
     await batch.commit();
+    const failureMessage = failed > 0 ? `, ${failed} failed` : '';
     return {
       success: failed === 0,
       added,
       failed,
-      message: `Added ${added} guests${failed > 0 ? `, ${failed} failed` : ''}`,
+      message: `Added ${added} guests${failureMessage}`,
     };
   } catch (error) {
     console.error('Error batch adding guests:', error);
@@ -428,5 +527,31 @@ export async function addGuestsFromCSV(
       failed: guests.length,
       message: 'Batch upload failed',
     };
+  }
+}
+
+/**
+ * Check if an email exists in the guest list (for real-time validation)
+ */
+export async function checkIfEmailInGuestList(
+  inputEmail: string
+): Promise<{ exists: boolean; guestName?: string }> {
+  try {
+    const lowerEmail = inputEmail.toLowerCase().trim();
+    const guestQuery = query(
+      collection(db, 'guestList'),
+      where('email', '==', lowerEmail)
+    );
+    const guestSnap = await getDocs(guestQuery);
+
+    if (guestSnap.empty) {
+      return { exists: false };
+    }
+
+    const guestData = guestSnap.docs[0].data() as GuestListItem;
+    return { exists: true, guestName: guestData.name };
+  } catch (error) {
+    console.error('Error checking email in guest list:', error);
+    return { exists: false };
   }
 }

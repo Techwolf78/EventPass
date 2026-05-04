@@ -21,6 +21,7 @@ export default function GuestListScreen() {
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [enrollmentType, setEnrollmentType] = useState<'masterclass' | 'event'>('event');
   const [submitting, setSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -42,12 +43,13 @@ export default function GuestListScreen() {
     }
 
     setSubmitting(true);
-    const result = await addGuest(name, email);
+    const result = await addGuest(name, email, enrollmentType);
     Alert.alert('Result', result.message);
 
     if (result.success) {
       setName('');
       setEmail('');
+      setEnrollmentType('event');
       setShowForm(false);
       loadGuests();
     }
@@ -89,11 +91,15 @@ export default function GuestListScreen() {
 
       // Validate and prepare guest list
       const guests = (parseResult.data as any[])
-        .filter((row) => row.name && row.email)
-        .map((row) => ({
-          name: row.name,
-          email: row.email,
-        }));
+        .filter((row) => row.name && row.email && row.enrollmentType)
+        .map((row) => {
+          const enrollmentTypeLower = row.enrollmentType.toLowerCase().trim();
+          return {
+            name: row.name,
+            email: row.email,
+            enrollmentType: (enrollmentTypeLower === 'masterclass' ? 'masterclass' : 'event') as 'masterclass' | 'event',
+          };
+        });
 
       if (guests.length === 0) {
         Alert.alert('Error', 'No valid guest entries found in CSV');
@@ -208,6 +214,32 @@ export default function GuestListScreen() {
             autoCapitalize="none"
             editable={!submitting}
           />
+
+          {/* Enrollment Type Selection */}
+          <Text style={styles.fieldLabel}>Enrollment Type</Text>
+          <View style={styles.buttonGroup}>
+            {['masterclass', 'event'].map((type) => (
+              <TouchableOpacity
+                key={type}
+                style={[
+                  styles.typeButton,
+                  enrollmentType === type && styles.typeButtonActive,
+                ]}
+                onPress={() => setEnrollmentType(type as 'masterclass' | 'event')}
+                disabled={submitting}
+              >
+                <Text
+                  style={[
+                    styles.typeButtonText,
+                    enrollmentType === type && styles.typeButtonTextActive,
+                  ]}
+                >
+                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
           <TouchableOpacity
             style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
             onPress={handleAddGuest}
@@ -427,6 +459,41 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#333',
+  },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#374151',
+    marginTop: 12,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  buttonGroup: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+  typeButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderWidth: 1.5,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    alignItems: 'center',
+    backgroundColor: '#f9fafb',
+  },
+  typeButtonActive: {
+    backgroundColor: '#06b6d4',
+    borderColor: '#06b6d4',
+  },
+  typeButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#666',
+  },
+  typeButtonTextActive: {
+    color: '#fff',
   },
   emptyContainer: {
     alignItems: 'center',

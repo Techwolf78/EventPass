@@ -5,25 +5,48 @@ import {
   StyleSheet,
   ActivityIndicator,
   SectionList,
-  SafeAreaView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { getEvents, EventData } from '@/utils/firestore';
+import { useLocalSearchParams } from 'expo-router';
+import {
+  getMasterclassAgenda,
+  getEventAgenda,
+  EventData,
+  getCandidateByQRToken,
+} from '@/utils/firestore';
 
 export default function AgendaScreen() {
-  const [events, setEvents] = useState<EventData[]>([]);
+  const { qrToken } = useLocalSearchParams();
+  const [agenda, setAgenda] = useState<EventData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadEvents();
-  }, []);
+    loadAgenda();
+  }, [qrToken]);
 
-  const loadEvents = async () => {
+  const loadAgenda = async () => {
     setLoading(true);
-    const eventsList = await getEvents();
-    setEvents(eventsList);
-    setLoading(false);
+    try {
+      // Step 1: Get enrollment type from QR token
+      if (qrToken) {
+        const candidate = await getCandidateByQRToken(qrToken as string);
+        if (candidate) {
+          // Step 2: Fetch appropriate agenda based on enrollment type
+          if (candidate.enrollmentType === 'masterclass') {
+            const masterclassAgenda = await getMasterclassAgenda();
+            setAgenda(masterclassAgenda);
+          } else {
+            const eventAgenda = await getEventAgenda();
+            setAgenda(eventAgenda);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error loading agenda:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) {
@@ -35,18 +58,22 @@ export default function AgendaScreen() {
     );
   }
 
-  const eventsSections = events.map((event) => ({
-    title: event.title,
-    data: event.agenda || [],
-    date: event.date,
-  }));
+  const eventsSections = agenda
+    ? [
+        {
+          title: agenda.title,
+          data: agenda.agenda || [],
+          date: agenda.date,
+        },
+      ]
+    : [];
 
   return (
     <LinearGradient colors={['#f9fafb', '#f3f4f6']} style={styles.container}>
-      {events.length === 0 ? (
+      {!agenda || eventsSections[0]?.data.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Ionicons name="calendar-outline" size={64} color="#d1d5db" />
-          <Text style={styles.emptyText}>No events scheduled</Text>
+          <Text style={styles.emptyText}>No agenda scheduled</Text>
           <Text style={styles.emptySubtext}>
             Check back later for upcoming events
           </Text>

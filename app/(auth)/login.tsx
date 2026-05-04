@@ -10,19 +10,20 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { auth } from '@/config/firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 
 export default function LoginScreen() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleAuth = async () => {
+  const handleSignIn = async () => {
     if (!email || !password) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
@@ -30,19 +31,16 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      if (isSignUp) {
-        await createUserWithEmailAndPassword(auth, email, password);
-        Alert.alert('Success', 'Account created. Please sign in.');
-        setIsSignUp(false);
-        setPassword('');
-      } else {
-        await signInWithEmailAndPassword(auth, email, password);
-      }
+      await signInWithEmailAndPassword(auth, email, password);
     } catch (error: any) {
       Alert.alert('Error', error.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGoogleSignIn = async () => {
+    Alert.alert('Google Sign In', 'Coming soon!');
   };
 
   return (
@@ -56,24 +54,22 @@ export default function LoginScreen() {
                 <Ionicons name="ticket" size={48} color="#fff" />
               </View>
               <Text style={styles.title}>EventPass</Text>
-              <Text style={styles.tagline}>Seamless Event Management</Text>
+              <Text style={styles.tagline}>Your smart pass for internal events</Text>
             </View>
 
             {/* Form Section */}
             <View style={styles.formContainer}>
-              <Text style={styles.formTitle}>{isSignUp ? 'Create Account' : 'Welcome Back'}</Text>
-              <Text style={styles.formSubtitle}>
-                {isSignUp ? 'Sign up to get started' : 'Sign in to your account'}
-              </Text>
+              <Text style={styles.formTitle}>Sign In</Text>
+              <Text style={styles.formSubtitle}>EventPass</Text>
 
               {/* Email Input */}
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Email Address</Text>
+                <Text style={styles.label}>WORK EMAIL</Text>
                 <View style={styles.inputWrapper}>
                   <Ionicons name="mail" size={20} color="#818cf8" style={styles.inputIcon} />
                   <TextInput
                     style={styles.input}
-                    placeholder="you@example.com"
+                    placeholder="priya@company.in"
                     placeholderTextColor="#b4b4b4"
                     value={email}
                     onChangeText={setEmail}
@@ -86,7 +82,7 @@ export default function LoginScreen() {
 
               {/* Password Input */}
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Password</Text>
+                <Text style={styles.label}>PASSWORD</Text>
                 <View style={styles.inputWrapper}>
                   <Ionicons name="lock-closed" size={20} color="#818cf8" style={styles.inputIcon} />
                   <TextInput
@@ -109,33 +105,48 @@ export default function LoginScreen() {
                 </View>
               </View>
 
+              {/* Forgot Password */}
+              <TouchableOpacity style={styles.forgotPasswordContainer}>
+                <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+              </TouchableOpacity>
+
               {/* Main Button */}
               <TouchableOpacity
                 style={[styles.button, loading && styles.buttonDisabled]}
-                onPress={handleAuth}
+                onPress={handleSignIn}
                 disabled={loading}
               >
                 <Text style={styles.buttonText}>
-                  {loading ? 'Loading...' : isSignUp ? 'Sign Up' : 'Sign In'}
+                  {loading ? 'Loading...' : 'Sign in with Email'}
                 </Text>
               </TouchableOpacity>
 
-              {/* Toggle Sign Up / Sign In */}
+              {/* Divider */}
+              <View style={styles.dividerContainer}>
+                <View style={styles.divider} />
+                <Text style={styles.dividerText}>or</Text>
+                <View style={styles.divider} />
+              </View>
+
+              {/* Google Sign In Button */}
               <TouchableOpacity
-                onPress={() => {
-                  setIsSignUp(!isSignUp);
-                  setPassword('');
-                }}
+                style={styles.googleButton}
+                onPress={handleGoogleSignIn}
                 disabled={loading}
-                style={styles.toggleContainer}
               >
-                <Text style={styles.toggleText}>
-                  {isSignUp
-                    ? 'Already have an account? '
-                    : "Don't have an account? "}
-                  <Text style={styles.toggleLink}>
-                    {isSignUp ? 'Sign in' : 'Sign up'}
-                  </Text>
+                <Ionicons name="logo-google" size={20} color="#1f2937" />
+                <Text style={styles.googleButtonText}>Continue with Google</Text>
+              </TouchableOpacity>
+
+              {/* New Candidate Register Link */}
+              <TouchableOpacity
+                onPress={() => router.push('/(auth)/register')}
+                disabled={loading}
+                style={styles.registerContainer}
+              >
+                <Text style={styles.registerText}>
+                  New candidate?{' '}
+                  <Text style={styles.registerLink}>Register here</Text>
                 </Text>
               </TouchableOpacity>
             </View>
@@ -184,7 +195,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   tagline: {
-    fontSize: 16,
+    fontSize: 14,
     color: 'rgba(255, 255, 255, 0.9)',
     fontWeight: '500',
   },
@@ -200,10 +211,10 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   formTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '700',
     color: '#1f2937',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   formSubtitle: {
     fontSize: 14,
@@ -212,10 +223,10 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   inputGroup: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   label: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: '#374151',
     marginBottom: 8,
@@ -244,11 +255,19 @@ const styles = StyleSheet.create({
   eyeIcon: {
     marginLeft: 8,
   },
+  forgotPasswordContainer: {
+    alignItems: 'flex-end',
+    marginBottom: 20,
+  },
+  forgotPasswordText: {
+    color: '#6366f1',
+    fontSize: 14,
+    fontWeight: '600',
+  },
   button: {
     backgroundColor: '#6366f1',
     borderRadius: 12,
     paddingVertical: 16,
-    marginTop: 12,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#6366f1',
@@ -266,16 +285,48 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.5,
   },
-  toggleContainer: {
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#e5e7eb',
+  },
+  dividerText: {
+    marginHorizontal: 12,
+    fontSize: 13,
+    color: '#9ca3af',
+    fontWeight: '500',
+  },
+  googleButton: {
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+  },
+  googleButtonText: {
+    color: '#1f2937',
+    fontSize: 16,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
+  registerContainer: {
     marginTop: 20,
     alignItems: 'center',
   },
-  toggleText: {
+  registerText: {
     fontSize: 14,
     color: '#6b7280',
     fontWeight: '500',
   },
-  toggleLink: {
+  registerLink: {
     color: '#6366f1',
     fontWeight: '700',
   },
