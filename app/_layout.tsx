@@ -21,8 +21,10 @@ function RootLayoutInner() {
     if (loading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
+    const guestAllowedScreens = new Set(['register', 'qr-pass', 'agenda', 'attendees', 'profile']);
+    const inGuestAllowed = segments[0] === '(attendee)' && guestAllowedScreens.has(segments[1]);
     
-    if (!user && !inAuthGroup) {
+    if (!user && !inAuthGroup && !inGuestAllowed) {
       // Redirect to login if not authenticated
       router.replace('/(auth)/login');
     }

@@ -16,6 +16,8 @@ import QRCode from 'react-native-qrcode-svg';
 import * as Sharing from 'expo-sharing';
 import { getCheckInStatus, CheckInStatusResult, getCandidateByQRToken, getCandidateByEmail, Candidate } from '@/utils/firestore';
 import { useAuth } from '@/context/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAttendeeTheme } from '@/hooks/use-attendee-theme';
 
 export default function QRPassScreen() {
   const router = useRouter();
@@ -31,6 +33,7 @@ export default function QRPassScreen() {
 
   const qrSize = Math.min(width * 0.5, 220);
   const activeToken = resolvedToken || (qrToken as string);
+  const { palette } = useAttendeeTheme(activeToken || undefined);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -46,6 +49,18 @@ export default function QRPassScreen() {
           }
         } catch (error) {
           console.error('Error fetching candidate by email:', error);
+        }
+      }
+
+      if (!token) {
+        try {
+          const storedToken = await AsyncStorage.getItem('guestQrToken');
+          if (storedToken) {
+            token = storedToken;
+            setResolvedToken(token);
+          }
+        } catch (error) {
+          console.error('Error reading guest token:', error);
         }
       }
 
@@ -94,7 +109,7 @@ export default function QRPassScreen() {
 
   if (loading) {
     return (
-      <LinearGradient colors={['#7c3aed', '#6d28d9']} style={styles.gradient}>
+      <LinearGradient colors={palette.gradient} style={styles.gradient}>
         <View style={[styles.loadingContainer, { paddingTop: insets.top }]}>
           <ActivityIndicator size="large" color="#fff" />
           <Text style={styles.loadingText}>Loading your pass...</Text>
@@ -158,7 +173,15 @@ export default function QRPassScreen() {
             </View>
 
             <View style={styles.buttonGroup}>
-              <TouchableOpacity style={styles.checkedInPrimaryBtn} onPress={() => router.push('/(attendee)/agenda')}>
+              <TouchableOpacity
+                style={styles.checkedInPrimaryBtn}
+                onPress={() =>
+                  router.push({
+                    pathname: '/(attendee)/agenda',
+                    params: { qrToken: activeToken },
+                  })
+                }
+              >
                 <Ionicons name="calendar" size={20} color="#fff" />
                 <Text style={styles.checkedInPrimaryBtnText}>View Agenda</Text>
               </TouchableOpacity>
@@ -173,7 +196,7 @@ export default function QRPassScreen() {
             </View>
           </View>
 
-          <Text style={[styles.footerNote, { paddingBottom: insets.bottom + 20 }]}>
+          <Text style={[styles.footerNote, { paddingBottom: insets.bottom + 100 }]}>
             Enjoy the event! If you need any assistance, contact the organizers.
           </Text>
         </ScrollView>
@@ -201,21 +224,24 @@ export default function QRPassScreen() {
     : 'EVNT-2025-XXXX';
 
   const handleViewAgenda = () => {
-    router.push('/(attendee)/agenda');
+    router.push({
+      pathname: '/(attendee)/agenda',
+      params: { qrToken: activeToken },
+    });
   };
 
   return (
-    <LinearGradient colors={['#f9fafb', '#f3f4f6']} style={styles.gradient}>
+    <LinearGradient colors={palette.backgroundGradient} style={styles.gradient}>
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Event Banner */}
         <LinearGradient
-          colors={['#7c3aed', '#6d28d9']}
+          colors={palette.gradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
-          style={[styles.eventBanner, { paddingTop: insets.top + 24 }]}
+          style={[styles.eventBanner, { paddingTop: insets.top + 24, shadowColor: palette.primary }]}
         >
           <View style={styles.bannerContent}>
             <View style={styles.bannerTextBlock}>
@@ -241,7 +267,7 @@ export default function QRPassScreen() {
         <View style={styles.card}>
           {/* QR Section */}
           <View style={styles.qrSection}>
-            <View style={styles.qrBackground}>
+            <View style={[styles.qrBackground, { borderColor: palette.primaryBorder }]}>
               <QRCode
                 getRef={setQrRef}
                 value={activeToken}
@@ -258,7 +284,7 @@ export default function QRPassScreen() {
 
           {/* Attendee Details */}
           <View style={styles.detailsSection}>
-            <Text style={styles.detailsTitle}>Attendee</Text>
+            <Text style={[styles.detailsTitle, { color: palette.primaryText }]}>Attendee</Text>
             <View style={styles.attendeeRow}>
               <View style={styles.attendeeItem}>
                 <Text style={styles.attendeeLabel}>Name</Text>
@@ -276,21 +302,27 @@ export default function QRPassScreen() {
               </View>
               <View style={styles.attendeeItem}>
                 <Text style={styles.attendeeLabel}>Pass ID</Text>
-                <Text style={styles.attendeeValueMono} numberOfLines={1}>{uniqueId}</Text>
+                <Text style={[styles.attendeeValueMono, { color: palette.primaryText }]} numberOfLines={1}>{uniqueId}</Text>
               </View>
             </View>
           </View>
 
           {/* Action Buttons */}
           <View style={styles.buttonGroup}>
-            <TouchableOpacity style={styles.primaryBtn} onPress={handleSaveToPhotos}>
+            <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: palette.primary, shadowColor: palette.primary }]} onPress={handleSaveToPhotos}>
               <Ionicons name="download" size={20} color="#fff" />
               <Text style={styles.primaryBtnText}>Save to Photos</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.secondaryBtn} onPress={handleViewAgenda}>
-              <Ionicons name="calendar" size={20} color="#7c3aed" />
-              <Text style={styles.secondaryBtnText}>View Agenda</Text>
+            <TouchableOpacity
+              style={[
+                styles.secondaryBtn,
+                { backgroundColor: palette.primarySoft, borderColor: palette.primary },
+              ]}
+              onPress={handleViewAgenda}
+            >
+              <Ionicons name="calendar" size={20} color={palette.primaryText} />
+              <Text style={[styles.secondaryBtnText, { color: palette.primaryText }]}>View Agenda</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -379,37 +411,42 @@ const styles = StyleSheet.create({
   },
   // Card
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    marginHorizontal: 16,
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    marginHorizontal: 20,
     marginTop: 20,
     paddingHorizontal: 20,
-    paddingVertical: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
+    paddingVertical: 28,
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 8,
   },
   // QR Section
   qrSection: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   qrBackground: {
-    backgroundColor: '#f9fafb',
-    borderWidth: 2,
-    borderColor: '#e5e7eb',
-    borderRadius: 16,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 20,
     padding: 16,
-    marginBottom: 10,
+    marginBottom: 12,
     alignSelf: 'center',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
   },
   qrLabel: {
     fontSize: 12,
-    color: '#6b7280',
-    fontWeight: '600',
-    letterSpacing: 0.5,
+    color: '#94a3b8',
+    fontWeight: '700',
+    letterSpacing: 1,
     textTransform: 'uppercase',
   },
   // Divider
@@ -420,19 +457,19 @@ const styles = StyleSheet.create({
   },
   // Attendee Details
   detailsSection: {
-    marginBottom: 24,
+    marginBottom: 28,
   },
   detailsTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#7c3aed',
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#6366f1',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 14,
+    letterSpacing: 1,
+    marginBottom: 16,
   },
   attendeeRow: {
     flexDirection: 'row',
-    marginBottom: 14,
+    marginBottom: 16,
     gap: 12,
   },
   attendeeItem: {
@@ -441,64 +478,64 @@ const styles = StyleSheet.create({
   },
   attendeeLabel: {
     fontSize: 11,
-    fontWeight: '600',
-    color: '#9ca3af',
+    fontWeight: '700',
+    color: '#94a3b8',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   attendeeValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1f2937',
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1e293b',
     flexShrink: 1,
   },
   attendeeValueMono: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#7c3aed',
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#6366f1',
     fontFamily: 'monospace',
     flexShrink: 1,
   },
   // Action Buttons
   buttonGroup: {
-    gap: 10,
+    gap: 12,
   },
   primaryBtn: {
-    backgroundColor: '#7c3aed',
-    borderRadius: 12,
-    paddingVertical: 15,
+    backgroundColor: '#6366f1',
+    borderRadius: 14,
+    paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
-    shadowColor: '#7c3aed',
-    shadowOffset: { width: 0, height: 4 },
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowRadius: 12,
+    elevation: 6,
   },
   primaryBtnText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '700',
-    marginLeft: 8,
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '800',
+    marginLeft: 10,
     flexShrink: 1,
   },
   secondaryBtn: {
-    backgroundColor: '#f5f3ff',
-    borderWidth: 1.5,
-    borderColor: '#7c3aed',
-    borderRadius: 12,
-    paddingVertical: 15,
+    backgroundColor: '#e0e7ff',
+    borderWidth: 1,
+    borderColor: '#c7d2fe',
+    borderRadius: 14,
+    paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
   },
   secondaryBtnText: {
-    color: '#7c3aed',
-    fontSize: 15,
-    fontWeight: '700',
-    marginLeft: 8,
+    color: '#4f46e5',
+    fontSize: 16,
+    fontWeight: '800',
+    marginLeft: 10,
     flexShrink: 1,
   },
   // Footer

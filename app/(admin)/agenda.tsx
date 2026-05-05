@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+
 import {
   View,
   Text,
@@ -8,10 +9,11 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { getAllAgendas, saveAgenda, deleteAgenda, EventData } from '@/utils/firestore';
+import { getAllAgendas, saveAgenda, EventData } from '@/utils/firestore';
 
 const AGENDA_TYPES = ['masterclass', 'event'] as const;
 type AgendaType = (typeof AGENDA_TYPES)[number];
@@ -101,58 +103,66 @@ export default function AgendaScreen() {
   };
 
   const handleRemoveItem = (index: number) => {
-    Alert.alert('Remove Item', 'Delete this agenda item?', [
-      { text: 'Cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          // Remove from local state immediately
-          const updatedItems = items.filter((_, i) => i !== index);
-          setItems(updatedItems);
+    const doDelete = async () => {
+      // Remove from local state immediately
+      const updatedItems = items.filter((_, i) => i !== index);
+      setItems(updatedItems);
 
-          // Auto-save to Firestore if we have valid event details
-          if (!eventTitle.trim() || !eventDate.trim()) {
-            Alert.alert(
-              'Removed Locally',
-              'Please fill in the event title and date, then tap Save to persist this change to the database.'
-            );
-            return;
-          }
+      // Auto-save to Firestore if we have valid event details
+      if (!eventTitle.trim() || !eventDate.trim()) {
+        Alert.alert(
+          'Removed Locally',
+          'Please fill in the event title and date, then tap Save to persist this change to the database.'
+        );
+        return;
+      }
 
-          const parsedDate = new Date(eventDate.trim());
-          if (isNaN(parsedDate.getTime())) {
-            Alert.alert(
-              'Removed Locally',
-              'Please fix the event date, then tap Save to persist this change to the database.'
-            );
-            return;
-          }
+      const parsedDate = new Date(eventDate.trim());
+      if (isNaN(parsedDate.getTime())) {
+        Alert.alert(
+          'Removed Locally',
+          'Please fix the event date, then tap Save to persist this change to the database.'
+        );
+        return;
+      }
 
-          setSaving(true);
-          try {
-            const result = await saveAgenda(
-              activeType,
-              eventTitle.trim(),
-              parsedDate,
-              updatedItems.map((item) => ({
-                time: item.time.trim(),
-                title: item.title.trim(),
-                speaker: item.speaker.trim(),
-                tag: item.tag,
-              }))
-            );
-            if (!result.success) {
-              Alert.alert('Delete Error', 'Item removed locally but failed to save to database. Please try saving manually.');
-            }
-          } catch (error: any) {
-            Alert.alert('Delete Error', error.message || 'Item removed locally but failed to save to database.');
-          } finally {
-            setSaving(false);
-          }
+      setSaving(true);
+      try {
+        const result = await saveAgenda(
+          activeType,
+          eventTitle.trim(),
+          parsedDate,
+          updatedItems.map((item) => ({
+            time: item.time.trim(),
+            title: item.title.trim(),
+            speaker: item.speaker.trim(),
+            tag: item.tag,
+          }))
+        );
+        if (!result.success) {
+          Alert.alert('Delete Error', 'Item removed locally but failed to save to database. Please try saving manually.');
+        }
+      } catch (error: any) {
+        Alert.alert('Delete Error', error.message || 'Item removed locally but failed to save to database.');
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm('Delete this agenda item?')) {
+        doDelete();
+      }
+    } else {
+      Alert.alert('Remove Item', 'Delete this agenda item?', [
+        { text: 'Cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: doDelete,
         },
-      },
-    ]);
+      ]);
+    }
   };
 
   const handleUpdateItem = (
@@ -167,17 +177,25 @@ export default function AgendaScreen() {
 
   const handleSave = async () => {
     // Validate
+    const showAlert = (title: string, message: string) => {
+      if (Platform.OS === 'web') {
+        window.alert(`${title}: ${message}`);
+      } else {
+        Alert.alert(title, message);
+      }
+    };
+
     if (!eventTitle.trim()) {
-      Alert.alert('Missing Title', 'Please enter an event title.');
+      showAlert('Missing Title', 'Please enter an event title.');
       return;
     }
     if (!eventDate.trim()) {
-      Alert.alert('Missing Date', 'Please enter an event date (YYYY-MM-DD).');
+      showAlert('Missing Date', 'Please enter an event date (YYYY-MM-DD).');
       return;
     }
     const parsedDate = new Date(eventDate.trim());
     if (isNaN(parsedDate.getTime())) {
-      Alert.alert('Invalid Date', 'Please enter a valid date in YYYY-MM-DD format.');
+      showAlert('Invalid Date', 'Please enter a valid date in YYYY-MM-DD format.');
       return;
     }
 
@@ -185,7 +203,7 @@ export default function AgendaScreen() {
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       if (!item.time.trim() || !item.title.trim()) {
-        Alert.alert(
+        showAlert(
           'Incomplete Item',
           `Agenda item #${i + 1} is missing a time or title. Please fill all required fields.`
         );
@@ -195,6 +213,7 @@ export default function AgendaScreen() {
 
     setSaving(true);
     try {
+      console.log('Attempting to save agenda to Firebase...');
       const result = await saveAgenda(
         activeType,
         eventTitle.trim(),
@@ -206,12 +225,24 @@ export default function AgendaScreen() {
           tag: item.tag,
         }))
       );
-      Alert.alert(result.success ? 'Saved' : 'Error', result.message);
+      console.log('Save result:', result);
+      
+      if (Platform.OS === 'web') {
+        window.alert(result.success ? 'Saved: ' + result.message : 'Error: ' + result.message);
+      } else {
+        Alert.alert(result.success ? 'Saved' : 'Error', result.message);
+      }
+      
       if (result.success) {
         loadAgenda(activeType);
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to save agenda');
+      console.error('Save agenda error exception:', error);
+      if (Platform.OS === 'web') {
+        window.alert('Error: ' + (error.message || 'Failed to save agenda'));
+      } else {
+        Alert.alert('Error', error.message || 'Failed to save agenda');
+      }
     } finally {
       setSaving(false);
     }
@@ -422,47 +453,8 @@ export default function AgendaScreen() {
           )}
         </TouchableOpacity>
 
-        {/* Delete Entire Agenda */}
-        {existingId && (
-          <View style={styles.deleteSection}>
-            <TouchableOpacity
-              style={styles.deleteAgendaBtn}
-              onPress={() => {
-                Alert.alert(
-                  'Delete Entire Agenda',
-                  `Are you sure you want to delete the entire ${typeLabel.toLowerCase()} agenda? This cannot be undone.`,
-                  [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                      text: 'Delete',
-                      style: 'destructive',
-                      onPress: async () => {
-                        setSaving(true);
-                        try {
-                          const result = await deleteAgenda(activeType);
-                          Alert.alert(result.success ? 'Deleted' : 'Error', result.message);
-                          if (result.success) {
-                            loadAgenda(activeType);
-                          }
-                        } catch (error: any) {
-                          Alert.alert('Error', error.message || 'Failed to delete agenda');
-                        } finally {
-                          setSaving(false);
-                        }
-                      },
-                    },
-                  ]
-                );
-              }}
-              disabled={saving}
-            >
-              <Ionicons name="trash-bin" size={18} color="#ef4444" style={{ marginRight: 8 }} />
-              <Text style={styles.deleteAgendaBtnText}>Delete This {typeLabel} Agenda</Text>
-            </TouchableOpacity>
-          </View>
-        )}
 
-        <View style={{ height: insets.bottom + 20 }} />
+        <View style={{ height: insets.bottom + 100 }} />
       </ScrollView>
     </View>
   );
@@ -471,7 +463,7 @@ export default function AgendaScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F4FA',
+    backgroundColor: '#0f172a',
   },
   centerContent: {
     justifyContent: 'center',
@@ -494,7 +486,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#1f2937',
+    color: '#ffffff',
   },
   headerSubtitle: {
     fontSize: 12,
@@ -505,21 +497,18 @@ const styles = StyleSheet.create({
   },
   // Section Card
   sectionCard: {
-    backgroundColor: '#fff',
+    backgroundColor: '#1e293b',
     marginHorizontal: 20,
     marginBottom: 16,
     borderRadius: 14,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#334155',
   },
   sectionLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#6b7280',
+    color: '#94a3b8',
     letterSpacing: 0.5,
     marginBottom: 12,
   },
@@ -545,10 +534,10 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: '#e5e7eb',
+    borderColor: '#334155',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#0f172a',
   },
   toggleBtnActive: {
     backgroundColor: '#8B5CF6',
@@ -569,41 +558,41 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#374151',
+    color: '#94a3b8',
     marginBottom: 6,
     textTransform: 'uppercase',
     letterSpacing: 0.3,
   },
   input: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#0f172a',
     borderWidth: 1.5,
-    borderColor: '#e5e7eb',
+    borderColor: '#334155',
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 14,
-    color: '#1f2937',
+    color: '#ffffff',
     fontWeight: '500',
   },
   inputSmall: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#0f172a',
     borderWidth: 1.5,
-    borderColor: '#e5e7eb',
+    borderColor: '#334155',
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 10,
     fontSize: 13,
-    color: '#1f2937',
+    color: '#ffffff',
     fontWeight: '500',
   },
   // Agenda Items
   agendaItemCard: {
     borderWidth: 1.5,
-    borderColor: '#e5e7eb',
+    borderColor: '#334155',
     borderRadius: 12,
     padding: 12,
     marginBottom: 10,
-    backgroundColor: '#fafafa',
+    backgroundColor: '#0f172a',
   },
   agendaItemHeader: {
     flexDirection: 'row',
@@ -647,18 +636,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#1e293b',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#334155',
   },
   tagChipActive: {
-    backgroundColor: '#ede9fe',
+    backgroundColor: 'rgba(139, 92, 246, 0.2)',
     borderColor: '#8B5CF6',
   },
   tagChipText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#6b7280',
+    color: '#94a3b8',
   },
   tagChipTextActive: {
     color: '#8B5CF6',
@@ -672,7 +661,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 2,
     borderStyle: 'dashed',
-    borderColor: '#c4b5fd',
+    borderColor: '#334155',
     marginTop: 4,
   },
   addItemBtnText: {
@@ -705,27 +694,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-  // Delete Section
-  deleteSection: {
-    marginHorizontal: 20,
-    marginTop: 8,
-    marginBottom: 8,
-    alignItems: 'center',
-  },
-  deleteAgendaBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: '#fecaca',
-    backgroundColor: '#fef2f2',
-  },
-  deleteAgendaBtnText: {
-    color: '#ef4444',
-    fontSize: 14,
-    fontWeight: '700',
-  },
+
 });

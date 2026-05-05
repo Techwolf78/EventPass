@@ -12,6 +12,7 @@ import {
   Timestamp,
   onSnapshot,
   orderBy,
+  addDoc,
 } from 'firebase/firestore';
 import {
   createUserWithEmailAndPassword,
@@ -69,6 +70,12 @@ export interface AttendanceRecord {
 
 // ============== REGISTRATION LOGIC ==============
 export interface RegistrationResult {
+  success: boolean;
+  message?: string;
+  qrToken?: string;
+}
+
+export interface GuestLoginResult {
   success: boolean;
   message?: string;
   qrToken?: string;
@@ -169,6 +176,58 @@ export async function validateAndRegisterAttendee(
   } catch (error) {
     console.error('Registration error:', error);
     return { success: false, message: 'Registration failed. Please try again.' };
+  }
+}
+
+/**
+ * Login guest by email only (no auth). Ensures QR token exists.
+ */
+export async function loginGuestByEmail(inputEmail: string): Promise<GuestLoginResult> {
+  const lowerEmail = inputEmail.toLowerCase().trim();
+
+  try {
+    const guestQuery = query(
+      collection(db, 'guestList'),
+      where('email', '==', lowerEmail)
+    );
+    const guestSnap = await getDocs(guestQuery);
+
+    if (guestSnap.empty) {
+      return { success: false, message: 'Not on the guest list' };
+    }
+
+    const guestDoc = guestSnap.docs[0];
+    const guestData = guestDoc.data() as GuestListItem;
+
+    if (guestData.status === 'registered' && guestData.qrToken) {
+      return { success: true, qrToken: guestData.qrToken };
+    }
+
+    const qrToken = guestData.qrToken || generateToken();
+    const batch = writeBatch(db);
+
+    batch.update(doc(db, 'guestList', guestDoc.id), {
+      status: 'registered',
+      registeredAt: Timestamp.now(),
+      qrToken,
+    });
+
+    batch.set(doc(db, 'candidates', guestDoc.id), {
+      name: guestData.name,
+      email: lowerEmail,
+      role: 'attendee',
+      department: '',
+      qrToken,
+      fcmToken: 'guest-login',
+      enrollmentType: guestData.enrollmentType,
+      registeredAt: Timestamp.now(),
+    });
+
+    await batch.commit();
+    return { success: true, qrToken };
+  } catch (error) {
+    console.error('Guest login error:', error);
+    return { success: false, message: 'Login failed. Please try again.' };
   }
 }
 
@@ -419,7 +478,7 @@ export async function saveAgenda(
       await setDoc(doc(db, 'agenda', docId), data, { merge: true });
     } else {
       // Create new
-      await setDoc(doc(collection(db, 'agenda')), data);
+      await addDoc(collection(db, 'agenda'), data);
     }
 
     return { success: true, message: 'Agenda saved successfully' };
@@ -476,6 +535,31 @@ export async function getCandidateByQRToken(qrToken: string): Promise<Candidate 
     } as Candidate;
   } catch (error) {
     console.error('Error fetching candidate by QR token:', error);
+    return null;
+  }
+}
+
+/**
+ * Get guest list item by QR token
+ */
+export async function getGuestByQRToken(qrToken: string): Promise<GuestListItem | null> {
+  try {
+    const snapshot = await getDocs(query(
+      collection(db, 'guestList'),
+      where('qrToken', '==', qrToken)
+    ));
+
+    if (snapshot.empty) {
+      return null;
+    }
+
+    const doc = snapshot.docs[0];
+    return {
+      id: doc.id,
+      ...doc.data(),
+    } as GuestListItem;
+  } catch (error) {
+    console.error('Error fetching guest by QR token:', error);
     return null;
   }
 }
@@ -572,6 +656,45 @@ export async function getGuestList(): Promise<GuestListItem[]> {
     } as GuestListItem));
   } catch (error) {
     console.error('Error fetching guest list:', error);
+    return [];
+  }
+}
+
+/**
+ * Get all attendees (registered candidates)
+ */
+export async function getAttendeeList(): Promise<Candidate[]> {
+  try {
+    const attendeeQuery = query(
+      collection(db, 'candidates'),
+      where('role', '==', 'attendee')
+    );
+    const snapshot = await getDocs(attendeeQuery);
+    const attendees = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    } as Candidate));
+    return attendees.sort((a, b) => a.name.localeCompare(b.name));
+  } catch (error) {
+    console.error('Error fetching attendee list:', error);
+    return [];
+  }
+}
+
+/**
+ * Get candidate IDs that have checked in (optionally for a specific event)
+ */
+export async function getCheckedInCandidateIds(eventId?: string): Promise<string[]> {
+  try {
+    const attendanceQuery = eventId
+      ? query(collection(db, 'attendance'), where('eventId', '==', eventId))
+      : query(collection(db, 'attendance'));
+    const snapshot = await getDocs(attendanceQuery);
+    return snapshot.docs
+      .map((doc) => (doc.data() as AttendanceRecord).candidateId)
+      .filter(Boolean);
+  } catch (error) {
+    console.error('Error fetching check-in list:', error);
     return [];
   }
 }

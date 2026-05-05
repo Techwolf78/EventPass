@@ -16,6 +16,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { auth } from '@/config/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import { loginGuestByEmail } from '@/utils/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -24,6 +26,10 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [activeTab, setActiveTab] = useState<'guest' | 'login'>('guest');
+  const [guestName, setGuestName] = useState('');
+  const [guestEmail, setGuestEmail] = useState('');
+  const [guestLoading, setGuestLoading] = useState(false);
 
   const handleSignIn = async () => {
     if (!email || !password) {
@@ -53,6 +59,37 @@ export default function LoginScreen() {
     Alert.alert('Google Sign In', 'Coming soon!');
   };
 
+  const handleGuestLogin = async () => {
+    if (!guestName.trim() || !guestEmail.trim()) {
+      Alert.alert('Error', 'Please enter your name and email');
+      return;
+    }
+
+    setGuestLoading(true);
+    try {
+      const result = await loginGuestByEmail(guestEmail.trim());
+      if (result.success && result.qrToken) {
+        await AsyncStorage.setItem('guestQrToken', result.qrToken);
+        router.replace({
+          pathname: '/(attendee)/qr-pass',
+          params: { qrToken: result.qrToken },
+        });
+        return;
+      }
+
+      if (result.message === 'Not on the guest list') {
+        Alert.alert('Not Registered', 'This email is not in our guest list. Please contact the organizer.');
+      } else {
+        Alert.alert('Login Failed', result.message || 'We could not log you in. Please try again.');
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Login failed. Please try again.');
+    } finally {
+      setGuestLoading(false);
+    }
+  };
+
+
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
       <LinearGradient colors={['#6366f1', '#8b5cf6']} style={styles.gradient}>
@@ -69,81 +106,137 @@ export default function LoginScreen() {
 
             {/* Form Section */}
             <View style={styles.formContainer}>
-              <Text style={styles.formTitle}>Sign In</Text>
-              <Text style={styles.formSubtitle}>EventPass</Text>
-
-              {/* Email Input */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>WORK EMAIL</Text>
-                <View style={styles.inputWrapper}>
-                  <Ionicons name="mail" size={20} color="#818cf8" style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="priya@company.in"
-                    placeholderTextColor="#b4b4b4"
-                    value={email}
-                    onChangeText={setEmail}
-                    autoCapitalize="none"
-                    keyboardType="email-address"
-                    editable={!loading}
-                  />
-                </View>
+              <View style={styles.toggleRow}>
+                <TouchableOpacity
+                  style={[styles.toggleButton, activeTab === 'guest' && styles.toggleButtonActive]}
+                  onPress={() => setActiveTab('guest')}
+                >
+                  <Text style={[styles.toggleText, activeTab === 'guest' && styles.toggleTextActive]}>
+                    Guest Login
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.toggleButton, activeTab === 'login' && styles.toggleButtonActive]}
+                  onPress={() => setActiveTab('login')}
+                >
+                  <Text style={[styles.toggleText, activeTab === 'login' && styles.toggleTextActive]}>
+                    Login
+                  </Text>
+                </TouchableOpacity>
               </View>
 
-              {/* Password Input */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>PASSWORD</Text>
-                <View style={styles.inputWrapper}>
-                  <Ionicons name="lock-closed" size={20} color="#818cf8" style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="••••••••"
-                    placeholderTextColor="#b4b4b4"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry={!showPassword}
-                    editable={!loading}
-                  />
-                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)} disabled={loading}>
-                    <Ionicons
-                      name={showPassword ? 'eye' : 'eye-off'}
-                      size={20}
-                      color="#818cf8"
-                      style={styles.eyeIcon}
-                    />
+              {activeTab === 'guest' ? (
+                <>
+                  <Text style={styles.formTitle}>Guest Login</Text>
+                  <Text style={styles.formSubtitle}>EventPass</Text>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>FULL NAME</Text>
+                    <View style={styles.inputWrapper}>
+                      <Ionicons name="person" size={20} color="#818cf8" style={styles.inputIcon} />
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Priya Sharma"
+                        placeholderTextColor="#b4b4b4"
+                        value={guestName}
+                        onChangeText={setGuestName}
+                        editable={!guestLoading}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>WORK EMAIL</Text>
+                    <View style={styles.inputWrapper}>
+                      <Ionicons name="mail" size={20} color="#818cf8" style={styles.inputIcon} />
+                      <TextInput
+                        style={styles.input}
+                        placeholder="priya@company.in"
+                        placeholderTextColor="#b4b4b4"
+                        value={guestEmail}
+                        onChangeText={setGuestEmail}
+                        autoCapitalize="none"
+                        keyboardType="email-address"
+                        editable={!guestLoading}
+                      />
+                    </View>
+                  </View>
+
+                  <TouchableOpacity
+                    style={[styles.button, guestLoading && styles.buttonDisabled]}
+                    onPress={handleGuestLogin}
+                    disabled={guestLoading}
+                  >
+                    <Text style={styles.buttonText}>
+                      {guestLoading ? 'Loading...' : 'Continue as Guest'}
+                    </Text>
                   </TouchableOpacity>
-                </View>
-              </View>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.formTitle}>Sign In</Text>
+                  <Text style={styles.formSubtitle}>EventPass</Text>
 
-              {/* Forgot Password */}
-              <TouchableOpacity style={styles.forgotPasswordContainer}>
-                <Text style={styles.forgotPasswordText}>Forgot password?</Text>
-              </TouchableOpacity>
+                  {/* Email Input */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>WORK EMAIL</Text>
+                    <View style={styles.inputWrapper}>
+                      <Ionicons name="mail" size={20} color="#818cf8" style={styles.inputIcon} />
+                      <TextInput
+                        style={styles.input}
+                        placeholder="priya@company.in"
+                        placeholderTextColor="#b4b4b4"
+                        value={email}
+                        onChangeText={setEmail}
+                        autoCapitalize="none"
+                        keyboardType="email-address"
+                        editable={!loading}
+                      />
+                    </View>
+                  </View>
 
-              {/* Main Button */}
-              <TouchableOpacity
-                style={[styles.button, loading && styles.buttonDisabled]}
-                onPress={handleSignIn}
-                disabled={loading}
-              >
-                <Text style={styles.buttonText}>
-                  {loading ? 'Loading...' : 'Sign in with Email'}
-                </Text>
-              </TouchableOpacity>
+                  {/* Password Input */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>PASSWORD</Text>
+                    <View style={styles.inputWrapper}>
+                      <Ionicons name="lock-closed" size={20} color="#818cf8" style={styles.inputIcon} />
+                      <TextInput
+                        style={styles.input}
+                        placeholder="••••••••"
+                        placeholderTextColor="#b4b4b4"
+                        value={password}
+                        onChangeText={setPassword}
+                        secureTextEntry={!showPassword}
+                        editable={!loading}
+                      />
+                      <TouchableOpacity onPress={() => setShowPassword(!showPassword)} disabled={loading}>
+                        <Ionicons
+                          name={showPassword ? 'eye' : 'eye-off'}
+                          size={20}
+                          color="#818cf8"
+                          style={styles.eyeIcon}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
 
-              
+                  {/* Forgot Password */}
+                  <TouchableOpacity style={styles.forgotPasswordContainer}>
+                    <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+                  </TouchableOpacity>
 
-              {/* New Candidate Register Link */}
-              <TouchableOpacity
-                onPress={() => router.push('/(auth)/register')}
-                disabled={loading}
-                style={styles.registerContainer}
-              >
-                <Text style={styles.registerText}>
-                  New candidate?{' '}
-                  <Text style={styles.registerLink}>Register here</Text>
-                </Text>
-              </TouchableOpacity>
+                  {/* Main Button */}
+                  <TouchableOpacity
+                    style={[styles.button, loading && styles.buttonDisabled]}
+                    onPress={handleSignIn}
+                    disabled={loading}
+                  >
+                    <Text style={styles.buttonText}>
+                      {loading ? 'Loading...' : 'Sign in with Email'}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
 
             {/* Footer */}
@@ -169,6 +262,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 24,
     paddingVertical: 20,
+    maxWidth: 480,
+    alignSelf: 'center',
+    width: '100%',
   },
   logoSection: {
     alignItems: 'center',
@@ -194,8 +290,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   formContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 24,
     paddingHorizontal: 24,
     paddingVertical: 32,
     shadowColor: '#000',
@@ -203,26 +299,59 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 20,
     elevation: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
   },
   formTitle: {
     fontSize: 28,
-    fontWeight: '700',
-    color: '#1f2937',
+    fontWeight: '800',
+    color: '#1e293b',
     marginBottom: 4,
   },
   formSubtitle: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#64748b',
     marginBottom: 24,
-    fontWeight: '500',
+    fontWeight: '600',
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    borderRadius: 16,
+    padding: 4,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.6)',
+  },
+  toggleButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  toggleButtonActive: {
+    backgroundColor: '#6366f1',
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  toggleText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#64748b',
+  },
+  toggleTextActive: {
+    color: '#ffffff',
   },
   inputGroup: {
     marginBottom: 16,
   },
   label: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#374151',
+    fontWeight: '700',
+    color: '#475569',
     marginBottom: 8,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -230,21 +359,21 @@ const styles = StyleSheet.create({
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f9fafb',
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
     borderWidth: 1.5,
-    borderColor: '#e5e7eb',
-    borderRadius: 12,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
+    borderRadius: 14,
     paddingHorizontal: 16,
-    height: 50,
+    height: 52,
   },
   inputIcon: {
     marginRight: 12,
   },
   input: {
     flex: 1,
-    fontSize: 16,
-    color: '#1f2937',
-    fontWeight: '500',
+    fontSize: 15,
+    color: '#1e293b',
+    fontWeight: '600',
   },
   eyeIcon: {
     marginLeft: 8,

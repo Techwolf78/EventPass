@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -7,12 +7,17 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
-  FlatList,
   ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { getGuestList, addGuest, addGuestsFromCSV, GuestListItem } from '@/utils/firestore';
+import {
+  getGuestList,
+  addGuest,
+  addGuestsFromCSV,
+  getCheckedInCandidateIds,
+  GuestListItem,
+} from '@/utils/firestore';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import Papa from 'papaparse';
@@ -32,6 +37,10 @@ const getAvatarColor = (name: string) => {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 };
 
+type GuestStatus = 'arrived' | 'unarrived' | 'pending';
+
+type FilterStatus = 'all' | GuestStatus;
+
 export default function GuestListScreen() {
   const insets = useSafeAreaInsets();
   const [guests, setGuests] = useState<GuestListItem[]>([]);
@@ -42,6 +51,8 @@ export default function GuestListScreen() {
   const [enrollmentType, setEnrollmentType] = useState<'masterclass' | 'event'>('event');
   const [submitting, setSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
+  const [checkedInIds, setCheckedInIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadGuests();
@@ -49,8 +60,12 @@ export default function GuestListScreen() {
 
   const loadGuests = async () => {
     setLoading(true);
-    const guestList = await getGuestList();
+    const [guestList, checkIns] = await Promise.all([
+      getGuestList(),
+      getCheckedInCandidateIds(),
+    ]);
     setGuests(guestList);
+    setCheckedInIds(new Set(checkIns));
     setLoading(false);
   };
 
@@ -112,7 +127,9 @@ export default function GuestListScreen() {
           return {
             name: row.name,
             email: row.email,
-            enrollmentType: (enrollmentTypeLower === 'masterclass' ? 'masterclass' : 'event') as 'masterclass' | 'event',
+            enrollmentType: (enrollmentTypeLower === 'masterclass' ? 'masterclass' : 'event') as
+              | 'masterclass'
+              | 'event',
           };
         });
 
@@ -121,38 +138,46 @@ export default function GuestListScreen() {
         return;
       }
 
-      Alert.alert(
-        'Confirm Upload',
-        `Upload ${guests.length} guests from CSV?`,
-        [
-          { text: 'Cancel' },
-          {
-            text: 'Upload',
-            onPress: async () => {
-              setLoading(true);
-              const uploadResult = await addGuestsFromCSV(guests);
-              Alert.alert(
-                uploadResult.success ? 'Success' : 'Partial Success',
-                uploadResult.message
-              );
-              loadGuests();
-            },
+      Alert.alert('Confirm Upload', `Upload ${guests.length} guests from CSV?`, [
+        { text: 'Cancel' },
+        {
+          text: 'Upload',
+          onPress: async () => {
+            setLoading(true);
+            const uploadResult = await addGuestsFromCSV(guests);
+            Alert.alert(uploadResult.success ? 'Success' : 'Partial Success', uploadResult.message);
+            loadGuests();
           },
-        ]
-      );
+        },
+      ]);
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to upload CSV');
     }
   };
 
-  const filteredGuests = guests.filter(
-    (guest) =>
-      guest.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      guest.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const getGuestStatus = (guest: GuestListItem): GuestStatus => {
+    if (guest.status === 'registered') {
+      return checkedInIds.has(guest.id) ? 'arrived' : 'unarrived';
+    }
+    return 'pending';
+  };
 
-  const registeredCount = guests.filter((g) => g.status === 'registered').length;
-  const pendingCount = guests.filter((g) => g.status === 'pending').length;
+  const filteredGuests = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    return guests.filter((guest) => {
+      const matchesSearch =
+        guest.name.toLowerCase().includes(normalizedQuery) ||
+        guest.email.toLowerCase().includes(normalizedQuery);
+      if (!matchesSearch) return false;
+
+      if (filterStatus === 'all') return true;
+      return getGuestStatus(guest) === filterStatus;
+    });
+  }, [guests, searchQuery, filterStatus, checkedInIds]);
+
+  const arrivedCount = guests.filter((guest) => getGuestStatus(guest) === 'arrived').length;
+  const unarrivedCount = guests.filter((guest) => getGuestStatus(guest) === 'unarrived').length;
+  const pendingCount = guests.filter((guest) => getGuestStatus(guest) === 'pending').length;
 
   if (loading) {
     return (
@@ -170,15 +195,85 @@ export default function GuestListScreen() {
           <Text style={styles.headerTitle}>Guest List</Text>
           <Text style={styles.headerSubtitle}>ADMIN • INNOVATESUMMIT</Text>
         </View>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => setShowForm(!showForm)}
-        >
+        <TouchableOpacity style={styles.addButton} onPress={() => setShowForm(!showForm)}>
           <Ionicons name={showForm ? 'close' : 'add'} size={24} color="#fff" />
         </TouchableOpacity>
       </View>
 
-      {/* Search Bar (fixed above scroll) */}
+      {/* Stats Cards */}
+      <View style={styles.statsRow}>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{guests.length}</Text>
+          <Text style={styles.statLabel}>Total guests</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={[styles.statNumber, styles.statNumberGreen]}>{arrivedCount}</Text>
+          <Text style={[styles.statLabel, styles.statLabelGreen]}>Arrived</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={[styles.statNumber, styles.statNumberOrange]}>{unarrivedCount}</Text>
+          <Text style={[styles.statLabel, styles.statLabelOrange]}>Unarrived</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={[styles.statNumber, styles.statNumberBlue]}>{pendingCount}</Text>
+          <Text style={[styles.statLabel, styles.statLabelBlue]}>Pending</Text>
+        </View>
+      </View>
+
+      {/* Radio Button Filter Bar */}
+      <View style={styles.filterBar}>
+        <TouchableOpacity
+          style={[styles.filterOption, filterStatus === 'all' && styles.filterOptionActive]}
+          onPress={() => setFilterStatus('all')}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.radioCircle, filterStatus === 'all' && styles.radioCircleActive]}>
+            {filterStatus === 'all' && <View style={styles.radioInner} />}
+          </View>
+          <Text style={[styles.filterText, filterStatus === 'all' && styles.filterTextActive]}>All</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.filterOption, filterStatus === 'arrived' && styles.filterOptionActive]}
+          onPress={() => setFilterStatus('arrived')}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.radioCircle, filterStatus === 'arrived' && styles.radioCircleActive]}>
+            {filterStatus === 'arrived' && <View style={styles.radioInner} />}
+          </View>
+          <Text style={[styles.filterText, filterStatus === 'arrived' && styles.filterTextActive]}>
+            Arrived
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.filterOption, filterStatus === 'unarrived' && styles.filterOptionActive]}
+          onPress={() => setFilterStatus('unarrived')}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.radioCircle, filterStatus === 'unarrived' && styles.radioCircleActive]}>
+            {filterStatus === 'unarrived' && <View style={styles.radioInner} />}
+          </View>
+          <Text style={[styles.filterText, filterStatus === 'unarrived' && styles.filterTextActive]}>
+            Unarrived
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.filterOption, filterStatus === 'pending' && styles.filterOptionActive]}
+          onPress={() => setFilterStatus('pending')}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.radioCircle, filterStatus === 'pending' && styles.radioCircleActive]}>
+            {filterStatus === 'pending' && <View style={styles.radioInner} />}
+          </View>
+          <Text style={[styles.filterText, filterStatus === 'pending' && styles.filterTextActive]}>
+            Pending
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Search Bar */}
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={18} color="#9ca3af" style={styles.searchIcon} />
         <TextInput
@@ -188,6 +283,7 @@ export default function GuestListScreen() {
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
+
         {searchQuery.length > 0 && (
           <TouchableOpacity onPress={() => setSearchQuery('')}>
             <Ionicons name="close-circle" size={18} color="#9ca3af" />
@@ -200,22 +296,6 @@ export default function GuestListScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Stats Cards */}
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{guests.length}</Text>
-            <Text style={styles.statLabel}>Total guests</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={[styles.statNumber, styles.statNumberGreen]}>{registeredCount}</Text>
-            <Text style={[styles.statLabel, styles.statLabelGreen]}>Registered</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={[styles.statNumber, styles.statNumberOrange]}>{pendingCount}</Text>
-            <Text style={[styles.statLabel, styles.statLabelOrange]}>Pending</Text>
-          </View>
-        </View>
-
         {/* Add Guest Form */}
         {showForm && (
           <View style={styles.formCard}>
@@ -243,17 +323,16 @@ export default function GuestListScreen() {
               {['masterclass', 'event'].map((type) => (
                 <TouchableOpacity
                   key={type}
-                  style={[
-                    styles.enrollmentBtn,
-                    enrollmentType === type && styles.enrollmentBtnActive,
-                  ]}
+                  style={[styles.enrollmentBtn, enrollmentType === type && styles.enrollmentBtnActive]}
                   onPress={() => setEnrollmentType(type as 'masterclass' | 'event')}
                   disabled={submitting}
                 >
-                  <Text style={[
-                    styles.enrollmentBtnText,
-                    enrollmentType === type && styles.enrollmentBtnTextActive,
-                  ]}>
+                  <Text
+                    style={[
+                      styles.enrollmentBtnText,
+                      enrollmentType === type && styles.enrollmentBtnTextActive,
+                    ]}
+                  >
                     {type.charAt(0).toUpperCase() + type.slice(1)}
                   </Text>
                 </TouchableOpacity>
@@ -264,11 +343,7 @@ export default function GuestListScreen() {
               onPress={handleAddGuest}
               disabled={submitting}
             >
-              {submitting ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.submitButtonText}>Add Guest</Text>
-              )}
+              {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitButtonText}>Add Guest</Text>}
             </TouchableOpacity>
           </View>
         )}
@@ -281,15 +356,23 @@ export default function GuestListScreen() {
             </View>
             <View style={styles.uploadTextBlock}>
               <Text style={styles.uploadTitle}>Upload CSV file</Text>
-              <Text style={styles.uploadSubtitle}>name, email,columns required</Text>
+              <Text style={styles.uploadSubtitle}>name, email, enrollmentType (masterclass/event)</Text>
             </View>
           </View>
           <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
         </TouchableOpacity>
 
-        {/* Section Header */}
+        {/* Section Header with active filter display */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>ALL GUESTS</Text>
+          <Text style={styles.sectionTitle}>
+            {filterStatus === 'all'
+              ? 'ALL GUESTS'
+              : filterStatus === 'arrived'
+              ? 'ARRIVED GUESTS'
+              : filterStatus === 'unarrived'
+              ? 'UNARRIVED GUESTS'
+              : 'PENDING GUESTS'}
+          </Text>
           <Text style={styles.sectionCount}>{filteredGuests.length}</Text>
         </View>
 
@@ -299,36 +382,51 @@ export default function GuestListScreen() {
             <View style={styles.emptyContainer}>
               <Ionicons name="people-outline" size={48} color="#d1d5db" />
               <Text style={styles.emptyText}>
-                {searchQuery ? 'No guests found' : 'No guests yet'}
+                {searchQuery ? 'No guests found' : `No ${filterStatus === 'all' ? '' : filterStatus} guests`}
               </Text>
             </View>
           ) : (
-            filteredGuests.map((item) => (
-              <View key={item.id} style={styles.guestItem}>
-                <View style={[styles.avatar, { backgroundColor: getAvatarColor(item.name) }]}>
-                  <Text style={styles.avatarText}>{getInitials(item.name)}</Text>
+            filteredGuests.map((item) => {
+              const status = getGuestStatus(item);
+              return (
+                <View key={item.id} style={styles.guestItem}>
+                  <View style={[styles.avatar, { backgroundColor: getAvatarColor(item.name) }]}>
+                    <Text style={styles.avatarText}>{getInitials(item.name)}</Text>
+                  </View>
+                  <View style={styles.guestInfo}>
+                    <Text style={styles.guestName} numberOfLines={1}>{item.name}</Text>
+                    <Text style={styles.guestEmail} numberOfLines={1}>{item.email}</Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      status === 'arrived'
+                        ? styles.statusArrived
+                        : status === 'unarrived'
+                        ? styles.statusUnarrived
+                        : styles.statusPending,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.statusText,
+                        status === 'arrived'
+                          ? styles.statusTextArrived
+                          : status === 'unarrived'
+                          ? styles.statusTextUnarrived
+                          : styles.statusTextPending,
+                      ]}
+                    >
+                      {status === 'arrived' ? 'Arrived' : status === 'unarrived' ? 'Unarrived' : 'Pending'}
+                    </Text>
+                  </View>
                 </View>
-                <View style={styles.guestInfo}>
-                  <Text style={styles.guestName} numberOfLines={1}>{item.name}</Text>
-                  <Text style={styles.guestEmail} numberOfLines={1}>{item.email}</Text>
-                </View>
-                <View style={[
-                  styles.statusBadge,
-                  item.status === 'registered' ? styles.statusRegistered : styles.statusPending,
-                ]}>
-                  <Text style={[
-                    styles.statusText,
-                    item.status === 'registered' ? styles.statusTextRegistered : styles.statusTextPending,
-                  ]}>
-                    {item.status === 'registered' ? 'Registered' : 'Pending'}
-                  </Text>
-                </View>
-              </View>
-            ))
+              );
+            })
           )}
         </View>
 
-        <View style={{ height: insets.bottom + 20 }} />
+        <View style={{ height: insets.bottom + 100 }} />
       </ScrollView>
     </View>
   );
@@ -337,10 +435,13 @@ export default function GuestListScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F4FA',
+    backgroundColor: '#0f172a', // slate-900
   },
   scrollContent: {
-    paddingBottom: 20,
+    paddingBottom: 100, // accommodate tab bar
+    maxWidth: 800,
+    alignSelf: 'center',
+    width: '100%',
   },
   // Header
   header: {
@@ -354,164 +455,211 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '800',
-    color: '#1f2937',
+    color: '#f8fafc',
   },
   headerSubtitle: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#8B5CF6',
+    fontWeight: '700',
+    color: '#8b5cf6',
     marginTop: 4,
-    letterSpacing: 0.5,
+    letterSpacing: 1,
   },
   addButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#1e293b',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#334155',
   },
   // Stats
   statsRow: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    gap: 10,
-    marginBottom: 16,
+    gap: 12,
+    marginBottom: 20,
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 14,
+    backgroundColor: '#1e293b',
+    borderRadius: 16,
     paddingVertical: 16,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#334155',
   },
   statNumber: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '800',
-    color: '#8B5CF6',
+    color: '#a78bfa',
   },
   statNumberGreen: {
-    color: '#10B981',
+    color: '#34d399',
   },
   statNumberOrange: {
-    color: '#F59E0B',
+    color: '#fbbf24',
+  },
+  statNumberBlue: {
+    color: '#60a5fa',
   },
   statLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#9ca3af',
-    marginTop: 4,
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#64748b',
+    marginTop: 6,
     textAlign: 'center',
+    textTransform: 'uppercase',
   },
   statLabelGreen: {
-    color: '#10B981',
+    color: '#34d399',
   },
   statLabelOrange: {
-    color: '#F59E0B',
+    color: '#fbbf24',
+  },
+  statLabelBlue: {
+    color: '#60a5fa',
+  },
+  // Filter Bar
+  filterBar: {
+    flexDirection: 'row',
+    backgroundColor: '#1e293b',
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 30,
+    padding: 6,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  filterOption: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 24,
+    gap: 6,
+  },
+  filterOptionActive: {
+    backgroundColor: 'rgba(139, 92, 246, 0.15)',
+  },
+  radioCircle: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#475569',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioCircleActive: {
+    borderColor: '#a78bfa',
+  },
+  radioInner: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#a78bfa',
+  },
+  filterText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#64748b',
+  },
+  filterTextActive: {
+    color: '#a78bfa',
   },
   // Form Card
   formCard: {
-    backgroundColor: '#fff',
+    backgroundColor: '#1e293b',
     marginHorizontal: 20,
-    marginBottom: 16,
-    borderRadius: 14,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    marginBottom: 20,
+    borderRadius: 16,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: '#334155',
   },
   formTitle: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#1f2937',
+    fontWeight: '800',
+    color: '#f8fafc',
     marginBottom: 14,
   },
   formInput: {
-    backgroundColor: '#f9fafb',
-    borderWidth: 1.5,
-    borderColor: '#e5e7eb',
-    borderRadius: 10,
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 12,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: 14,
     fontSize: 14,
-    color: '#1f2937',
-    marginBottom: 10,
-    fontWeight: '500',
+    color: '#f8fafc',
+    marginBottom: 12,
+    fontWeight: '600',
   },
   fieldLabel: {
     fontSize: 11,
-    fontWeight: '700',
-    color: '#6b7280',
-    letterSpacing: 0.5,
+    fontWeight: '800',
+    color: '#64748b',
+    letterSpacing: 1,
     marginTop: 4,
-    marginBottom: 8,
+    marginBottom: 10,
   },
   enrollmentRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 14,
+    gap: 10,
+    marginBottom: 16,
   },
   enrollmentBtn: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: '#e5e7eb',
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
     alignItems: 'center',
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#0f172a',
   },
   enrollmentBtnActive: {
-    backgroundColor: '#8B5CF6',
-    borderColor: '#8B5CF6',
+    backgroundColor: 'rgba(139, 92, 246, 0.15)',
+    borderColor: '#8b5cf6',
   },
   enrollmentBtnText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#6b7280',
+    fontWeight: '700',
+    color: '#64748b',
   },
   enrollmentBtnTextActive: {
-    color: '#fff',
+    color: '#a78bfa',
   },
   submitButton: {
-    backgroundColor: '#8B5CF6',
-    borderRadius: 10,
-    paddingVertical: 14,
+    backgroundColor: '#8b5cf6',
+    borderRadius: 12,
+    paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   submitButtonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   submitButtonText: {
-    color: '#fff',
+    color: '#ffffff',
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   // Upload Card
   uploadCard: {
-    backgroundColor: '#fff',
+    backgroundColor: '#1e293b',
     marginHorizontal: 20,
-    marginBottom: 16,
-    borderRadius: 14,
+    marginBottom: 20,
+    borderRadius: 16,
     padding: 16,
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderStyle: 'dashed',
-    borderColor: '#c4b5fd',
+    borderColor: '#8b5cf6',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -519,13 +667,13 @@ const styles = StyleSheet.create({
   uploadContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 14,
   },
   uploadIconBg: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#f5f3ff',
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: 'rgba(139, 92, 246, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -533,31 +681,28 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   uploadTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1f2937',
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#f8fafc',
   },
   uploadSubtitle: {
     fontSize: 11,
-    color: '#9ca3af',
-    marginTop: 2,
-    fontWeight: '500',
+    color: '#64748b',
+    marginTop: 4,
+    fontWeight: '600',
   },
   // Search
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#1e293b',
     marginHorizontal: 20,
-    marginBottom: 16,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    height: 48,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
+    marginBottom: 20,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    height: 52,
+    borderWidth: 1,
+    borderColor: '#334155',
   },
   searchIcon: {
     marginRight: 10,
@@ -565,8 +710,8 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 14,
-    color: '#1f2937',
-    fontWeight: '500',
+    color: '#f8fafc',
+    fontWeight: '600',
   },
   // Section Header
   sectionHeader: {
@@ -574,98 +719,105 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    marginBottom: 12,
-    backgroundColor: '#F5F4FA',
-    paddingVertical: 8,
+    marginBottom: 16,
+    backgroundColor: '#0f172a',
+    paddingVertical: 10,
   },
   sectionTitle: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#6b7280',
-    letterSpacing: 0.5,
+    fontWeight: '800',
+    color: '#64748b',
+    letterSpacing: 1,
   },
   sectionCount: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#8B5CF6',
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#a78bfa',
   },
   // Guest List
   listContainer: {
     paddingHorizontal: 20,
   },
   guestItem: {
-    backgroundColor: '#fff',
+    backgroundColor: '#1e293b',
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
-    marginBottom: 8,
-    borderRadius: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
+    padding: 16,
+    marginBottom: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#334155',
   },
   avatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 14,
   },
   avatarText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '800',
   },
   guestInfo: {
     flex: 1,
     minWidth: 0,
   },
   guestName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1f2937',
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#f8fafc',
   },
   guestEmail: {
-    fontSize: 12,
-    color: '#9ca3af',
-    marginTop: 2,
-    fontWeight: '500',
+    fontSize: 13,
+    color: '#94a3b8',
+    marginTop: 4,
+    fontWeight: '600',
   },
   statusBadge: {
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 10,
     marginLeft: 10,
+    borderWidth: 1,
   },
-  statusRegistered: {
-    backgroundColor: '#D1FAE5',
+  statusArrived: {
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderColor: 'rgba(16, 185, 129, 0.2)',
+  },
+  statusUnarrived: {
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderColor: 'rgba(245, 158, 11, 0.2)',
   },
   statusPending: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: 'rgba(96, 165, 250, 0.1)',
+    borderColor: 'rgba(96, 165, 250, 0.2)',
   },
   statusText: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '800',
+    textTransform: 'uppercase',
   },
-  statusTextRegistered: {
-    color: '#065F46',
+  statusTextArrived: {
+    color: '#34d399',
+  },
+  statusTextUnarrived: {
+    color: '#fbbf24',
   },
   statusTextPending: {
-    color: '#92400E',
+    color: '#60a5fa',
   },
   // Empty
   emptyContainer: {
     alignItems: 'center',
-    justifyContent: 'center',
     paddingVertical: 60,
   },
   emptyText: {
-    color: '#9ca3af',
-    fontSize: 14,
-    marginTop: 12,
-    fontWeight: '600',
+    marginTop: 16,
+    fontSize: 15,
+    color: '#64748b',
+    fontWeight: '700',
   },
 });

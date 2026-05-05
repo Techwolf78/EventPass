@@ -27,6 +27,8 @@ const getInitials = (name: string) => {
   return name.substring(0, 2).toUpperCase();
 };
 
+const TAB_BAR_HEIGHT = 80; // Adjust this based on your tab bar height
+
 export default function QRScannerScreen() {
   const { user } = useAuth();
   const { width } = useWindowDimensions();
@@ -175,7 +177,7 @@ export default function QRScannerScreen() {
             </View>
           </View>
 
-          <View style={styles.instructionBox}>
+          <View style={[styles.instructionBox, { bottom: 60 + TAB_BAR_HEIGHT }]}>
             <Ionicons name="qr-code" size={20} color="#fff" />
             <Text style={styles.scanText}>Point camera at attendee's QR pass</Text>
           </View>
@@ -232,7 +234,7 @@ export default function QRScannerScreen() {
 
       {/* Recent Scans */}
       {recentScans.length > 0 && (
-        <View style={styles.recentSection}>
+        <View style={[styles.recentSection, { paddingBottom: insets.bottom + TAB_BAR_HEIGHT }]}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>RECENT SCANS</Text>
             <Text style={styles.sectionCount}>{recentScans.length}</Text>
@@ -286,7 +288,7 @@ export default function QRScannerScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F4FA',
+    backgroundColor: '#0f172a', // slate-900
   },
   cameraSection: {
     flex: 1,
@@ -297,7 +299,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F5F4FA',
+    backgroundColor: '#0f172a',
     paddingHorizontal: 20,
   },
   // Header
@@ -312,9 +314,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '800',
-    color: '#1f2937',
+    color: '#f8fafc',
   },
   headerSubtitleRow: {
     flexDirection: 'row',
@@ -324,35 +326,42 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#8B5CF6',
-    letterSpacing: 0.5,
+    fontWeight: '700',
+    color: '#8b5cf6',
+    letterSpacing: 1,
   },
   liveDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: '#10B981',
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#34d399',
+    shadowColor: '#34d399',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
   },
   liveText: {
     fontSize: 11,
-    fontWeight: '700',
-    color: '#10B981',
+    fontWeight: '800',
+    color: '#34d399',
+    textTransform: 'uppercase',
   },
   eventBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f5f3ff',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-    gap: 4,
+    backgroundColor: '#1e293b',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    gap: 6,
     maxWidth: 140,
+    borderWidth: 1,
+    borderColor: '#334155',
   },
   eventBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#8B5CF6',
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#a78bfa',
     flexShrink: 1,
   },
   // Loading/Error states
@@ -429,13 +438,14 @@ const styles = StyleSheet.create({
   instructionBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    gap: 10,
+    backgroundColor: 'rgba(30, 41, 59, 0.85)',
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    gap: 12,
     position: 'absolute',
-    bottom: 60,
+    borderWidth: 1,
+    borderColor: '#334155',
   },
   scanText: {
     color: '#fff',
@@ -445,10 +455,10 @@ const styles = StyleSheet.create({
   // Confirmation Section
   confirmSection: {
     paddingHorizontal: 20,
-    paddingVertical: 12,
-    backgroundColor: '#fff',
+    paddingVertical: 16,
+    backgroundColor: '#1e293b',
     borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
+    borderTopColor: '#0f172a',
   },
   confirmCard: {
     flexDirection: 'row',
@@ -459,17 +469,17 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   confirmCardSuccess: {
-    backgroundColor: '#F0FDF4',
-    borderColor: '#BBF7D0',
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderColor: 'rgba(16, 185, 129, 0.3)',
   },
   confirmCardFailed: {
-    backgroundColor: '#FEF2F2',
-    borderColor: '#FECACA',
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderColor: 'rgba(239, 68, 68, 0.3)',
   },
   confirmIconBg: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
@@ -478,73 +488,72 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   confirmName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1f2937',
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#f8fafc',
   },
   confirmEmail: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginTop: 2,
-    fontWeight: '500',
+    fontSize: 13,
+    color: '#94a3b8',
+    marginTop: 4,
+    fontWeight: '600',
   },
   confirmStatus: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 4,
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 6,
   },
   scanNextBtn: {
-    backgroundColor: '#8B5CF6',
-    borderRadius: 12,
-    paddingVertical: 14,
+    backgroundColor: '#8b5cf6',
+    borderRadius: 14,
+    paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
-    gap: 8,
-    shadowColor: '#8B5CF6',
+    gap: 10,
+    shadowColor: '#8b5cf6',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 6,
   },
   scanNextBtnDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   scanNextBtnText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '700',
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '800',
   },
   // Recent Scans
   recentSection: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingTop: 16,
+    backgroundColor: '#1e293b',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 20,
     paddingHorizontal: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 10,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#6b7280',
-    letterSpacing: 0.5,
+    fontWeight: '800',
+    color: '#64748b',
+    letterSpacing: 1,
   },
   sectionCount: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#8B5CF6',
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#a78bfa',
   },
   recentList: {
     maxHeight: 200,
@@ -552,35 +561,35 @@ const styles = StyleSheet.create({
   recentItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: '#0f172a',
   },
   recentAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 14,
   },
   recentAvatarText: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '800',
   },
   recentInfo: {
     flex: 1,
   },
   recentName: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#1f2937',
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#f8fafc',
   },
   recentTime: {
-    fontSize: 11,
-    color: '#9ca3af',
-    marginTop: 2,
-    fontWeight: '500',
+    fontSize: 12,
+    color: '#94a3b8',
+    marginTop: 4,
+    fontWeight: '600',
   },
   recentStatus: {
     flexDirection: 'row',

@@ -1,35 +1,10 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { useAuth } from '@/context/AuthContext';
-import { TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-function LogoutButton() {
-  const { logout } = useAuth();
-  return (
-    <TouchableOpacity
-      onPress={logout}
-      activeOpacity={0.7}
-      style={{
-        width: 36,
-        height: 36,
-        borderRadius: 10,
-        backgroundColor: '#fef2f2',
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: '#fecaca',
-        marginRight: 8,
-      }}
-    >
-      <Ionicons name="log-out-outline" size={18} color="#ef4444" />
-    </TouchableOpacity>
-  );
-}
-
-const RegisterTabIcon = ({ color }: { color: string }) => (
-  <Ionicons name="person-add" size={24} color={color} />
+const AttendeesTabIcon = ({ color }: { color: string }) => (
+  <Ionicons name="people" size={24} color={color} />
 );
 
 const AgendaTabIcon = ({ color }: { color: string }) => (
@@ -40,8 +15,8 @@ const PassTabIcon = ({ color }: { color: string }) => (
   <Ionicons name="qr-code" size={24} color={color} />
 );
 
-const NotificationsTabIcon = ({ color }: { color: string }) => (
-  <Ionicons name="notifications" size={24} color={color} />
+const ProfileTabIcon = ({ color }: { color: string }) => (
+  <Ionicons name="person" size={24} color={color} />
 );
 
 export default function AttendeeLayout() {
@@ -53,21 +28,29 @@ export default function AttendeeLayout() {
         headerShown: true,
         headerTransparent: true,
         headerTitle: '',
-        headerRight: () => <LogoutButton />,
         tabBarStyle: {
-          backgroundColor: '#fff',
-          borderTopWidth: 1,
-          borderTopColor: '#e5e7eb',
-          height: 56 + insets.bottom,
-          paddingTop: 6,
-          paddingBottom: insets.bottom || 10,
+          backgroundColor: '#ffffff',
+          borderTopWidth: 0,
+          height: 70,
+          paddingTop: 8,
+          paddingBottom: 10,
+          position: 'absolute',
+          bottom: insets.bottom || 16,
+          left: 16,
+          right: 16,
+          borderRadius: 32,
+          shadowColor: '#6366f1',
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.15,
+          shadowRadius: 16,
+          elevation: 10,
         },
-        tabBarActiveTintColor: '#7c3aed',
-        tabBarInactiveTintColor: '#9ca3af',
+        tabBarActiveTintColor: '#6366f1', // Matches new Indigo primary
+        tabBarInactiveTintColor: '#94a3b8',
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: '600',
-          marginTop: 2,
+          fontWeight: '700',
+          marginTop: 4,
         },
         tabBarIconStyle: {
           marginBottom: -2,
@@ -78,11 +61,11 @@ export default function AttendeeLayout() {
       }}
     >
       <Tabs.Screen
-        name="register"
+        name="attendees"
         options={{
-          title: 'Register',
+          title: 'Attendees',
           headerShown: true,
-          tabBarIcon: RegisterTabIcon,
+          tabBarIcon: AttendeesTabIcon,
         }}
       />
       <Tabs.Screen
@@ -102,11 +85,24 @@ export default function AttendeeLayout() {
         }}
       />
       <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          headerShown: true,
+          tabBarIcon: ProfileTabIcon,
+        }}
+      />
+
+      <Tabs.Screen
+        name="register"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
         name="notifications"
         options={{
-          title: 'Alerts',
-          headerShown: true,
-          tabBarIcon: NotificationsTabIcon,
+          href: null,
         }}
       />
     </Tabs>

@@ -1,11 +1,10 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ActivityIndicator,
   SectionList,
-  TouchableOpacity,
   ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,9 +19,7 @@ import {
   getCandidateByEmail,
 } from '@/utils/firestore';
 import { useAuth } from '@/context/AuthContext';
-
-const FILTER_TABS = ['All', 'Keynote', 'Workshop', 'Networking', 'Technical'] as const;
-type FilterTab = (typeof FILTER_TABS)[number];
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function AgendaScreen() {
   const { qrToken } = useLocalSearchParams();
@@ -30,7 +27,6 @@ export default function AgendaScreen() {
   const insets = useSafeAreaInsets();
   const [agenda, setAgenda] = useState<EventData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState<FilterTab>('All');
 
   useEffect(() => {
     loadAgenda();
@@ -46,6 +42,17 @@ export default function AgendaScreen() {
         const candidateByEmail = await getCandidateByEmail(user.email);
         if (candidateByEmail) {
           token = candidateByEmail.qrToken;
+        }
+      }
+
+      if (!token) {
+        try {
+          const storedToken = await AsyncStorage.getItem('guestQrToken');
+          if (storedToken) {
+            token = storedToken;
+          }
+        } catch (error) {
+          console.error('Error reading from storage:', error);
         }
       }
 
@@ -68,14 +75,6 @@ export default function AgendaScreen() {
     }
   };
 
-  const filteredItems = useMemo(() => {
-    if (!agenda?.agenda) return [];
-    if (activeFilter === 'All') return agenda.agenda;
-    return agenda.agenda.filter(
-      (item) => item.tag?.toLowerCase() === activeFilter.toLowerCase()
-    );
-  }, [agenda, activeFilter]);
-
   if (loading) {
     return (
       <View style={[styles.loadingContainer, { paddingTop: insets.top }]}>
@@ -87,55 +86,17 @@ export default function AgendaScreen() {
 
   const eventsSections = agenda
     ? [
-        {
-          title: agenda.title,
-          data: filteredItems,
-          date: agenda.date,
-        },
-      ]
+      {
+        title: agenda.title,
+        data: agenda.agenda,
+        date: agenda.date,
+      },
+    ]
     : [];
 
-  return (
-    <LinearGradient colors={['#f9fafb', '#f3f4f6']} style={styles.container}>
-      {/* Search & Filter Header */}
-      {agenda && eventsSections[0]?.data.length > 0 && (
-        <View style={[styles.filterHeader, { paddingTop: insets.top + 16 }]}>
-          <View style={styles.headerTopRow}>
-            <Text style={styles.screenTitle}>Agenda</Text>
-            <TouchableOpacity style={styles.searchButton}>
-              <Ionicons name="search" size={20} color="#6b7280" />
-            </TouchableOpacity>
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filterTabsContainer}
-          >
-            {FILTER_TABS.map((tab) => (
-              <TouchableOpacity
-                key={tab}
-                style={[
-                  styles.filterTab,
-                  activeFilter === tab && styles.filterTabActive,
-                ]}
-                onPress={() => setActiveFilter(tab)}
-              >
-                <Text
-                  style={[
-                    styles.filterTabText,
-                    activeFilter === tab && styles.filterTabTextActive,
-                  ]}
-                  numberOfLines={1}
-                >
-                  {tab}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      )}
-
-      {!agenda || eventsSections[0]?.data.length === 0 ? (
+  if (!agenda || eventsSections[0]?.data.length === 0) {
+    return (
+      <LinearGradient colors={['#f9fafb', '#f3f4f6']} style={styles.container}>
         <View style={[styles.emptyContainer, { paddingTop: insets.top }]}>
           <Ionicons name="calendar-outline" size={64} color="#d1d5db" />
           <Text style={styles.emptyText}>No agenda scheduled</Text>
@@ -143,72 +104,78 @@ export default function AgendaScreen() {
             Check back later for upcoming events
           </Text>
         </View>
-      ) : (
-        <SectionList
-          sections={eventsSections}
-          keyExtractor={(item, index) => item.title + index}
-          contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 20 }]}
-          showsVerticalScrollIndicator={false}
-          stickySectionHeadersEnabled={false}
-          renderItem={({ item, section }) => (
-            <View style={styles.agendaCard}>
-              <View style={styles.timeSection}>
-                <View style={styles.timeBadge}>
-                  <Ionicons name="time" size={14} color="#667eea" />
-                  <Text style={styles.time} numberOfLines={1}>{item.time}</Text>
-                </View>
-              </View>
-              <View style={styles.contentSection}>
-                <Text style={styles.sessionTitle} numberOfLines={2}>
-                  {item.title}
-                </Text>
-                <View style={styles.speakerRow}>
-                  <Ionicons name="person-circle" size={14} color="#9ca3af" />
-                  <Text style={styles.speaker} numberOfLines={1}>{item.speaker}</Text>
-                </View>
-                <View style={styles.tagContainer}>
-                  <View style={[styles.tag, getTagStyle(item.tag)]}>
-                    <Text style={styles.tagText}>{item.tag}</Text>
+      </LinearGradient>
+    );
+  }
+
+  return (
+    <LinearGradient colors={['#f9fafb', '#f3f4f6']} style={styles.container}>
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 100 }]}
+        showsVerticalScrollIndicator={false}
+      >
+        {eventsSections.map((section, sectionIndex) => (
+          <View key={sectionIndex}>
+            {/* Event Header */}
+            <LinearGradient
+              colors={['#667eea', '#764ba2']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.eventHeader}
+            >
+              <View style={styles.eventHeaderContent}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={styles.eventTitle} numberOfLines={2}>{section.title}</Text>
+                  <View style={styles.eventDateRow}>
+                    <Ionicons name="calendar" size={14} color="rgba(255,255,255,0.8)" />
+                    <Text style={styles.eventDate} numberOfLines={1}>
+                      {section.date?.toDate ? section.date.toDate().toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        month: 'long',
+                        day: 'numeric',
+                      }) : 'Date TBA'}
+                    </Text>
                   </View>
                 </View>
+                <View style={styles.eventBadge}>
+                  <Ionicons name="sparkles" size={20} color="#fff" />
+                </View>
               </View>
-              <View style={styles.rightArrow}>
-                <Ionicons name="chevron-forward" size={18} color="#d1d5db" />
-              </View>
-            </View>
-          )}
-          renderSectionHeader={({ section: { title, date } }) => (
-            <View>
-              <LinearGradient
-                colors={['#667eea', '#764ba2']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.eventHeader}
-              >
-                <View style={styles.eventHeaderContent}>
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={styles.eventTitle} numberOfLines={2}>{title}</Text>
-                    <View style={styles.eventDateRow}>
-                      <Ionicons name="calendar" size={14} color="rgba(255,255,255,0.8)" />
-                      <Text style={styles.eventDate} numberOfLines={1}>
-                        {date?.toDate ? date.toDate().toLocaleDateString('en-US', {
-                          weekday: 'long',
-                          month: 'long',
-                          day: 'numeric',
-                        }) : 'Date TBA'}
-                      </Text>
+            </LinearGradient>
+
+            {/* Agenda Items */}
+            {section.data.map((item, index) => (
+              <View key={index} style={styles.agendaCard}>
+                <View style={styles.timeSection}>
+                  <View style={styles.timeBadge}>
+                    <Ionicons name="time" size={14} color="#667eea" />
+                    <Text style={styles.time} numberOfLines={1}>{item.time}</Text>
+                  </View>
+                </View>
+                <View style={styles.contentSection}>
+                  <Text style={styles.sessionTitle} numberOfLines={2}>
+                    {item.title}
+                  </Text>
+                  <View style={styles.speakerRow}>
+                    <Ionicons name="person-circle" size={14} color="#9ca3af" />
+                    <Text style={styles.speaker} numberOfLines={1}>{item.speaker}</Text>
+                  </View>
+                  <View style={styles.tagContainer}>
+                    <View style={[styles.tag, getTagStyle(item.tag)]}>
+                      <Text style={styles.tagText}>{item.tag}</Text>
                     </View>
                   </View>
-                  <View style={styles.eventBadge}>
-                    <Ionicons name="sparkles" size={20} color="#fff" />
-                  </View>
                 </View>
-              </LinearGradient>
-            </View>
-          )}
-          renderSectionFooter={() => <View style={styles.sectionDivider} />}
-        />
-      )}
+                <View style={styles.rightArrow}>
+                  <Ionicons name="chevron-forward" size={18} color="#d1d5db" />
+                </View>
+              </View>
+            ))}
+
+            {sectionIndex < eventsSections.length - 1 && <View style={styles.sectionDivider} />}
+          </View>
+        ))}
+      </ScrollView>
     </LinearGradient>
   );
 }
@@ -229,6 +196,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: 20,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -240,9 +210,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6b7280',
     fontWeight: '600',
-  },
-  listContent: {
-    paddingBottom: 20,
   },
   emptyContainer: {
     flex: 1,
@@ -266,7 +233,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 20,
     marginHorizontal: 16,
-    marginTop: 20,
+    marginTop: 0,
     borderRadius: 16,
     shadowColor: '#667eea',
     shadowOffset: { width: 0, height: 4 },
@@ -405,57 +372,5 @@ const styles = StyleSheet.create({
   sectionDivider: {
     height: 12,
     backgroundColor: 'transparent',
-  },
-  // Filter Header Styles
-  filterHeader: {
-    paddingHorizontal: 16,
-    paddingBottom: 4,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  headerTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  screenTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#1f2937',
-  },
-  searchButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f3f4f6',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  filterTabsContainer: {
-    paddingRight: 16,
-    gap: 8,
-    paddingBottom: 12,
-  },
-  filterTab: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#f3f4f6',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  filterTabActive: {
-    backgroundColor: '#7c3aed',
-    borderColor: '#7c3aed',
-  },
-  filterTabText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6b7280',
-  },
-  filterTabTextActive: {
-    color: '#fff',
   },
 });
