@@ -226,7 +226,7 @@ export default function RegistrationScreen() {
               </View>
               <Text style={styles.headerTitle}>Register</Text>
               <Text style={styles.headerSubtitle}>
-                EventPass PrivateSummit
+                ConnectHQ PrivateSummit
               </Text>
             </View>
 

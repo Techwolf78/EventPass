@@ -14,7 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
 import * as Sharing from 'expo-sharing';
-import { getCheckInStatus, CheckInStatusResult, getCandidateByQRToken, getCandidateByEmail, Candidate } from '@/utils/firestore';
+import { getCheckInStatus, CheckInStatusResult, getCandidateByQRToken, getCandidateByEmail, Candidate, subscribeToCheckInStatus } from '../../utils/firestore';
 import { useAuth } from '@/context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAttendeeTheme } from '@/hooks/use-attendee-theme';
@@ -36,10 +36,12 @@ export default function QRPassScreen() {
   const { palette } = useAttendeeTheme(activeToken || undefined);
 
   useEffect(() => {
-    const fetchData = async () => {
+    let unsubscribeStatus: (() => void) | null = null;
+
+    const setupData = async () => {
       let token: string | null = (qrToken as string) || null;
 
-      // If no QR token in route params, fetch from Firestore using auth email
+      // 1. Resolve Token
       if (!token && user?.email) {
         try {
           const candidateByEmail = await getCandidateByEmail(user.email);
@@ -69,21 +71,26 @@ export default function QRPassScreen() {
         return;
       }
 
+      // 2. Fetch Candidate Info Once
       try {
-        const [status, candidateData] = await Promise.all([
-          getCheckInStatus(token),
-          getCandidateByQRToken(token),
-        ]);
-        setCheckInStatus(status);
+        const candidateData = await getCandidateByQRToken(token);
         setCandidate(candidateData);
       } catch (error) {
-        console.error('Error fetching data:', error);
-      } finally {
-        setLoading(false);
+        console.error('Error fetching candidate data:', error);
       }
+
+      // 3. Listen for Check-In Status in Real-Time
+      unsubscribeStatus = subscribeToCheckInStatus(token, (status) => {
+        setCheckInStatus(status);
+        setLoading(false);
+      });
     };
 
-    fetchData();
+    setupData();
+
+    return () => {
+      if (unsubscribeStatus) unsubscribeStatus();
+    };
   }, [qrToken, user]);
 
   if (!activeToken) {
@@ -210,7 +217,7 @@ export default function QRPassScreen() {
         qrRef.toDataURL((dataURL: string) => {
           Sharing.shareAsync(dataURL, {
             mimeType: 'image/png',
-            dialogTitle: 'Save your EventPass QR Code',
+            dialogTitle: 'Save your ConnectHQ QR Code',
           });
         });
       }
@@ -309,11 +316,7 @@ export default function QRPassScreen() {
 
           {/* Action Buttons */}
           <View style={styles.buttonGroup}>
-            <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: palette.primary, shadowColor: palette.primary }]} onPress={handleSaveToPhotos}>
-              <Ionicons name="download" size={20} color="#fff" />
-              <Text style={styles.primaryBtnText}>Save to Photos</Text>
-            </TouchableOpacity>
-
+           
             <TouchableOpacity
               style={[
                 styles.secondaryBtn,

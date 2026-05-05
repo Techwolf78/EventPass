@@ -46,38 +46,56 @@ export default function AdminLayout() {
           backgroundColor: 'transparent',
         },
         tabBarStyle: {
-          backgroundColor: '#1e293b', // Slate 800
-          borderTopWidth: 0,
-          height: 70,
+          backgroundColor: '#1e293b',
+          borderTopWidth: 1,
+          borderTopColor: '#334155',
+          height: Platform.OS === 'ios' ? 90 : 75 + (insets.bottom > 0 ? insets.bottom : 10),
           paddingTop: 8,
-          paddingBottom: 10,
+          paddingBottom: Platform.OS === 'ios' ? insets.bottom : (insets.bottom > 0 ? insets.bottom : 10),
           position: 'absolute',
-          bottom: insets.bottom || 16,
-          left: isLarge ? '50%' : 16,
-          right: isLarge ? 'auto' : 16,
-          width: isLarge ? 800 : 'auto',
-          transform: isLarge ? [{ translateX: -400 }] : [],
-          borderRadius: 32,
-          shadowColor: '#0f172a',
-          shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.3,
-          shadowRadius: 16,
-          elevation: 10,
+          bottom: 0,
+          left: 0,
+          right: 0,
+          width: '100%',
+          alignSelf: 'center',
+          shadowColor: '#000',
+          ...Platform.select({
+            web: {
+              boxShadow: '0 -4px 10px rgba(0,0,0,0.3)',
+            },
+            default: {
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: -4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 10,
+            },
+          }),
+          elevation: 30,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 4,
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
         },
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: '700',
-          marginTop: 4,
+          marginTop: 2,
+          paddingHorizontal: 2,
+          width: '100%',
         },
         tabBarIconStyle: {
-          marginBottom: -2,
+          marginBottom: 2,
         },
+        tabBarHideOnKeyboard: true,
       }}
     >
       <Tabs.Screen
         name="scanner"
         options={{
           title: 'Scanner',
+          headerRight: () => null,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="qr-code" size={size} color={color} />
           ),

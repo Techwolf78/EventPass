@@ -56,7 +56,11 @@ export default function QRScannerScreen() {
   };
 
   const handleBarCodeScanned = async ({ data }: { data: string }) => {
-    if (processing || !selectedEventId) return;
+    if (processing) return;
+    if (!selectedEventId) {
+      Alert.alert('No Event Selected', 'Please ensure an event is selected before scanning.');
+      return;
+    }
 
     setProcessing(true);
     setScanned(true);
@@ -149,12 +153,17 @@ export default function QRScannerScreen() {
             <Text style={styles.liveText}>Live</Text>
           </View>
         </View>
-        {events.length > 0 && (
+        {events.length > 0 ? (
           <View style={styles.eventBadge}>
             <Ionicons name="calendar" size={14} color="#8B5CF6" />
             <Text style={styles.eventBadgeText} numberOfLines={1}>
               {events.find((e) => e.id === selectedEventId)?.title || 'Event'}
             </Text>
+          </View>
+        ) : (
+          <View style={[styles.eventBadge, { borderColor: '#ef4444' }]}>
+            <Ionicons name="alert-circle" size={14} color="#ef4444" />
+            <Text style={[styles.eventBadgeText, { color: '#ef4444' }]}>No Events</Text>
           </View>
         )}
       </View>
@@ -164,7 +173,13 @@ export default function QRScannerScreen() {
         <CameraView
           style={styles.camera}
           facing="back"
-          onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+          onBarcodeScanned={scanned ? undefined : (event) => {
+            console.log('Barcode scanned:', event.data);
+            handleBarCodeScanned(event);
+          }}
+          barcodeScannerSettings={{
+            barcodeTypes: ['qr'],
+          }}
         />
 
         <View style={styles.overlay} pointerEvents="none">

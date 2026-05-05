@@ -303,6 +303,62 @@ export interface CheckInStatusResult {
   candidateEmail?: string;
 }
 
+/**
+ * Subscribe to check-in status updates
+ */
+export function subscribeToCheckInStatus(
+  qrToken: string,
+  callback: (status: CheckInStatusResult) => void
+): () => void {
+  let unsubscribeAttendance: (() => void) | null = null;
+
+  const findCandidateAndListen = async () => {
+    try {
+      const candidateQuery = query(
+        collection(db, 'candidates'),
+        where('qrToken', '==', qrToken)
+      );
+      const candidateSnap = await getDocs(candidateQuery);
+
+      if (candidateSnap.empty) {
+        callback({ hasCheckedIn: false });
+        return;
+      }
+
+      const candidateDoc = candidateSnap.docs[0];
+      const candidateData = candidateDoc.data() as Candidate;
+
+      const attendanceQuery = query(
+        collection(db, 'attendance'),
+        where('candidateId', '==', candidateDoc.id)
+      );
+
+      unsubscribeAttendance = onSnapshot(attendanceQuery, (snapshot) => {
+        if (!snapshot.empty) {
+          const doc = snapshot.docs[0].data();
+          callback({
+            hasCheckedIn: true,
+            checkedInAt: doc.scannedAt,
+            candidateName: candidateData.name,
+            candidateEmail: candidateData.email,
+          });
+        } else {
+          callback({ hasCheckedIn: false });
+        }
+      });
+    } catch (error) {
+      console.error('Error in subscribeToCheckInStatus:', error);
+      callback({ hasCheckedIn: false });
+    }
+  };
+
+  findCandidateAndListen();
+
+  return () => {
+    if (unsubscribeAttendance) unsubscribeAttendance();
+  };
+}
+
 export async function getCheckInStatus(
   qrToken: string,
   eventId?: string
@@ -371,7 +427,7 @@ export async function getCheckInStatus(
  */
 export async function getEvents(): Promise<EventData[]> {
   try {
-    const snapshot = await getDocs(collection(db, 'events'));
+    const snapshot = await getDocs(collection(db, 'agenda'));
     return snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
@@ -565,6 +621,40 @@ export async function getGuestByQRToken(qrToken: string): Promise<GuestListItem 
 }
 
 /**
+ * Get total candidate count by enrollment type
+ */
+export async function getCandidateCountByType(type: 'masterclass' | 'event'): Promise<number> {
+  try {
+    const q = query(
+      collection(db, 'candidates'),
+      where('enrollmentType', '==', type)
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.size;
+  } catch (error) {
+    console.error('Error getting candidate count:', error);
+    return 0;
+  }
+}
+
+/**
+ * Subscribe to candidate count by type
+ */
+export function subscribeToCandidateCount(
+  type: 'masterclass' | 'event',
+  callback: (count: number) => void
+): () => void {
+  const q = query(
+    collection(db, 'candidates'),
+    where('enrollmentType', '==', type)
+  );
+
+  return onSnapshot(q, (snapshot) => {
+    callback(snapshot.size);
+  });
+}
+
+/**
  * Get candidate by email (used after login to retrieve QR token)
  */
 export async function getCandidateByEmail(email: string): Promise<Candidate | null> {
@@ -610,14 +700,30 @@ export function subscribeToAttendanceCount(
  * Subscribe to check-in log for admin panel
  */
 export function subscribeToCheckInLog(
-  eventId: string,
-  callback: (records: AttendanceRecord[]) => void
+  arg1: string | ((records: AttendanceRecord[]) => void),
+  arg2?: (records: AttendanceRecord[]) => void
 ): () => void {
-  const q = query(
-    collection(db, 'attendance'),
-    where('eventId', '==', eventId),
-    orderBy('scannedAt', 'desc')
-  );
+  let callback: (records: AttendanceRecord[]) => void;
+  let eventId: string | undefined;
+
+  if (typeof arg1 === 'function') {
+    callback = arg1;
+    eventId = undefined;
+  } else {
+    eventId = arg1;
+    callback = arg2!;
+  }
+
+  const attendanceRef = collection(db, 'attendance');
+  let q = query(attendanceRef, orderBy('scannedAt', 'desc'));
+
+  if (eventId) {
+    q = query(
+      attendanceRef,
+      where('eventId', '==', eventId),
+      orderBy('scannedAt', 'desc')
+    );
+  }
 
   return onSnapshot(q, (snapshot) => {
     const records = snapshot.docs.map((doc) => ({

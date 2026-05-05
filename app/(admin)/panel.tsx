@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
-  FlatList,
   Platform,
   ScrollView,
 } from 'react-native';
@@ -18,8 +17,10 @@ import {
   AttendanceRecord,
   Candidate,
   getCandidateById,
-  getEvents,
+  getMasterclassAgenda,
+  getEventAgenda,
   EventData,
+  subscribeToCandidateCount,
 } from '@/utils/firestore';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -39,10 +40,16 @@ const getAvatarColor = (name: string) => {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 };
 
+type EnrollmentType = 'masterclass' | 'event';
+
+interface AgendaWithType extends EventData {
+  type: EnrollmentType;
+}
+
 export default function AdminPanelScreen() {
   const insets = useSafeAreaInsets();
-  const [events, setEvents] = useState<EventData[]>([]);
-  const [selectedEventId, setSelectedEventId] = useState<string>('');
+  const [agendas, setAgendas] = useState<AgendaWithType[]>([]);
+  const [selectedType, setSelectedType] = useState<EnrollmentType>('masterclass');
   const [count, setCount] = useState(0);
   const [checkInLog, setCheckInLog] = useState<AttendanceRecord[]>([]);
   const [candidates, setCandidates] = useState<{
@@ -50,35 +57,69 @@ export default function AdminPanelScreen() {
   }>({});
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [selectedAgendaTitle, setSelectedAgendaTitle] = useState('');
+  const [registeredCount, setRegisteredCount] = useState(0);
+
+  const currentAgenda = agendas.find((a) => a.type === selectedType);
 
   useEffect(() => {
-    loadEvents();
+    loadAgendas();
   }, []);
 
-  const loadEvents = async () => {
+  const loadAgendas = async () => {
     setLoading(true);
-    const eventsList = await getEvents();
-    setEvents(eventsList);
-    if (eventsList.length > 0) {
-      setSelectedEventId(eventsList[0].id);
+    try {
+      const [masterclassAgenda, eventAgenda] = await Promise.all([
+        getMasterclassAgenda(),
+        getEventAgenda(),
+      ]);
+
+      const agendasList: AgendaWithType[] = [
+        {
+          id: masterclassAgenda?.id || 'default-masterclass',
+          title: masterclassAgenda?.title || 'Masterclass',
+          date: masterclassAgenda?.date || null,
+          type: 'masterclass',
+        },
+        {
+          id: eventAgenda?.id || 'default-event',
+          title: eventAgenda?.title || 'General Event',
+          date: eventAgenda?.date || null,
+          type: 'event',
+        }
+      ];
+      
+      setAgendas(agendasList);
+      
+      // Auto-select based on availability or default to first
+      if (!selectedType) {
+        setSelectedType('masterclass');
+        setSelectedAgendaTitle(agendasList[0].title);
+      } else {
+        const current = agendasList.find(a => a.type === selectedType);
+        if (current) setSelectedAgendaTitle(current.title);
+      }
+    } catch (error) {
+      console.error('Error loading agendas:', error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
-    if (!selectedEventId) return;
+    if (!selectedType) return;
 
-    setCount(0);
-    setCheckInLog([]);
+    // Subscribe to candidate count for the selected type (Masterclass vs Event)
+    const unsubscribeCandidateCount = subscribeToCandidateCount(selectedType, setRegisteredCount);
 
-    const unsubscribeCount = subscribeToAttendanceCount(selectedEventId, setCount);
-    const unsubscribeLog = subscribeToCheckInLog(selectedEventId, setCheckInLog);
+    // Subscribe to ALL check-ins globally
+    const unsubscribeLog = subscribeToCheckInLog(setCheckInLog);
 
     return () => {
-      unsubscribeCount();
+      unsubscribeCandidateCount();
       unsubscribeLog();
     };
-  }, [selectedEventId]);
+  }, [selectedType]);
 
   useEffect(() => {
     const newCandidateIds = checkInLog
@@ -101,11 +142,32 @@ export default function AdminPanelScreen() {
     }
   }, [checkInLog, candidates]);
 
+  // Intelligent filter: Categorize check-ins by the candidate's actual enrollment type
+  // AND ensure each candidate only appears once in the list (de-duplication)
+  const filteredLog = useMemo(() => {
+    const seen = new Set();
+    return checkInLog.filter(record => {
+      if (seen.has(record.candidateId)) return false;
+      
+      const candidateInfo = candidates[record.candidateId];
+      if (!candidateInfo) return true; // Keep it while loading, will be filtered once data arrives
+      
+      const isMatch = candidateInfo.enrollmentType === selectedType;
+      if (isMatch) {
+        seen.add(record.candidateId);
+        return true;
+      }
+      return false;
+    });
+  }, [checkInLog, candidates, selectedType]);
+
+  // The actual count of UNIQUE checked-in candidates for this tab
+  const checkedInCount = useMemo(() => filteredLog.length, [filteredLog]);
+
   const attendanceRate = useMemo(() => {
-    const total = Math.max(checkInLog.length, count);
-    if (total === 0) return 0;
-    return Math.round((count / total) * 100);
-  }, [count, checkInLog.length]);
+    if (registeredCount === 0) return 0;
+    return Math.round((checkedInCount / registeredCount) * 100);
+  }, [checkedInCount, registeredCount]);
 
   const handleExport = async () => {
     if (checkInLog.length === 0) {
@@ -115,19 +177,20 @@ export default function AdminPanelScreen() {
 
     setExporting(true);
     try {
-      let csvContent = 'Name,Email,Scanned At,Scanned By\n';
+      let csvContent = 'Name,Email,Enrollment Type,Scanned At,Scanned By\n';
 
       for (const record of checkInLog) {
         const candidateInfo = candidates[record.candidateId];
         if (candidateInfo) {
           const name = (candidateInfo.name || 'N/A').replace(/"/g, '""');
           const email = (candidateInfo.email || 'N/A').replace(/"/g, '""');
+          const type = (candidateInfo.enrollmentType || 'N/A').toUpperCase();
           const scannedAt = record.scannedAt.toDate().toISOString();
-          csvContent += `"${name}","${email}","${scannedAt}","${record.scannedBy}"\n`;
+          csvContent += `"${name}","${email}","${type}","${scannedAt}","${record.scannedBy}"\n`;
         }
       }
 
-      const fileName = `checkin_${selectedEventId}_${new Date().getTime()}.csv`;
+      const fileName = `checkin_${selectedType}_${new Date().getTime()}.csv`;
 
       if (Platform.OS === 'web') {
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -154,7 +217,7 @@ export default function AdminPanelScreen() {
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(filePath, {
           mimeType: 'text/csv',
-          dialogTitle: `Check-in records for ${events.find((e) => e.id === selectedEventId)?.title}`,
+          dialogTitle: `Check-in records for ${selectedType.toUpperCase()}`,
         });
       } else {
         Alert.alert('Success', `CSV saved to: ${filePath}`);
@@ -179,7 +242,6 @@ export default function AdminPanelScreen() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        stickyHeaderIndices={[1]}
       >
         {/* Header */}
         <View style={styles.header}>
@@ -200,51 +262,91 @@ export default function AdminPanelScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Event Selector */}
-        {events.length > 0 && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
+        {/* Type Selector - Masterclass / Event */}
+        <View
             style={styles.eventSelectorRow}
-            contentContainerStyle={styles.eventSelectorContent}
           >
-            {events.map((event) => (
+            <View style={styles.eventSelectorContent}>
+              {agendas.map((agenda) => (
               <TouchableOpacity
-                key={event.id}
+                key={agenda.type}
                 style={[
                   styles.eventTab,
-                  selectedEventId === event.id && styles.eventTabActive,
+                  selectedType === agenda.type && styles.eventTabActive,
                 ]}
-                onPress={() => setSelectedEventId(event.id)}
+                onPress={() => {
+                  setSelectedType(agenda.type);
+                  setSelectedAgendaTitle(agenda.title);
+                }}
               >
+                <Ionicons
+                  name={agenda.type === 'masterclass' ? 'school' : 'people'}
+                  size={14}
+                  color={selectedType === agenda.type ? '#fff' : '#94a3b8'}
+                  style={{ marginRight: 6 }}
+                />
                 <Text style={[
                   styles.eventTabText,
-                  selectedEventId === event.id && styles.eventTabTextActive,
+                  selectedType === agenda.type && styles.eventTabTextActive,
                 ]} numberOfLines={1}>
-                  {event.title}
+                  {agenda.type.charAt(0).toUpperCase() + agenda.type.slice(1)}
                 </Text>
               </TouchableOpacity>
             ))}
-          </ScrollView>
+            </View>
+          </View>
+
+        {/* Event Info Card */}
+        {currentAgenda && (
+          <View style={styles.eventInfoCard}>
+            <LinearGradient
+              colors={['#8B5CF6', '#7C3AED']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.eventInfoGradient}
+            >
+              <View style={styles.eventInfoContent}>
+                <View style={styles.eventIconContainer}>
+                  <Ionicons
+                    name={selectedType === 'masterclass' ? 'school' : 'calendar'}
+                    size={24}
+                    color="#fff"
+                  />
+                </View>
+                <View style={styles.eventInfoText}>
+                  <Text style={styles.eventInfoTitle}>{currentAgenda.title}</Text>
+                  <Text style={styles.eventInfoDate}>
+                    {currentAgenda.date?.toDate
+                      ? currentAgenda.date.toDate().toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        month: 'long',
+                        day: 'numeric',
+                      })
+                      : 'Date TBA'}
+                  </Text>
+                </View>
+              </View>
+            </LinearGradient>
+          </View>
         )}
 
         {/* Stats Cards */}
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
             <Text style={[styles.statNumber, styles.statNumberPurple]}>
-              {checkInLog.length}
+              {registeredCount}
             </Text>
             <Text style={styles.statLabel}>Registered</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={[styles.statNumber, styles.statNumberGreen]}>
-              {count}
+              {checkedInCount}
             </Text>
             <Text style={styles.statLabel}>Checked in</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={[styles.statNumber, styles.statNumberOrange]}>
-              {Math.max(0, checkInLog.length - count)}
+              {Math.max(0, registeredCount - checkedInCount)}
             </Text>
             <Text style={styles.statLabel}>Not yet</Text>
           </View>
@@ -268,7 +370,7 @@ export default function AdminPanelScreen() {
 
         {/* Section Header */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>LIVE CHECK-IN LOG</Text>
+          <Text style={styles.sectionTitle}>LIVE CHECK-IN LOG ({selectedType.toUpperCase()})</Text>
           <View style={styles.liveBadge}>
             <View style={styles.liveDot} />
             <Text style={styles.liveText}>Live</Text>
@@ -277,21 +379,21 @@ export default function AdminPanelScreen() {
 
         {/* Check-in Log */}
         <View style={styles.logCard}>
-          {checkInLog.length === 0 ? (
+          {filteredLog.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Ionicons name="scan" size={48} color="#d1d5db" />
-              <Text style={styles.emptyText}>No check-ins yet</Text>
+              <Text style={styles.emptyText}>No {selectedType} check-ins</Text>
               <Text style={styles.emptySubtext}>
-                Scan QR codes to see check-ins here
+                Candidates will appear here after scanning
               </Text>
             </View>
           ) : (
-            checkInLog.slice(0, 15).map((item, idx) => {
+            filteredLog.slice(0, 15).map((item, idx) => {
               const candidateInfo = candidates[item.candidateId];
               const name = candidateInfo?.name || 'Loading...';
-              const role = candidateInfo?.role || 'Attendee';
+              const role = candidateInfo?.enrollmentType === 'masterclass' ? 'Masterclass Attendee' : 'Event Attendee';
               const time = item.scannedAt?.toDate
-                ? item.scannedAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                ? item.scannedAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
                 : 'Just now';
               const isCheckedIn = true;
 
@@ -301,7 +403,7 @@ export default function AdminPanelScreen() {
                     <Text style={styles.logAvatarText}>{getInitials(name)}</Text>
                   </View>
                   <View style={styles.logInfo}>
-                    <Text style={styles.logName} numberOfLines={1}>{name}</Text>
+                    <Text style={styles.logName}>{name}</Text>
                     <Text style={styles.logRole}>{role}</Text>
                   </View>
                   <View style={styles.logRight}>
@@ -319,7 +421,7 @@ export default function AdminPanelScreen() {
                         styles.logStatusText,
                         { color: isCheckedIn ? '#10B981' : '#F59E0B' },
                       ]}>
-                        {isCheckedIn ? 'In' : 'Not yet'}
+                        {isCheckedIn ? 'Checked In' : 'Pending'}
                       </Text>
                     </View>
                   </View>
@@ -354,10 +456,10 @@ export default function AdminPanelScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a', // slate-900
+    backgroundColor: '#0f172a',
   },
   scrollContent: {
-    paddingBottom: 100, // accommodate floating tab bar
+    paddingBottom: 100,
     maxWidth: 800,
     alignSelf: 'center',
     width: '100%',
@@ -376,12 +478,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 26,
     fontWeight: '800',
-    color: '#f8fafc', // slate-50
+    color: '#f8fafc',
   },
   headerSubtitle: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#8b5cf6', // neon purple
+    color: '#8b5cf6',
     marginTop: 4,
     letterSpacing: 1,
   },
@@ -389,7 +491,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#1e293b', // slate-800
+    backgroundColor: '#1e293b',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
@@ -397,12 +499,12 @@ const styles = StyleSheet.create({
   },
   // Event Selector
   eventSelectorRow: {
-    maxHeight: 44,
+    paddingHorizontal: 20,
     marginBottom: 20,
   },
   eventSelectorContent: {
-    paddingHorizontal: 20,
-    gap: 10,
+    flexDirection: 'row',
+    gap: 12,
   },
   eventTab: {
     backgroundColor: '#1e293b',
@@ -411,6 +513,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#334155',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   eventTabActive: {
     backgroundColor: '#8b5cf6',
@@ -429,6 +533,43 @@ const styles = StyleSheet.create({
   eventTabTextActive: {
     color: '#ffffff',
     fontWeight: '700',
+  },
+  // Event Info Card
+  eventInfoCard: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  eventInfoGradient: {
+    padding: 16,
+  },
+  eventInfoContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  eventIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  eventInfoText: {
+    flex: 1,
+  },
+  eventInfoTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 4,
+  },
+  eventInfoDate: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontWeight: '500',
   },
   // Stats
   statsRow: {
@@ -657,9 +798,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     shadowColor: '#8b5cf6',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 6px 12px rgba(139, 92, 246, 0.4)',
+      },
+      default: {
+        shadowColor: '#8b5cf6',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.4,
+        shadowRadius: 12,
+      },
+    }),
     elevation: 8,
   },
   exportBtnDisabled: {

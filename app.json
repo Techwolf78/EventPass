@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "EventPass",
+    "name": "ConnectHQ",
     "slug": "EventPass",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "eventpass",
+    "icon": "./assets/images/connecthq-square.png",
+    "scheme": "connecthq",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -14,14 +14,14 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundColor": "#0f172a",
+        "foregroundImage": "./assets/images/connecthq-square.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "Event.Pass",
+      "package": "com.connecthq.app",
       "googleServicesFile": "./google-services.json"
     },
     "web": {
@@ -33,13 +33,19 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
+          "image": "./assets/images/connecthq.png",
+          "imageWidth": 240,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#0f172a",
           "dark": {
-            "backgroundColor": "#000000"
+            "backgroundColor": "#0f172a"
           }
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow ConnectHQ to use the camera to scan attendee QR codes."
         }
       ]
     ],
@@ -52,6 +58,7 @@
       "eas": {
         "projectId": "bf6a2c87-f3b5-4576-a915-87a188d1c6c9"
       }
-    }
+    },
+    "owner": "vanshsingla1601"
   }
 }

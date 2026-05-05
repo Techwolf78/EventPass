@@ -9,6 +9,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -97,11 +98,15 @@ export default function LoginScreen() {
           <View style={styles.container}>
             {/* Logo Section */}
             <View style={styles.logoSection}>
-              <View style={styles.logoBg}>
-                <Ionicons name="ticket" size={48} color="#fff" />
+              <View style={styles.logoContainer}>
+                <Image 
+                  source={require('../../assets/images/connecthq.png')} 
+                  style={styles.logoImage}
+                  resizeMode="contain"
+                />
               </View>
-              <Text style={styles.title}>EventPass</Text>
-              <Text style={styles.tagline}>Your smart pass for internal events</Text>
+              <Text style={styles.title}>ConnectHQ</Text>
+              <Text style={styles.tagline}>Unifying your event experience</Text>
             </View>
 
             {/* Form Section */}
@@ -128,7 +133,7 @@ export default function LoginScreen() {
               {activeTab === 'guest' ? (
                 <>
                   <Text style={styles.formTitle}>Guest Login</Text>
-                  <Text style={styles.formSubtitle}>EventPass</Text>
+                  <Text style={styles.formSubtitle}>ConnectHQ</Text>
 
                   <View style={styles.inputGroup}>
                     <Text style={styles.label}>FULL NAME</Text>
@@ -175,7 +180,7 @@ export default function LoginScreen() {
               ) : (
                 <>
                   <Text style={styles.formTitle}>Sign In</Text>
-                  <Text style={styles.formSubtitle}>EventPass</Text>
+                  <Text style={styles.formSubtitle}>ConnectHQ</Text>
 
                   {/* Email Input */}
                   <View style={styles.inputGroup}>
@@ -268,15 +273,18 @@ const styles = StyleSheet.create({
   },
   logoSection: {
     alignItems: 'center',
+    marginBottom: 20,
   },
-  logoBg: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  logoContainer: {
+    width: 120,
+    height: 120,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
+  },
+  logoImage: {
+    width: '100%',
+    height: '100%',
   },
   title: {
     fontSize: 36,
