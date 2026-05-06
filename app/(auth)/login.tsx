@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -10,59 +10,63 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { auth } from '@/config/firebase';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { loginGuestByEmail } from '@/utils/firestore';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import { auth } from "@/config/firebase";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { loginGuestByEmail } from "@/utils/firestore";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function LoginScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [activeTab, setActiveTab] = useState<'guest' | 'login'>('guest');
-  const [guestName, setGuestName] = useState('');
-  const [guestEmail, setGuestEmail] = useState('');
+  const [activeTab, setActiveTab] = useState<"guest" | "login">("guest");
+  const [guestName, setGuestName] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
   const [guestLoading, setGuestLoading] = useState(false);
 
   const handleSignIn = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert("Error", "Please fill in all fields");
       return;
     }
 
     setLoading(true);
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password,
+      );
       const firebaseUser = userCredential.user;
-      
+
       // Redirect based on user type after successful sign-in
-      if (firebaseUser.email === 'admin@test.com') {
-        router.replace('/(admin)/panel');
+      if (firebaseUser.email === "admin@test.com") {
+        router.replace("/(admin)/panel");
       } else {
-        router.replace('/(attendee)/agenda');
+        router.replace("/(attendee)/agenda");
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      Alert.alert("Error", error.message);
     } finally {
       setLoading(false);
     }
   };
 
   const handleGoogleSignIn = async () => {
-    Alert.alert('Google Sign In', 'Coming soon!');
+    Alert.alert("Google Sign In", "Coming soon!");
   };
 
   const handleGuestLogin = async () => {
     if (!guestName.trim() || !guestEmail.trim()) {
-      Alert.alert('Error', 'Please enter your name and email');
+      Alert.alert("Error", "Please enter your name and email");
       return;
     }
 
@@ -70,402 +74,173 @@ export default function LoginScreen() {
     try {
       const result = await loginGuestByEmail(guestEmail.trim());
       if (result.success && result.qrToken) {
-        await AsyncStorage.setItem('guestQrToken', result.qrToken);
+        await AsyncStorage.setItem("guestQrToken", result.qrToken);
         router.replace({
-          pathname: '/(attendee)/qr-pass',
+          pathname: "/(attendee)/qr-pass",
           params: { qrToken: result.qrToken },
         });
         return;
       }
 
-      if (result.message === 'Not on the guest list') {
-        Alert.alert('Not Registered', 'This email is not in our guest list. Please contact the organizer.');
+      if (result.message === "Not on the guest list") {
+        Alert.alert(
+          "Not Registered",
+          "This email is not in our guest list. Please contact the organizer.",
+        );
       } else {
-        Alert.alert('Login Failed', result.message || 'We could not log you in. Please try again.');
+        Alert.alert(
+          "Login Failed",
+          result.message || "We could not log you in. Please try again.",
+        );
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Login failed. Please try again.');
+      Alert.alert("Error", error.message || "Login failed. Please try again.");
     } finally {
       setGuestLoading(false);
     }
   };
 
-
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-      <LinearGradient colors={['#6366f1', '#8b5cf6']} style={styles.gradient}>
-        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top, paddingBottom: insets.bottom + 20 }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-          <View style={styles.container}>
-            {/* Logo Section */}
-            <View style={styles.logoSection}>
-              <View style={styles.logoContainer}>
-                <Image 
-                  source={require('../../assets/images/connecthq.png')} 
-                  style={styles.logoImage}
-                  resizeMode="contain"
-                />
-              </View>
-              <Text style={styles.title}>ConnectHQ</Text>
-              <Text style={styles.tagline}>Unifying your event experience</Text>
-            </View>
-
-            {/* Form Section */}
-            <View style={styles.formContainer}>
-              <View style={styles.toggleRow}>
-                <TouchableOpacity
-                  style={[styles.toggleButton, activeTab === 'guest' && styles.toggleButtonActive]}
-                  onPress={() => setActiveTab('guest')}
-                >
-                  <Text style={[styles.toggleText, activeTab === 'guest' && styles.toggleTextActive]}>
-                    Guest Login
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.toggleButton, activeTab === 'login' && styles.toggleButtonActive]}
-                  onPress={() => setActiveTab('login')}
-                >
-                  <Text style={[styles.toggleText, activeTab === 'login' && styles.toggleTextActive]}>
-                    Login
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {activeTab === 'guest' ? (
-                <>
-                  <Text style={styles.formTitle}>Guest Login</Text>
-                  <Text style={styles.formSubtitle}>ConnectHQ</Text>
-
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.label}>FULL NAME</Text>
-                    <View style={styles.inputWrapper}>
-                      <Ionicons name="person" size={20} color="#818cf8" style={styles.inputIcon} />
-                      <TextInput
-                        style={styles.input}
-                        placeholder="Priya Sharma"
-                        placeholderTextColor="#b4b4b4"
-                        value={guestName}
-                        onChangeText={setGuestName}
-                        editable={!guestLoading}
-                      />
-                    </View>
-                  </View>
-
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.label}>WORK EMAIL</Text>
-                    <View style={styles.inputWrapper}>
-                      <Ionicons name="mail" size={20} color="#818cf8" style={styles.inputIcon} />
-                      <TextInput
-                        style={styles.input}
-                        placeholder="priya@company.in"
-                        placeholderTextColor="#b4b4b4"
-                        value={guestEmail}
-                        onChangeText={setGuestEmail}
-                        autoCapitalize="none"
-                        keyboardType="email-address"
-                        editable={!guestLoading}
-                      />
-                    </View>
-                  </View>
-
-                  <TouchableOpacity
-                    style={[styles.button, guestLoading && styles.buttonDisabled]}
-                    onPress={handleGuestLogin}
-                    disabled={guestLoading}
-                  >
-                    <Text style={styles.buttonText}>
-                      {guestLoading ? 'Loading...' : 'Continue as Guest'}
-                    </Text>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <>
-                  <Text style={styles.formTitle}>Sign In</Text>
-                  <Text style={styles.formSubtitle}>ConnectHQ</Text>
-
-                  {/* Email Input */}
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.label}>WORK EMAIL</Text>
-                    <View style={styles.inputWrapper}>
-                      <Ionicons name="mail" size={20} color="#818cf8" style={styles.inputIcon} />
-                      <TextInput
-                        style={styles.input}
-                        placeholder="priya@company.in"
-                        placeholderTextColor="#b4b4b4"
-                        value={email}
-                        onChangeText={setEmail}
-                        autoCapitalize="none"
-                        keyboardType="email-address"
-                        editable={!loading}
-                      />
-                    </View>
-                  </View>
-
-                  {/* Password Input */}
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.label}>PASSWORD</Text>
-                    <View style={styles.inputWrapper}>
-                      <Ionicons name="lock-closed" size={20} color="#818cf8" style={styles.inputIcon} />
-                      <TextInput
-                        style={styles.input}
-                        placeholder="••••••••"
-                        placeholderTextColor="#b4b4b4"
-                        value={password}
-                        onChangeText={setPassword}
-                        secureTextEntry={!showPassword}
-                        editable={!loading}
-                      />
-                      <TouchableOpacity onPress={() => setShowPassword(!showPassword)} disabled={loading}>
-                        <Ionicons
-                          name={showPassword ? 'eye' : 'eye-off'}
-                          size={20}
-                          color="#818cf8"
-                          style={styles.eyeIcon}
-                        />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-
-                  {/* Forgot Password */}
-                  <TouchableOpacity style={styles.forgotPasswordContainer}>
-                    <Text style={styles.forgotPasswordText}>Forgot password?</Text>
-                  </TouchableOpacity>
-
-                  {/* Main Button */}
-                  <TouchableOpacity
-                    style={[styles.button, loading && styles.buttonDisabled]}
-                    onPress={handleSignIn}
-                    disabled={loading}
-                  >
-                    <Text style={styles.buttonText}>
-                      {loading ? 'Loading...' : 'Sign in with Email'}
-                    </Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
-
-            {/* Footer */}
-            <Text style={styles.footerText}>
-              By signing in, you agree to our Terms of Service
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      className="flex-1 bg-white"
+    >
+      <ScrollView
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingTop: insets.top + 40,
+          paddingBottom: insets.bottom + 40,
+        }}
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View className="flex-1 px-8 max-w-[440px] self-center w-full">
+          {/* Centered Square Logo */}
+          <View className="items-center mb-6 pt-4">
+            <Image
+              source={require("../../assets/images/connecthq.png")}
+              style={{ width: 140, height: 140 }}
+              resizeMode="contain"
+            />
+            <Text className="text-3xl font-black text-slate-900 tracking-tight mt-4">
+              Login
+            </Text>
+            <Text className="text-slate-400 mt-2 text-base font-medium">
+              Welcome back to ConnectHQ
             </Text>
           </View>
-        </ScrollView>
-      </LinearGradient>
+
+          {/* Clean Light Form */}
+          <View>
+            <View className="flex-row bg-slate-50 p-1 rounded-xl mb-8">
+              <TouchableOpacity
+                className={`flex-1 py-2.5 rounded-lg items-center ${activeTab === "guest" ? "bg-white shadow-sm" : ""}`}
+                onPress={() => setActiveTab("guest")}
+              >
+                <Text
+                  className={`text-sm font-semibold ${activeTab === "guest" ? "text-slate-900" : "text-slate-400"}`}
+                >
+                  Guest
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                className={`flex-1 py-2.5 rounded-lg items-center ${activeTab === "login" ? "bg-white shadow-sm" : ""}`}
+                onPress={() => setActiveTab("login")}
+              >
+                <Text
+                  className={`text-sm font-semibold ${activeTab === "login" ? "text-slate-900" : "text-slate-400"}`}
+                >
+                  Organizer
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {activeTab === "guest" ? (
+              <View>
+                <TextInput
+                  className="bg-slate-50 rounded-xl px-4 h-14 text-slate-900 font-medium border border-slate-100 mb-4"
+                  placeholder="Full Name"
+                  placeholderTextColor="#94a3b8"
+                  value={guestName}
+                  onChangeText={setGuestName}
+                  editable={!guestLoading}
+                />
+                <TextInput
+                  className="bg-slate-50 rounded-xl px-4 h-14 text-slate-900 font-medium border border-slate-100"
+                  placeholder="Email Address"
+                  placeholderTextColor="#94a3b8"
+                  value={guestEmail}
+                  onChangeText={setGuestEmail}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  editable={!guestLoading}
+                />
+                <TouchableOpacity
+                  className={`mt-8 h-14 bg-indigo-600 rounded-xl items-center justify-center ${guestLoading ? "opacity-70" : ""}`}
+                  onPress={handleGuestLogin}
+                  disabled={guestLoading}
+                >
+                  <Text className="text-white font-bold text-base">
+                    Continue
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View>
+                <TextInput
+                  className="bg-slate-50 rounded-xl px-4 h-14 text-slate-900 font-medium border border-slate-100 mb-4"
+                  placeholder="Work Email"
+                  placeholderTextColor="#94a3b8"
+                  value={email}
+                  onChangeText={setEmail}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  editable={!loading}
+                />
+                <View className="flex-row items-center bg-slate-50 rounded-xl px-4 h-14 border border-slate-100">
+                  <TextInput
+                    className="flex-1 text-slate-900 font-medium h-full"
+                    placeholder="Password"
+                    placeholderTextColor="#94a3b8"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    editable={!loading}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                  >
+                    <Ionicons
+                      name={showPassword ? "eye-off" : "eye"}
+                      size={20}
+                      color="#94a3b8"
+                    />
+                  </TouchableOpacity>
+                </View>
+                <TouchableOpacity
+                  className={`mt-8 h-14 bg-slate-900 rounded-xl items-center justify-center ${loading ? "opacity-70" : ""}`}
+                  onPress={handleSignIn}
+                  disabled={loading}
+                >
+                  <Text className="text-white font-bold text-base">
+                    Sign In
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+
+          {/* Footer */}
+          <View className="mt-auto pt-10">
+            <Text className="text-center text-slate-400 text-xs font-medium">
+              ConnectHQ Event Management
+            </Text>
+          </View>
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  gradient: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
-  container: {
-    flex: 1,
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingVertical: 20,
-    maxWidth: 480,
-    alignSelf: 'center',
-    width: '100%',
-  },
-  logoSection: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  logoContainer: {
-    width: 120,
-    height: 120,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  logoImage: {
-    width: '100%',
-    height: '100%',
-  },
-  title: {
-    fontSize: 36,
-    fontWeight: '800',
-    color: '#fff',
-    marginBottom: 8,
-  },
-  tagline: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontWeight: '500',
-  },
-  formContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 24,
-    paddingHorizontal: 24,
-    paddingVertical: 32,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.8)',
-  },
-  formTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#1e293b',
-    marginBottom: 4,
-  },
-  formSubtitle: {
-    fontSize: 14,
-    color: '#64748b',
-    marginBottom: 24,
-    fontWeight: '600',
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    borderRadius: 16,
-    padding: 4,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.6)',
-  },
-  toggleButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  toggleButtonActive: {
-    backgroundColor: '#6366f1',
-    shadowColor: '#6366f1',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  toggleText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#64748b',
-  },
-  toggleTextActive: {
-    color: '#ffffff',
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#475569',
-    marginBottom: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.8)',
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    height: 52,
-  },
-  inputIcon: {
-    marginRight: 12,
-  },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    color: '#1e293b',
-    fontWeight: '600',
-  },
-  eyeIcon: {
-    marginLeft: 8,
-  },
-  forgotPasswordContainer: {
-    alignItems: 'flex-end',
-    marginBottom: 20,
-  },
-  forgotPasswordText: {
-    color: '#6366f1',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  button: {
-    backgroundColor: '#6366f1',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#6366f1',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 20,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#e5e7eb',
-  },
-  dividerText: {
-    marginHorizontal: 12,
-    fontSize: 13,
-    color: '#9ca3af',
-    fontWeight: '500',
-  },
-  googleButton: {
-    backgroundColor: '#fff',
-    borderWidth: 1.5,
-    borderColor: '#e5e7eb',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  googleButtonText: {
-    color: '#1f2937',
-    fontSize: 16,
-    fontWeight: '700',
-    marginLeft: 8,
-  },
-  registerContainer: {
-    marginTop: 20,
-    alignItems: 'center',
-  },
-  registerText: {
-    fontSize: 14,
-    color: '#6b7280',
-    fontWeight: '500',
-  },
-  registerLink: {
-    color: '#6366f1',
-    fontWeight: '700',
-  },
-  footerText: {
-    textAlign: 'center',
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginTop: 20,
-    fontWeight: '500',
-  },
-});
+const styles = StyleSheet.create({});

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -6,15 +6,18 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   ScrollView,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
-import { getCandidateByEmail, getCandidateByQRToken, getGuestByQRToken, Candidate } from '@/utils/firestore';
-import { useAuth } from '@/context/AuthContext';
-import { getAttendeePalette, EnrollmentType } from '@/hooks/use-attendee-theme';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
+import {
+  getCandidateByEmail,
+  getCandidateByQRToken,
+  getGuestByQRToken,
+  Candidate,
+} from "@/utils/firestore";
+import { useAuth } from "@/context/AuthContext";
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -29,13 +32,8 @@ export default function ProfileScreen() {
     department: string;
     qrToken: string;
   } | null>(null);
-  const palette = getAttendeePalette(profile?.enrollmentType as EnrollmentType | undefined);
 
-  useEffect(() => {
-    loadProfile();
-  }, []);
-
-  const loadProfile = async () => {
+  const loadProfile = useCallback(async () => {
     setLoading(true);
     try {
       let resolvedCandidate: Candidate | null = null;
@@ -53,7 +51,7 @@ export default function ProfileScreen() {
       }
 
       if (!resolvedCandidate) {
-        const storedToken = await AsyncStorage.getItem('guestQrToken');
+        const storedToken = await AsyncStorage.getItem("guestQrToken");
         if (storedToken) {
           resolvedCandidate = await getCandidateByQRToken(storedToken);
           if (!resolvedCandidate) {
@@ -62,10 +60,10 @@ export default function ProfileScreen() {
               resolvedProfile = {
                 name: guest.name,
                 email: guest.email,
-                role: 'attendee',
+                role: "attendee",
                 enrollmentType: guest.enrollmentType,
-                department: '',
-                qrToken: guest.qrToken || '',
+                department: "",
+                qrToken: guest.qrToken || "",
               };
             }
           }
@@ -78,222 +76,122 @@ export default function ProfileScreen() {
           email: resolvedCandidate.email,
           role: resolvedCandidate.role,
           enrollmentType: resolvedCandidate.enrollmentType,
-          department: resolvedCandidate.department || '',
+          department: resolvedCandidate.department || "",
           qrToken: resolvedCandidate.qrToken,
         };
       }
 
       setProfile(resolvedProfile);
     } catch (error) {
-      console.error('Error loading profile:', error);
+      console.error("Error loading profile:", error);
       setProfile(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, logout]);
+
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
 
   const handleSignOut = async () => {
-    await AsyncStorage.removeItem('guestQrToken');
+    await AsyncStorage.removeItem("guestQrToken");
     if (user) {
       await logout();
     }
-    router.replace('/(auth)/login');
+    router.replace("/(auth)/login");
   };
 
   if (loading) {
     return (
-      <View style={[styles.loadingContainer, { paddingTop: insets.top }]}> 
-        <ActivityIndicator size="large" color={palette.primary} />
+      <View className="flex-1 bg-white justify-center items-center">
+        <ActivityIndicator size="large" color="#6366f1" />
       </View>
     );
   }
 
   const safeProfile = profile || {
-    name: 'Guest',
-    email: '—',
-    role: 'attendee',
-    enrollmentType: 'event',
-    department: '',
-    qrToken: '',
+    name: "Guest",
+    email: "—",
+    role: "attendee",
+    enrollmentType: "event",
+    department: "",
+    qrToken: "",
   };
 
   return (
-    <LinearGradient colors={palette.backgroundGradient} style={styles.gradient}>
+    <View className="flex-1 bg-white">
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 100 }]}
+        contentContainerStyle={{
+          paddingTop: insets.top + 20,
+          paddingHorizontal: 24,
+          paddingBottom: insets.bottom + 100,
+        }}
+        className="flex-1"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <View style={[styles.avatar, { backgroundColor: palette.primary }]}>
-            <Ionicons name="person" size={32} color="#fff" />
+        <View className="items-center mb-10">
+          <View className="w-20 h-20 rounded-full bg-slate-50 items-center justify-center mb-5 border border-slate-100 shadow-sm">
+            <Ionicons name="person" size={32} color="#64748b" />
           </View>
-          <Text style={styles.name}>{safeProfile.name}</Text>
-          <Text style={styles.subtitle}>{safeProfile.email}</Text>
+          <Text className="text-2xl font-black text-slate-900 leading-tight">
+            {safeProfile.name}
+          </Text>
+          <Text className="text-sm font-semibold text-slate-400 mt-1">
+            {safeProfile.email}
+          </Text>
         </View>
 
-        <View style={styles.card}>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Role</Text>
-            <Text style={styles.detailValue}>{safeProfile.role}</Text>
+        <View className="bg-slate-50 rounded-3xl p-6 border border-slate-100 mb-8">
+          <View className="flex-row justify-between items-center py-4 border-b border-white/50">
+            <Text className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+              Role
+            </Text>
+            <Text className="text-sm font-bold text-slate-900 capitalize">
+              {safeProfile.role}
+            </Text>
           </View>
-          <View style={styles.divider} />
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Enrollment</Text>
-            <Text style={[styles.detailValue, { color: palette.primaryText }]}>
+
+          <View className="flex-row justify-between items-center py-4 border-b border-white/50">
+            <Text className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+              Enrollment
+            </Text>
+            <Text className="text-sm font-black text-indigo-600 capitalize">
               {safeProfile.enrollmentType}
             </Text>
           </View>
-          <View style={styles.divider} />
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Department</Text>
-            <Text style={styles.detailValue}>{safeProfile.department || '—'}</Text>
+
+          <View className="flex-row justify-between items-center py-4 border-b border-white/50">
+            <Text className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+              Department
+            </Text>
+            <Text className="text-sm font-bold text-slate-900 capitalize">
+              {safeProfile.department || "—"}
+            </Text>
           </View>
-          <View style={styles.divider} />
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Pass ID</Text>
-            <Text style={styles.detailValue}>
+
+          <View className="flex-row justify-between items-center py-4">
+            <Text className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+              Pass ID
+            </Text>
+            <Text className="text-sm font-black text-slate-900 font-mono">
               {safeProfile.qrToken
                 ? `EVNT-2025-${safeProfile.qrToken.substring(0, 4).toUpperCase()}`
-                : 'EVNT-2025-—'}
+                : "EVNT-2025-—"}
             </Text>
           </View>
         </View>
 
-        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+        <TouchableOpacity
+          className="flex-row items-center justify-center bg-slate-900 rounded-2xl py-4 gap-2 shadow-sm"
+          onPress={handleSignOut}
+        >
           <Ionicons name="log-out-outline" size={18} color="#fff" />
-          <Text style={styles.signOutText}>Sign Out</Text>
+          <Text className="text-white text-base font-bold">Sign Out</Text>
         </TouchableOpacity>
       </ScrollView>
-    </LinearGradient>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  gradient: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f8fafc',
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  avatar: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    backgroundColor: '#6366f1',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-    shadowColor: '#6366f1',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  name: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#0f172a',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#64748b',
-    marginTop: 4,
-  },
-  card: {
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    padding: 20,
-    shadowColor: '#6366f1',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
-  },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  detailLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#64748b',
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-  },
-  detailValue: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#0f172a',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#e2e8f0',
-  },
-  signOutButton: {
-    marginTop: 24,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#ef4444',
-    borderRadius: 14,
-    paddingVertical: 14,
-    gap: 8,
-  },
-  signOutText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  errorContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  errorIconBg: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  errorTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#fff',
-    marginBottom: 8,
-  },
-  errorText: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.85)',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  errorButton: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-  },
-  errorButtonText: {
-    color: '#e11d48',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-});
+const styles = StyleSheet.create({});
