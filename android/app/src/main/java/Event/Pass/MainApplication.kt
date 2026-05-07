@@ -1,4 +1,4 @@
-package com.anonymous.EventPass
+package Event.Pass
 
 import android.app.Application
 import android.content.res.Configuration

@@ -41,10 +41,13 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/connecthq.png",
-          "imageWidth": 240,
+          "imageWidth": 400,
           "resizeMode": "contain",
           "backgroundColor": "#0f172a",
           "dark": {
+            "image": "./assets/images/connecthq.png",
+            "imageWidth": 400,
+            "resizeMode": "contain",
             "backgroundColor": "#0f172a"
           }
         }

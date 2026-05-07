@@ -13,6 +13,7 @@ import { ActivityIndicator, LogBox, View } from "react-native";
 
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
+import AnimatedSplash from "@/components/AnimatedSplash";
 
 // Suppress CSS interop navigation context warnings from LogBox
 LogBox.ignoreLogs([
@@ -61,6 +62,7 @@ function RootLayoutInner() {
   const colorScheme = useColorScheme();
   const { loading, user, isAdmin } = useAuth();
   const [appIsReady, setAppIsReady] = useState(false);
+  const [showAnimatedSplash, setShowAnimatedSplash] = useState(true);
 
   const router = useRouter();
   const segments = useSegments();
@@ -69,8 +71,8 @@ function RootLayoutInner() {
     async function prepare() {
       try {
         // Pre-load fonts, make any API calls you need here
-        // We stay on the splash screen for 4 seconds as requested
-        await new Promise((resolve) => setTimeout(resolve, 4000));
+        // Brief delay to ensure native splash displays properly
+        await new Promise((resolve) => setTimeout(resolve, 500));
       } catch (e) {
         console.warn(e);
       } finally {
@@ -84,12 +86,14 @@ function RootLayoutInner() {
 
   useEffect(() => {
     if (appIsReady && !loading) {
+      // Hide the native splash screen — the animated splash takes over
       SplashScreen.hideAsync();
     }
   }, [appIsReady, loading]);
 
   useEffect(() => {
-    if (loading || !appIsReady) return;
+    // Only navigate after both splashes are done
+    if (loading || !appIsReady || showAnimatedSplash) return;
 
     const inAuthGroup = segments[0] === "(auth)";
     const guestAllowedScreens = new Set([
@@ -113,12 +117,19 @@ function RootLayoutInner() {
         router.replace("/(attendee)/agenda");
       }
     }
-  }, [user, loading, segments, isAdmin, appIsReady, router]);
+  }, [user, loading, segments, isAdmin, appIsReady, showAnimatedSplash, router]);
 
   if (!appIsReady || loading) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color="#8B5CF6" />
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: "#0f172a",
+        }}
+      >
+        <ActivityIndicator size="large" color="#60A5FA" />
       </View>
     );
   }
@@ -150,7 +161,12 @@ function RootLayoutInner() {
         />
         <Stack.Screen name="index" />
       </Stack>
-      <StatusBar style="auto" />
+      <StatusBar style="light" />
+
+      {/* Animated splash overlay — renders on top of everything */}
+      {showAnimatedSplash && (
+        <AnimatedSplash onFinish={() => setShowAnimatedSplash(false)} />
+      )}
     </ThemeProvider>
   );
 }

@@ -1,4 +1,4 @@
-package com.anonymous.EventPass
+package Event.Pass
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build
