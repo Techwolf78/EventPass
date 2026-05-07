@@ -1,22 +1,22 @@
 import { auth, db } from "@/config/firebase";
 import {
-    createUserWithEmailAndPassword,
-    signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
 } from "firebase/auth";
 import {
-    Timestamp,
-    addDoc,
-    collection,
-    deleteDoc,
-    doc,
-    getDoc,
-    getDocs,
-    onSnapshot,
-    orderBy,
-    query,
-    setDoc,
-    where,
-    writeBatch,
+  Timestamp,
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  onSnapshot,
+  orderBy,
+  query,
+  setDoc,
+  where,
+  writeBatch,
 } from "firebase/firestore";
 
 // Custom random token generator for Expo compatibility (avoids crypto error)
@@ -69,6 +69,26 @@ export interface AttendanceRecord {
   eventId: string;
   scannedAt: Timestamp;
   scannedBy: string;
+}
+
+/**
+ * Get user role and data from Firestore users collection
+ */
+export async function getUserData(uid: string): Promise<{
+  role: UserRole;
+  email?: string;
+  name?: string;
+} | null> {
+  try {
+    const userDoc = await getDoc(doc(db, "users", uid));
+    if (userDoc.exists()) {
+      return userDoc.data() as { role: UserRole; email: string; name: string };
+    }
+    return null;
+  } catch (error) {
+    console.error("Error fetching user data:", error);
+    return null;
+  }
 }
 
 // ============== REGISTRATION LOGIC ==============

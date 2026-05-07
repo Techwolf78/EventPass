@@ -1,4 +1,5 @@
 import { auth } from "@/config/firebase";
+import { getUserData } from "@/utils/firestore";
 import { User } from "firebase/auth";
 import React, { createContext, ReactNode, useEffect, useState } from "react";
 
@@ -33,21 +34,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = auth.onAuthStateChanged(
       async (firebaseUser: User | null) => {
         if (firebaseUser) {
-          // Get custom claims to check admin status, or fallback to hardcoded admin email for testing
-          const idTokenResult = await firebaseUser.getIdTokenResult();
+          // Get user data from Firestore which contains the role
+          const userData = await getUserData(firebaseUser.uid);
 
           let currentRole: UserRole = "attendee";
 
-          if (
-            idTokenResult.claims.superadmin === true ||
-            firebaseUser.email === "superadmin@test.com"
-          ) {
-            currentRole = "superadmin";
-          } else if (
-            idTokenResult.claims.admin === true ||
-            firebaseUser.email === "admin@test.com"
-          ) {
-            currentRole = "admin";
+          if (userData && userData.role) {
+            currentRole = userData.role;
+          } else {
+            // Fallback to custom claims or hardcoded for safety/backwards compatibility
+            const idTokenResult = await firebaseUser.getIdTokenResult();
+            if (
+              idTokenResult.claims.superadmin === true ||
+              firebaseUser.email === "superadmin@test.com"
+            ) {
+              currentRole = "superadmin";
+            } else if (
+              idTokenResult.claims.admin === true ||
+              firebaseUser.email === "admin@test.com"
+            ) {
+              currentRole = "admin";
+            }
           }
 
           setUser(firebaseUser as AuthUser);

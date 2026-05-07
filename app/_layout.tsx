@@ -6,14 +6,54 @@ import {
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
-import "../global.css";
+
 
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, LogBox, View } from "react-native";
 
-import { useEffect, useState } from "react";
 import * as SplashScreen from "expo-splash-screen";
+import { useEffect, useState } from "react";
+
+// Suppress CSS interop navigation context warnings from LogBox
+LogBox.ignoreLogs([
+  "Couldn't find a navigation context",
+  "react-native-css-interop",
+]);
+
+// Suppress known CSS interop navigation context warning from console
+const originalError = console.error;
+const originalWarn = console.warn;
+
+console.error = (...args: any[]) => {
+  const errorStr = args?.toString?.() || "";
+  const firstArg = args?.[0];
+
+  if (
+    (typeof firstArg === "string" &&
+      firstArg.includes("Couldn't find a navigation context")) ||
+    (typeof errorStr === "string" &&
+      errorStr.includes("Couldn't find a navigation context"))
+  ) {
+    return; // Suppress this specific warning
+  }
+  originalError.call(console, ...args);
+};
+
+console.warn = (...args: any[]) => {
+  const warnStr = args?.toString?.() || "";
+  const firstArg = args?.[0];
+
+  if (
+    (typeof firstArg === "string" &&
+      firstArg.includes("Couldn't find a navigation context")) ||
+    (typeof warnStr === "string" &&
+      warnStr.includes("Couldn't find a navigation context"))
+  ) {
+    return; // Suppress this specific warning
+  }
+  originalWarn.call(console, ...args);
+};
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -74,7 +114,7 @@ function RootLayoutInner() {
         router.replace("/(attendee)/agenda");
       }
     }
-  }, [user, loading, segments, isAdmin, appIsReady]);
+  }, [user, loading, segments, isAdmin, appIsReady, router]);
 
   if (!appIsReady || loading) {
     return (
@@ -86,11 +126,39 @@ function RootLayoutInner() {
 
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(admin)" />
-        <Stack.Screen name="(attendee)" />
-        <Stack.Screen name="index" />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          animationEnabled: true,
+        }}
+      >
+        <Stack.Screen
+          name="(auth)"
+          options={{
+            animationEnabled: false,
+            gestureEnabled: false,
+          }}
+        />
+        <Stack.Screen
+          name="(admin)"
+          options={{
+            animationEnabled: false,
+            gestureEnabled: false,
+          }}
+        />
+        <Stack.Screen
+          name="(attendee)"
+          options={{
+            animationEnabled: false,
+            gestureEnabled: false,
+          }}
+        />
+        <Stack.Screen
+          name="index"
+          options={{
+            animationEnabled: false,
+          }}
+        />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

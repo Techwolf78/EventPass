@@ -1,5 +1,5 @@
 import { auth } from "@/config/firebase";
-import { loginGuestByEmail } from "@/utils/firestore";
+import { getUserData, loginGuestByEmail } from "@/utils/firestore";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
@@ -18,6 +18,134 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 32,
+    maxWidth: 440,
+    alignSelf: "center",
+    width: "100%",
+  },
+  logoContainer: {
+    alignItems: "center",
+    marginBottom: 24,
+    paddingTop: 16,
+  },
+  logo: {
+    width: 140,
+    height: 140,
+  },
+  title: {
+    fontSize: 30,
+    fontWeight: "900",
+    color: "#0f172a",
+    marginTop: 16,
+    letterSpacing: -0.5,
+  },
+  subtitle: {
+    color: "#94a3b8",
+    marginTop: 8,
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  tabContainer: {
+    flexDirection: "row",
+    backgroundColor: "#f1f5f9",
+    padding: 4,
+    borderRadius: 12,
+    marginBottom: 32,
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  tabButtonActive: {
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  tabTextActive: {
+    color: "#0f172a",
+  },
+  tabTextInactive: {
+    color: "#cbd5e1",
+  },
+  input: {
+    backgroundColor: "#f1f5f9",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    height: 56,
+    color: "#0f172a",
+    fontWeight: "500",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    marginBottom: 16,
+  },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f1f5f9",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    height: 56,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  inputText: {
+    flex: 1,
+    color: "#0f172a",
+    fontWeight: "500",
+    height: "100%",
+  },
+  passwordButton: {
+    padding: 4,
+  },
+  submitButton: {
+    marginTop: 32,
+    height: 56,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  submitButtonGuest: {
+    backgroundColor: "#4f46e5",
+  },
+  submitButtonAdmin: {
+    backgroundColor: "#1e293b",
+  },
+  submitButtonDisabled: {
+    opacity: 0.7,
+  },
+  submitText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  footer: {
+    marginTop: "auto",
+    paddingTop: 40,
+  },
+  footerText: {
+    textAlign: "center",
+    color: "#cbd5e1",
+    fontSize: 12,
+    fontWeight: "500",
+  },
+});
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -46,22 +174,28 @@ export default function LoginScreen() {
       );
       const firebaseUser = userCredential.user;
 
-      // Redirect based on user type after successful sign-in
-      const adminEmails = ["admin@test.com", "superadmin@test.com"];
-      if (adminEmails.includes(firebaseUser.email)) {
-        router.replace("/(admin)/panel");
-      } else {
-        router.replace("/(attendee)/agenda");
+      // Redirect based on user role from Firestore instead of hardcoded emails
+      const userData = await getUserData(firebaseUser.uid);
+      const role = userData?.role || "attendee";
+
+      try {
+        if (role === "admin" || role === "superadmin") {
+          router.replace("/(admin)/panel");
+        } else {
+          router.replace("/(attendee)/agenda");
+        }
+      } catch (navError) {
+        console.error("Navigation error:", navError);
+        Alert.alert(
+          "Navigation Error",
+          "Failed to navigate. Please try again.",
+        );
       }
     } catch (error: any) {
       Alert.alert("Error", error.message);
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleGoogleSignIn = async () => {
-    Alert.alert("Google Sign In", "Coming soon!");
   };
 
   const handleGuestLogin = async () => {
@@ -75,11 +209,19 @@ export default function LoginScreen() {
       const result = await loginGuestByEmail(guestEmail.trim());
       if (result.success && result.qrToken) {
         await AsyncStorage.setItem("guestQrToken", result.qrToken);
-        router.replace({
-          pathname: "/(attendee)/qr-pass",
-          params: { qrToken: result.qrToken },
-        });
-        return;
+        try {
+          router.replace({
+            pathname: "/(attendee)/qr-pass",
+            params: { qrToken: result.qrToken },
+          });
+          return;
+        } catch (navError) {
+          console.error("Navigation error:", navError);
+          Alert.alert(
+            "Navigation Error",
+            "Failed to navigate. Please try again.",
+          );
+        }
       }
 
       if (result.message === "Not on the guest list") {
@@ -103,7 +245,7 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      className="flex-1 bg-white"
+      style={styles.container}
     >
       <ScrollView
         contentContainerStyle={{
@@ -111,45 +253,57 @@ export default function LoginScreen() {
           paddingTop: insets.top + 40,
           paddingBottom: insets.bottom + 40,
         }}
-        className="flex-1"
+        style={styles.container}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View className="flex-1 px-8 max-w-[440px] self-center w-full">
+        <View style={styles.scrollContent}>
           {/* Centered Square Logo */}
-          <View className="items-center mb-6 pt-4">
+          <View style={styles.logoContainer}>
             <Image
               source={require("../../assets/images/connecthq.png")}
-              style={{ width: 140, height: 140 }}
+              style={styles.logo}
               resizeMode="contain"
             />
-            <Text className="text-3xl font-black text-slate-900 tracking-tight mt-4">
-              Login
-            </Text>
-            <Text className="text-slate-400 mt-2 text-base font-medium">
-              Welcome back to ConnectHQ
-            </Text>
+            <Text style={styles.title}>Login</Text>
+            <Text style={styles.subtitle}>Welcome back to ConnectHQ</Text>
           </View>
 
           {/* Clean Light Form */}
           <View>
-            <View className="flex-row bg-slate-50 p-1 rounded-xl mb-8">
+            <View style={styles.tabContainer}>
               <TouchableOpacity
-                className={`flex-1 py-2.5 rounded-lg items-center ${activeTab === "guest" ? "bg-white shadow-sm" : ""}`}
+                style={[
+                  styles.tabButton,
+                  activeTab === "guest" && styles.tabButtonActive,
+                ]}
                 onPress={() => setActiveTab("guest")}
               >
                 <Text
-                  className={`text-sm font-semibold ${activeTab === "guest" ? "text-slate-900" : "text-slate-400"}`}
+                  style={[
+                    styles.tabText,
+                    activeTab === "guest"
+                      ? styles.tabTextActive
+                      : styles.tabTextInactive,
+                  ]}
                 >
                   Guest
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                className={`flex-1 py-2.5 rounded-lg items-center ${activeTab === "login" ? "bg-white shadow-sm" : ""}`}
+                style={[
+                  styles.tabButton,
+                  activeTab === "login" && styles.tabButtonActive,
+                ]}
                 onPress={() => setActiveTab("login")}
               >
                 <Text
-                  className={`text-sm font-semibold ${activeTab === "login" ? "text-slate-900" : "text-slate-400"}`}
+                  style={[
+                    styles.tabText,
+                    activeTab === "login"
+                      ? styles.tabTextActive
+                      : styles.tabTextInactive,
+                  ]}
                 >
                   Organizer
                 </Text>
@@ -159,17 +313,17 @@ export default function LoginScreen() {
             {activeTab === "guest" ? (
               <View>
                 <TextInput
-                  className="bg-slate-50 rounded-xl px-4 h-14 text-slate-900 font-medium border border-slate-100 mb-4"
+                  style={styles.input}
                   placeholder="Full Name"
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor="#cbd5e1"
                   value={guestName}
                   onChangeText={setGuestName}
                   editable={!guestLoading}
                 />
                 <TextInput
-                  className="bg-slate-50 rounded-xl px-4 h-14 text-slate-900 font-medium border border-slate-100"
+                  style={styles.input}
                   placeholder="Email Address"
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor="#cbd5e1"
                   value={guestEmail}
                   onChangeText={setGuestEmail}
                   autoCapitalize="none"
@@ -177,70 +331,71 @@ export default function LoginScreen() {
                   editable={!guestLoading}
                 />
                 <TouchableOpacity
-                  className={`mt-8 h-14 bg-indigo-600 rounded-xl items-center justify-center ${guestLoading ? "opacity-70" : ""}`}
+                  style={[
+                    styles.submitButton,
+                    styles.submitButtonGuest,
+                    guestLoading && styles.submitButtonDisabled,
+                  ]}
                   onPress={handleGuestLogin}
                   disabled={guestLoading}
                 >
-                  <Text className="text-white font-bold text-base">
-                    Continue
-                  </Text>
+                  <Text style={styles.submitText}>Continue</Text>
                 </TouchableOpacity>
               </View>
             ) : (
               <View>
                 <TextInput
-                  className="bg-slate-50 rounded-xl px-4 h-14 text-slate-900 font-medium border border-slate-100 mb-4"
+                  style={styles.input}
                   placeholder="Work Email"
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor="#cbd5e1"
                   value={email}
                   onChangeText={setEmail}
                   autoCapitalize="none"
                   keyboardType="email-address"
                   editable={!loading}
                 />
-                <View className="flex-row items-center bg-slate-50 rounded-xl px-4 h-14 border border-slate-100">
+                <View style={styles.inputContainer}>
                   <TextInput
-                    className="flex-1 text-slate-900 font-medium h-full"
+                    style={styles.inputText}
                     placeholder="Password"
-                    placeholderTextColor="#94a3b8"
+                    placeholderTextColor="#cbd5e1"
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry={!showPassword}
                     editable={!loading}
                   />
                   <TouchableOpacity
+                    style={styles.passwordButton}
                     onPress={() => setShowPassword(!showPassword)}
                   >
                     <Ionicons
                       name={showPassword ? "eye-off" : "eye"}
                       size={20}
-                      color="#94a3b8"
+                      color="#cbd5e1"
                     />
                   </TouchableOpacity>
                 </View>
                 <TouchableOpacity
-                  className={`mt-8 h-14 bg-slate-900 rounded-xl items-center justify-center ${loading ? "opacity-70" : ""}`}
+                  style={[
+                    styles.submitButton,
+                    styles.submitButtonAdmin,
+                    loading && styles.submitButtonDisabled,
+                  ]}
                   onPress={handleSignIn}
                   disabled={loading}
                 >
-                  <Text className="text-white font-bold text-base">
-                    Sign In
-                  </Text>
+                  <Text style={styles.submitText}>Sign In</Text>
                 </TouchableOpacity>
               </View>
             )}
           </View>
 
           {/* Footer */}
-          <View className="mt-auto pt-10">
-            <Text className="text-center text-slate-400 text-xs font-medium">
-              ConnectHQ Event Management
-            </Text>
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>ConnectHQ Event Management</Text>
           </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({});

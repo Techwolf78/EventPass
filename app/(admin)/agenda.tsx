@@ -4,15 +4,15 @@ import { useAuth } from "@/context/AuthContext";
 import { getAllAgendas, saveAgenda } from "@/utils/firestore";
 import { Ionicons } from "@expo/vector-icons";
 import {
-    ActivityIndicator,
-    Alert,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -67,7 +67,6 @@ export default function AgendaScreen() {
   const [items, setItems] = useState<AgendaItemForm[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [existingId, setExistingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadAgenda(activeType);
@@ -79,7 +78,6 @@ export default function AgendaScreen() {
       const agendas = await getAllAgendas();
       const found = agendas.find((a) => (a as any).type === type);
       if (found) {
-        setExistingId(found.id);
         setEventTitle(found.title || "");
         setEventDate(
           found.date?.toDate
@@ -88,7 +86,6 @@ export default function AgendaScreen() {
         );
         setItems(found.agenda || []);
       } else {
-        setExistingId(null);
         setEventTitle("");
         setEventDate("");
         setItems([]);
