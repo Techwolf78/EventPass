@@ -7,7 +7,6 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
 
-
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { ActivityIndicator, LogBox, View } from "react-native";
@@ -129,36 +128,27 @@ function RootLayoutInner() {
       <Stack
         screenOptions={{
           headerShown: false,
-          animationEnabled: true,
         }}
       >
         <Stack.Screen
           name="(auth)"
           options={{
-            animationEnabled: false,
             gestureEnabled: false,
           }}
         />
         <Stack.Screen
           name="(admin)"
           options={{
-            animationEnabled: false,
             gestureEnabled: false,
           }}
         />
         <Stack.Screen
           name="(attendee)"
           options={{
-            animationEnabled: false,
             gestureEnabled: false,
           }}
         />
-        <Stack.Screen
-          name="index"
-          options={{
-            animationEnabled: false,
-          }}
-        />
+        <Stack.Screen name="index" />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

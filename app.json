@@ -7,7 +7,6 @@
     "icon": "./assets/images/connecthq-square.png",
     "scheme": "connecthq",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "googleServicesFile": "./GoogleService-Info.plist",
@@ -23,7 +22,6 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "Event.Pass",
       "googleServicesFile": "./google-services.json",
@@ -65,9 +63,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "bf6a2c87-f3b5-4576-a915-87a188d1c6c9"
+        "projectId": "9ae61a72-a51d-4ab6-b032-a67f1fa70e80"
       }
     },
-    "owner": "vanshsingla1601"
+    "owner": "techwolf78"
   }
 }
