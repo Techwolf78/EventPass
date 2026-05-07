@@ -1,26 +1,30 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  Alert,
-  ActivityIndicator,
-  ScrollView,
-  Platform,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import {
-  getGuestList,
   addGuest,
+  deleteGuest,
   getCheckedInCandidateIds,
+  getGuestList,
   GuestListItem,
+  updateGuest,
 } from "@/utils/firestore";
+import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import Papa from "papaparse";
-import { Ionicons } from "@expo/vector-icons";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type WebAlertButton = {
   text: string;
@@ -80,9 +84,14 @@ type FilterStatus = "all" | GuestStatus;
 
 export default function GuestListScreen() {
   const insets = useSafeAreaInsets();
+  const { role } = useAuth();
+  const canEdit = role === "superadmin";
+
   const [guests, setGuests] = useState<GuestListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [enrollmentType, setEnrollmentType] = useState<"masterclass" | "event">(
@@ -114,16 +123,61 @@ export default function GuestListScreen() {
       return;
     }
     setSubmitting(true);
-    const result = await addGuest(name, email, enrollmentType);
+
+    let result;
+    if (editingId) {
+      result = await updateGuest(editingId, {
+        name,
+        email,
+        enrollmentType,
+      });
+    } else {
+      result = await addGuest(name, email, enrollmentType);
+    }
+
     showAlert("Result", result.message);
     if (result.success) {
-      setName("");
-      setEmail("");
-      setEnrollmentType("event");
-      setShowForm(false);
+      resetForm();
       loadGuests();
     }
     setSubmitting(false);
+  };
+
+  const resetForm = () => {
+    setName("");
+    setEmail("");
+    setEnrollmentType("event");
+    setShowForm(false);
+    setShowEditModal(false);
+    setEditingId(null);
+  };
+
+  const handleEditGuest = (guest: GuestListItem) => {
+    setName(guest.name);
+    setEmail(guest.email);
+    setEnrollmentType(guest.enrollmentType);
+    setEditingId(guest.id);
+    setShowEditModal(true);
+  };
+
+  const handleDeleteGuest = (id: string) => {
+    showAlert("Delete Guest", "Are you sure you want to delete this guest?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          setLoading(true);
+          const result = await deleteGuest(id);
+          if (result.success) {
+            loadGuests();
+          } else {
+            setLoading(false);
+            showAlert("Error", result.message);
+          }
+        },
+      },
+    ]);
   };
 
   const uploadValidGuests = async (
@@ -238,10 +292,10 @@ export default function GuestListScreen() {
       // Handle CSV files
       if (fileExtension === "csv") {
         const webFile = "file" in asset ? (asset.file as File | null) : null;
-        const looksLikeWebUri = (ri =
+        const looksLikeWebUri =
           fileUri.startsWith("blob:") ||
           fileUri.startsWith("data:") ||
-          fileUri.startsWith("http"));
+          fileUri.startsWith("http");
 
         try {
           if (webFile) {
@@ -504,12 +558,21 @@ export default function GuestListScreen() {
           <Text style={styles.headerTitle}>Guest List</Text>
           <Text style={styles.headerSubtitle}>ADMIN • INNOVATESUMMIT</Text>
         </View>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => setShowForm(!showForm)}
-        >
-          <Ionicons name={showForm ? "close" : "add"} size={24} color="#fff" />
-        </TouchableOpacity>
+        {canEdit && (
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => {
+              resetForm();
+              setShowForm(!showForm);
+            }}
+          >
+            <Ionicons
+              name={showForm ? "close" : "add"}
+              size={24}
+              color="#fff"
+            />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Stats Cards */}
@@ -675,7 +738,7 @@ export default function GuestListScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Add Guest Form */}
+        {/* Add Guest Form (Inline) */}
         {showForm && (
           <View style={styles.formCard}>
             <Text style={styles.formTitle}>Add New Guest</Text>
@@ -740,20 +803,22 @@ export default function GuestListScreen() {
         )}
 
         {/* Upload CSV Card */}
-        <TouchableOpacity style={styles.uploadCard} onPress={handleUploadCSV}>
-          <View style={styles.uploadContent}>
-            <View style={styles.uploadIconBg}>
-              <Ionicons name="cloud-upload" size={22} color="#8B5CF6" />
+        {canEdit && (
+          <TouchableOpacity style={styles.uploadCard} onPress={handleUploadCSV}>
+            <View style={styles.uploadContent}>
+              <View style={styles.uploadIconBg}>
+                <Ionicons name="cloud-upload" size={22} color="#8B5CF6" />
+              </View>
+              <View style={styles.uploadTextBlock}>
+                <Text style={styles.uploadTitle}>Upload CSV file</Text>
+                <Text style={styles.uploadSubtitle}>
+                  name, email, enrollmentType (masterclass/event)
+                </Text>
+              </View>
             </View>
-            <View style={styles.uploadTextBlock}>
-              <Text style={styles.uploadTitle}>Upload CSV file</Text>
-              <Text style={styles.uploadSubtitle}>
-                name, email, enrollmentType (masterclass/event)
-              </Text>
-            </View>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
-        </TouchableOpacity>
+            <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+          </TouchableOpacity>
+        )}
 
         {/* Section Header with active filter display */}
         <View style={styles.sectionHeader}>
@@ -782,7 +847,7 @@ export default function GuestListScreen() {
             </View>
           ) : (
             filteredGuests.map((item) => {
-              const status = getGuestStatus(item);
+              const status = getGuestStatus(item, checkedInIds);
               return (
                 <View key={item.id} style={styles.guestItem}>
                   <View
@@ -830,6 +895,23 @@ export default function GuestListScreen() {
                           : "Pending"}
                     </Text>
                   </View>
+
+                  {canEdit && (
+                    <View style={styles.actionButtons}>
+                      <TouchableOpacity
+                        style={[styles.actionBtn, styles.editBtn]}
+                        onPress={() => handleEditGuest(item)}
+                      >
+                        <Ionicons name="pencil" size={16} color="#8b5cf6" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.actionBtn, styles.deleteBtn]}
+                        onPress={() => handleDeleteGuest(item.id)}
+                      >
+                        <Ionicons name="trash" size={16} color="#ef4444" />
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </View>
               );
             })
@@ -838,6 +920,100 @@ export default function GuestListScreen() {
 
         <View style={{ height: insets.bottom + 100 }} />
       </ScrollView>
+
+      {/* Edit Guest Modal */}
+      <Modal
+        visible={showEditModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowEditModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Edit Guest</Text>
+              <TouchableOpacity
+                onPress={() => setShowEditModal(false)}
+                style={styles.modalCloseButton}
+              >
+                <Ionicons name="close" size={24} color="#94a3b8" />
+              </TouchableOpacity>
+            </View>
+
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Full Name"
+              placeholderTextColor="#64748b"
+              value={name}
+              onChangeText={setName}
+              editable={!submitting}
+            />
+
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Email Address"
+              placeholderTextColor="#64748b"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              editable={!submitting}
+            />
+
+            <Text style={styles.modalFieldLabel}>ENROLLMENT TYPE</Text>
+            <View style={styles.modalEnrollmentRow}>
+              {["masterclass", "event"].map((type) => (
+                <TouchableOpacity
+                  key={type}
+                  style={[
+                    styles.modalEnrollmentBtn,
+                    enrollmentType === type && styles.modalEnrollmentBtnActive,
+                  ]}
+                  onPress={() =>
+                    setEnrollmentType(type as "masterclass" | "event")
+                  }
+                  disabled={submitting}
+                >
+                  <Text
+                    style={[
+                      styles.modalEnrollmentBtnText,
+                      enrollmentType === type &&
+                        styles.modalEnrollmentBtnTextActive,
+                    ]}
+                  >
+                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.modalButtonRow}>
+              <TouchableOpacity
+                style={styles.modalCancelButton}
+                onPress={() => setShowEditModal(false)}
+                disabled={submitting}
+              >
+                <Text style={styles.modalCancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.modalUpdateButton,
+                  submitting && styles.modalUpdateButtonDisabled,
+                ]}
+                onPress={handleAddGuest}
+                disabled={submitting}
+              >
+                {submitting ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.modalUpdateButtonText}>Update</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1187,11 +1363,33 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   statusBadge: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 10,
-    marginLeft: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    marginLeft: 8,
     borderWidth: 1,
+  },
+  actionButtons: {
+    flexDirection: "row",
+    marginLeft: 10,
+  },
+  actionBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 6,
+  },
+  editBtn: {
+    backgroundColor: "rgba(139, 92, 246, 0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(139, 92, 246, 0.2)",
+  },
+  deleteBtn: {
+    backgroundColor: "rgba(239, 68, 68, 0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(239, 68, 68, 0.2)",
   },
   statusArrived: {
     backgroundColor: "rgba(16, 185, 129, 0.1)",
@@ -1229,5 +1427,120 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#64748b",
     fontWeight: "700",
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.85)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: "#1e293b",
+    borderRadius: 20,
+    padding: 24,
+    width: "90%",
+    maxWidth: 400,
+    borderWidth: 1,
+    borderColor: "#334155",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#f8fafc",
+  },
+  modalCloseButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#0f172a",
+  },
+  modalInput: {
+    backgroundColor: "#0f172a",
+    borderWidth: 1,
+    borderColor: "#334155",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    fontSize: 14,
+    color: "#f8fafc",
+    marginBottom: 16,
+    fontWeight: "600",
+  },
+  modalFieldLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#64748b",
+    letterSpacing: 1,
+    marginBottom: 10,
+  },
+  modalEnrollmentRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 24,
+  },
+  modalEnrollmentBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#334155",
+    alignItems: "center",
+    backgroundColor: "#0f172a",
+  },
+  modalEnrollmentBtnActive: {
+    backgroundColor: "rgba(139, 92, 246, 0.15)",
+    borderColor: "#8b5cf6",
+  },
+  modalEnrollmentBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#64748b",
+  },
+  modalEnrollmentBtnTextActive: {
+    color: "#a78bfa",
+  },
+  modalButtonRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 8,
+  },
+  modalCancelButton: {
+    flex: 1,
+    backgroundColor: "#0f172a",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#334155",
+  },
+  modalCancelButtonText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#94a3b8",
+  },
+  modalUpdateButton: {
+    flex: 1,
+    backgroundColor: "#8b5cf6",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalUpdateButtonDisabled: {
+    opacity: 0.5,
+  },
+  modalUpdateButtonText: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#ffffff",
   },
 });

@@ -1,45 +1,52 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 
+import { useAuth } from "@/context/AuthContext";
+import { getAllAgendas, saveAgenda } from "@/utils/firestore";
+import { Ionicons } from "@expo/vector-icons";
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  Alert,
-  ActivityIndicator,
-  ScrollView,
-  Platform,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { getAllAgendas, saveAgenda, EventData } from '@/utils/firestore';
+    ActivityIndicator,
+    Alert,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const AGENDA_TYPES = ['masterclass', 'event'] as const;
+const AGENDA_TYPES = ["masterclass", "event"] as const;
 type AgendaType = (typeof AGENDA_TYPES)[number];
 
-const TAG_OPTIONS = ['Keynote', 'Workshop', 'Networking', 'Technical', 'General'] as const;
+const TAG_OPTIONS = [
+  "Keynote",
+  "Workshop",
+  "Networking",
+  "Technical",
+  "General",
+] as const;
 
 const MASTERCLASS_TITLES = [
-  'Opening Keynote',
-  'Technical Deep Dive',
-  'Hands-on Workshop',
-  'Expert Panel Discussion',
-  'Q&A Session',
-  'Networking Break',
-  'Case Study Presentation',
-  'Closing Remarks',
+  "Opening Keynote",
+  "Technical Deep Dive",
+  "Hands-on Workshop",
+  "Expert Panel Discussion",
+  "Q&A Session",
+  "Networking Break",
+  "Case Study Presentation",
+  "Closing Remarks",
 ];
 
 const EVENT_TITLES = [
-  'Welcome Address',
-  'Guest Speaker Session',
-  'Panel Discussion',
-  'Networking Break',
-  'Workshop Session',
-  'Fireside Chat',
-  'Demo Session',
-  'Closing Ceremony',
+  "Welcome Address",
+  "Guest Speaker Session",
+  "Panel Discussion",
+  "Networking Break",
+  "Workshop Session",
+  "Fireside Chat",
+  "Demo Session",
+  "Closing Ceremony",
 ];
 
 interface AgendaItemForm {
@@ -51,9 +58,12 @@ interface AgendaItemForm {
 
 export default function AgendaScreen() {
   const insets = useSafeAreaInsets();
-  const [activeType, setActiveType] = useState<AgendaType>('masterclass');
-  const [eventTitle, setEventTitle] = useState('');
-  const [eventDate, setEventDate] = useState('');
+  const { role } = useAuth();
+  const canEdit = role === "superadmin";
+
+  const [activeType, setActiveType] = useState<AgendaType>("masterclass");
+  const [eventTitle, setEventTitle] = useState("");
+  const [eventDate, setEventDate] = useState("");
   const [items, setItems] = useState<AgendaItemForm[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -70,21 +80,21 @@ export default function AgendaScreen() {
       const found = agendas.find((a) => (a as any).type === type);
       if (found) {
         setExistingId(found.id);
-        setEventTitle(found.title || '');
+        setEventTitle(found.title || "");
         setEventDate(
           found.date?.toDate
-            ? found.date.toDate().toISOString().split('T')[0]
-            : ''
+            ? found.date.toDate().toISOString().split("T")[0]
+            : "",
         );
         setItems(found.agenda || []);
       } else {
         setExistingId(null);
-        setEventTitle('');
-        setEventDate('');
+        setEventTitle("");
+        setEventDate("");
         setItems([]);
       }
     } catch (error) {
-      console.error('Error loading agenda:', error);
+      console.error("Error loading agenda:", error);
     } finally {
       setLoading(false);
     }
@@ -93,11 +103,12 @@ export default function AgendaScreen() {
   const handleAddItem = () => {
     setItems((prev) => {
       const nextIndex = prev.length;
-      const defaultTitles = activeType === 'masterclass' ? MASTERCLASS_TITLES : EVENT_TITLES;
+      const defaultTitles =
+        activeType === "masterclass" ? MASTERCLASS_TITLES : EVENT_TITLES;
       const defaultTitle = defaultTitles[nextIndex % defaultTitles.length];
       return [
         ...prev,
-        { time: '', title: defaultTitle, speaker: '', tag: 'General' },
+        { time: "", title: defaultTitle, speaker: "", tag: "General" },
       ];
     });
   };
@@ -111,8 +122,8 @@ export default function AgendaScreen() {
       // Auto-save to Firestore if we have valid event details
       if (!eventTitle.trim() || !eventDate.trim()) {
         Alert.alert(
-          'Removed Locally',
-          'Please fill in the event title and date, then tap Save to persist this change to the database.'
+          "Removed Locally",
+          "Please fill in the event title and date, then tap Save to persist this change to the database.",
         );
         return;
       }
@@ -120,8 +131,8 @@ export default function AgendaScreen() {
       const parsedDate = new Date(eventDate.trim());
       if (isNaN(parsedDate.getTime())) {
         Alert.alert(
-          'Removed Locally',
-          'Please fix the event date, then tap Save to persist this change to the database.'
+          "Removed Locally",
+          "Please fix the event date, then tap Save to persist this change to the database.",
         );
         return;
       }
@@ -137,28 +148,35 @@ export default function AgendaScreen() {
             title: item.title.trim(),
             speaker: item.speaker.trim(),
             tag: item.tag,
-          }))
+          })),
         );
         if (!result.success) {
-          Alert.alert('Delete Error', 'Item removed locally but failed to save to database. Please try saving manually.');
+          Alert.alert(
+            "Delete Error",
+            "Item removed locally but failed to save to database. Please try saving manually.",
+          );
         }
       } catch (error: any) {
-        Alert.alert('Delete Error', error.message || 'Item removed locally but failed to save to database.');
+        Alert.alert(
+          "Delete Error",
+          error.message ||
+            "Item removed locally but failed to save to database.",
+        );
       } finally {
         setSaving(false);
       }
     };
 
-    if (Platform.OS === 'web') {
-      if (window.confirm('Delete this agenda item?')) {
+    if (Platform.OS === "web") {
+      if (window.confirm("Delete this agenda item?")) {
         doDelete();
       }
     } else {
-      Alert.alert('Remove Item', 'Delete this agenda item?', [
-        { text: 'Cancel' },
+      Alert.alert("Remove Item", "Delete this agenda item?", [
+        { text: "Cancel" },
         {
-          text: 'Delete',
-          style: 'destructive',
+          text: "Delete",
+          style: "destructive",
           onPress: doDelete,
         },
       ]);
@@ -168,17 +186,17 @@ export default function AgendaScreen() {
   const handleUpdateItem = (
     index: number,
     field: keyof AgendaItemForm,
-    value: string
+    value: string,
   ) => {
     setItems((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
+      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
     );
   };
 
   const handleSave = async () => {
     // Validate
     const showAlert = (title: string, message: string) => {
-      if (Platform.OS === 'web') {
+      if (Platform.OS === "web") {
         window.alert(`${title}: ${message}`);
       } else {
         Alert.alert(title, message);
@@ -186,16 +204,19 @@ export default function AgendaScreen() {
     };
 
     if (!eventTitle.trim()) {
-      showAlert('Missing Title', 'Please enter an event title.');
+      showAlert("Missing Title", "Please enter an event title.");
       return;
     }
     if (!eventDate.trim()) {
-      showAlert('Missing Date', 'Please enter an event date (YYYY-MM-DD).');
+      showAlert("Missing Date", "Please enter an event date (YYYY-MM-DD).");
       return;
     }
     const parsedDate = new Date(eventDate.trim());
     if (isNaN(parsedDate.getTime())) {
-      showAlert('Invalid Date', 'Please enter a valid date in YYYY-MM-DD format.');
+      showAlert(
+        "Invalid Date",
+        "Please enter a valid date in YYYY-MM-DD format.",
+      );
       return;
     }
 
@@ -204,8 +225,8 @@ export default function AgendaScreen() {
       const item = items[i];
       if (!item.time.trim() || !item.title.trim()) {
         showAlert(
-          'Incomplete Item',
-          `Agenda item #${i + 1} is missing a time or title. Please fill all required fields.`
+          "Incomplete Item",
+          `Agenda item #${i + 1} is missing a time or title. Please fill all required fields.`,
         );
         return;
       }
@@ -213,7 +234,7 @@ export default function AgendaScreen() {
 
     setSaving(true);
     try {
-      console.log('Attempting to save agenda to Firebase...');
+      console.log("Attempting to save agenda to Firebase...");
       const result = await saveAgenda(
         activeType,
         eventTitle.trim(),
@@ -223,25 +244,29 @@ export default function AgendaScreen() {
           title: item.title.trim(),
           speaker: item.speaker.trim(),
           tag: item.tag,
-        }))
+        })),
       );
-      console.log('Save result:', result);
-      
-      if (Platform.OS === 'web') {
-        window.alert(result.success ? 'Saved: ' + result.message : 'Error: ' + result.message);
+      console.log("Save result:", result);
+
+      if (Platform.OS === "web") {
+        window.alert(
+          result.success
+            ? "Saved: " + result.message
+            : "Error: " + result.message,
+        );
       } else {
-        Alert.alert(result.success ? 'Saved' : 'Error', result.message);
+        Alert.alert(result.success ? "Saved" : "Error", result.message);
       }
-      
+
       if (result.success) {
         loadAgenda(activeType);
       }
     } catch (error: any) {
-      console.error('Save agenda error exception:', error);
-      if (Platform.OS === 'web') {
-        window.alert('Error: ' + (error.message || 'Failed to save agenda'));
+      console.error("Save agenda error exception:", error);
+      if (Platform.OS === "web") {
+        window.alert("Error: " + (error.message || "Failed to save agenda"));
       } else {
-        Alert.alert('Error', error.message || 'Failed to save agenda');
+        Alert.alert("Error", error.message || "Failed to save agenda");
       }
     } finally {
       setSaving(false);
@@ -252,7 +277,13 @@ export default function AgendaScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.centerContent, { paddingTop: insets.top }]}>
+      <View
+        style={[
+          styles.container,
+          styles.centerContent,
+          { paddingTop: insets.top },
+        ]}
+      >
         <ActivityIndicator size="large" color="#8B5CF6" />
       </View>
     );
@@ -287,9 +318,9 @@ export default function AgendaScreen() {
                 onPress={() => setActiveType(type)}
               >
                 <Ionicons
-                  name={type === 'masterclass' ? 'school' : 'people'}
+                  name={type === "masterclass" ? "school" : "people"}
                   size={18}
-                  color={activeType === type ? '#fff' : '#8B5CF6'}
+                  color={activeType === type ? "#fff" : "#8B5CF6"}
                   style={{ marginRight: 6 }}
                 />
                 <Text
@@ -312,11 +343,11 @@ export default function AgendaScreen() {
             <Text style={styles.fieldLabel}>Title</Text>
             <TextInput
               style={styles.input}
-              placeholder={`e.g. ${activeType === 'masterclass' ? 'Advanced React Native Workshop' : 'InnovateSummit 2025'}`}
+              placeholder={`e.g. ${activeType === "masterclass" ? "Advanced React Native Workshop" : "InnovateSummit 2025"}`}
               placeholderTextColor="#9ca3af"
               value={eventTitle}
               onChangeText={setEventTitle}
-              editable={!saving}
+              editable={!saving && canEdit}
             />
           </View>
           <View style={styles.inputGroup}>
@@ -328,7 +359,7 @@ export default function AgendaScreen() {
               value={eventDate}
               onChangeText={setEventDate}
               keyboardType="numbers-and-punctuation"
-              editable={!saving}
+              editable={!saving && canEdit}
             />
           </View>
         </View>
@@ -346,14 +377,16 @@ export default function AgendaScreen() {
                 <View style={styles.itemNumberBadge}>
                   <Text style={styles.itemNumberText}>#{index + 1}</Text>
                 </View>
-                <TouchableOpacity
-                  style={styles.deleteItemBtn}
-                  onPress={() => handleRemoveItem(index)}
-                  disabled={saving}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Ionicons name="trash-outline" size={18} color="#ef4444" />
-                </TouchableOpacity>
+                {canEdit && (
+                  <TouchableOpacity
+                    style={styles.deleteItemBtn}
+                    onPress={() => handleRemoveItem(index)}
+                    disabled={saving}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Ionicons name="trash-outline" size={18} color="#ef4444" />
+                  </TouchableOpacity>
+                )}
               </View>
 
               <View style={styles.itemRow}>
@@ -364,8 +397,8 @@ export default function AgendaScreen() {
                     placeholder="09:00 AM"
                     placeholderTextColor="#9ca3af"
                     value={item.time}
-                    onChangeText={(v) => handleUpdateItem(index, 'time', v)}
-                    editable={!saving}
+                    onChangeText={(v) => handleUpdateItem(index, "time", v)}
+                    editable={!saving && canEdit}
                   />
                 </View>
                 <View style={[styles.itemField, { flex: 0.65 }]}>
@@ -375,8 +408,8 @@ export default function AgendaScreen() {
                     placeholder="Session title"
                     placeholderTextColor="#9ca3af"
                     value={item.title}
-                    onChangeText={(v) => handleUpdateItem(index, 'title', v)}
-                    editable={!saving}
+                    onChangeText={(v) => handleUpdateItem(index, "title", v)}
+                    editable={!saving && canEdit}
                   />
                 </View>
               </View>
@@ -389,8 +422,8 @@ export default function AgendaScreen() {
                     placeholder="Speaker name"
                     placeholderTextColor="#9ca3af"
                     value={item.speaker}
-                    onChangeText={(v) => handleUpdateItem(index, 'speaker', v)}
-                    editable={!saving}
+                    onChangeText={(v) => handleUpdateItem(index, "speaker", v)}
+                    editable={!saving && canEdit}
                   />
                 </View>
               </View>
@@ -406,8 +439,10 @@ export default function AgendaScreen() {
                         styles.tagChip,
                         item.tag === tag && styles.tagChipActive,
                       ]}
-                      onPress={() => handleUpdateItem(index, 'tag', tag)}
-                      disabled={saving}
+                      onPress={() =>
+                        canEdit && handleUpdateItem(index, "tag", tag)
+                      }
+                      disabled={saving || !canEdit}
                     >
                       <Text
                         style={[
@@ -425,34 +460,42 @@ export default function AgendaScreen() {
           ))}
 
           {/* Add Item Button */}
-          <TouchableOpacity
-            style={styles.addItemBtn}
-            onPress={handleAddItem}
-            disabled={saving}
-          >
-            <Ionicons name="add-circle" size={20} color="#8B5CF6" />
-            <Text style={styles.addItemBtnText}>Add Agenda Item</Text>
-          </TouchableOpacity>
+          {canEdit && (
+            <TouchableOpacity
+              style={styles.addItemBtn}
+              onPress={handleAddItem}
+              disabled={saving}
+            >
+              <Ionicons name="add-circle" size={20} color="#8B5CF6" />
+              <Text style={styles.addItemBtnText}>Add Agenda Item</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Save Button */}
-        <TouchableOpacity
-          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-          onPress={handleSave}
-          disabled={saving}
-        >
-          {saving ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <>
-              <Ionicons name="checkmark-circle" size={20} color="#fff" style={{ marginRight: 8 }} />
-              <Text style={styles.saveButtonText}>
-                Save {typeLabel} Agenda
-              </Text>
-            </>
-          )}
-        </TouchableOpacity>
-
+        {canEdit && (
+          <TouchableOpacity
+            style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+            onPress={handleSave}
+            disabled={saving}
+          >
+            {saving ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Ionicons
+                  name="checkmark-circle"
+                  size={20}
+                  color="#fff"
+                  style={{ marginRight: 8 }}
+                />
+                <Text style={styles.saveButtonText}>
+                  Save {typeLabel} Agenda
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+        )}
 
         <View style={{ height: insets.bottom + 100 }} />
       </ScrollView>
@@ -463,20 +506,20 @@ export default function AgendaScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: "#0f172a",
   },
   centerContent: {
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   scrollContent: {
     paddingBottom: 20,
   },
   // Header
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     paddingHorizontal: 20,
     paddingVertical: 16,
   },
@@ -485,71 +528,71 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 24,
-    fontWeight: '800',
-    color: '#ffffff',
+    fontWeight: "800",
+    color: "#ffffff",
   },
   headerSubtitle: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#8B5CF6',
+    fontWeight: "600",
+    color: "#8B5CF6",
     marginTop: 4,
     letterSpacing: 0.5,
   },
   // Section Card
   sectionCard: {
-    backgroundColor: '#1e293b',
+    backgroundColor: "#1e293b",
     marginHorizontal: 20,
     marginBottom: 16,
     borderRadius: 14,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: "#334155",
   },
   sectionLabel: {
     fontSize: 11,
-    fontWeight: '700',
-    color: '#94a3b8',
+    fontWeight: "700",
+    color: "#94a3b8",
     letterSpacing: 0.5,
     marginBottom: 12,
   },
   sectionHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 12,
   },
   itemCount: {
     fontSize: 11,
-    fontWeight: '700',
-    color: '#8B5CF6',
+    fontWeight: "700",
+    color: "#8B5CF6",
   },
   // Toggle
   toggleRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
   toggleBtn: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingVertical: 12,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: '#334155',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#0f172a',
+    borderColor: "#334155",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#0f172a",
   },
   toggleBtnActive: {
-    backgroundColor: '#8B5CF6',
-    borderColor: '#8B5CF6',
+    backgroundColor: "#8B5CF6",
+    borderColor: "#8B5CF6",
   },
   toggleBtnText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#8B5CF6',
+    fontWeight: "600",
+    color: "#8B5CF6",
   },
   toggleBtnTextActive: {
-    color: '#fff',
+    color: "#fff",
   },
   // Inputs
   inputGroup: {
@@ -557,65 +600,65 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     fontSize: 11,
-    fontWeight: '600',
-    color: '#94a3b8',
+    fontWeight: "600",
+    color: "#94a3b8",
     marginBottom: 6,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.3,
   },
   input: {
-    backgroundColor: '#0f172a',
+    backgroundColor: "#0f172a",
     borderWidth: 1.5,
-    borderColor: '#334155',
+    borderColor: "#334155",
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 14,
-    color: '#ffffff',
-    fontWeight: '500',
+    color: "#ffffff",
+    fontWeight: "500",
   },
   inputSmall: {
-    backgroundColor: '#0f172a',
+    backgroundColor: "#0f172a",
     borderWidth: 1.5,
-    borderColor: '#334155',
+    borderColor: "#334155",
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 10,
     fontSize: 13,
-    color: '#ffffff',
-    fontWeight: '500',
+    color: "#ffffff",
+    fontWeight: "500",
   },
   // Agenda Items
   agendaItemCard: {
     borderWidth: 1.5,
-    borderColor: '#334155',
+    borderColor: "#334155",
     borderRadius: 12,
     padding: 12,
     marginBottom: 10,
-    backgroundColor: '#0f172a',
+    backgroundColor: "#0f172a",
   },
   agendaItemHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 10,
   },
   deleteItemBtn: {
     padding: 8,
   },
   itemNumberBadge: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: "#8B5CF6",
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
   itemNumberText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   itemRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
     marginBottom: 10,
   },
@@ -627,8 +670,8 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   tagsWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 6,
     marginTop: 6,
   },
@@ -636,50 +679,50 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: '#1e293b',
+    backgroundColor: "#1e293b",
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: "#334155",
   },
   tagChipActive: {
-    backgroundColor: 'rgba(139, 92, 246, 0.2)',
-    borderColor: '#8B5CF6',
+    backgroundColor: "rgba(139, 92, 246, 0.2)",
+    borderColor: "#8B5CF6",
   },
   tagChipText: {
     fontSize: 11,
-    fontWeight: '600',
-    color: '#94a3b8',
+    fontWeight: "600",
+    color: "#94a3b8",
   },
   tagChipTextActive: {
-    color: '#8B5CF6',
+    color: "#8B5CF6",
   },
   // Add Item Button
   addItemBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 14,
     borderRadius: 10,
     borderWidth: 2,
-    borderStyle: 'dashed',
-    borderColor: '#334155',
+    borderStyle: "dashed",
+    borderColor: "#334155",
     marginTop: 4,
   },
   addItemBtnText: {
     marginLeft: 6,
     fontSize: 14,
-    fontWeight: '700',
-    color: '#8B5CF6',
+    fontWeight: "700",
+    color: "#8B5CF6",
   },
   // Save Button
   saveButton: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: "#8B5CF6",
     marginHorizontal: 20,
     borderRadius: 14,
     paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    shadowColor: '#8B5CF6',
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    shadowColor: "#8B5CF6",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -690,9 +733,8 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   saveButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
   },
-
 });

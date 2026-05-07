@@ -1,9 +1,9 @@
-import React from 'react';
-import { Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { TouchableOpacity, useWindowDimensions, Platform } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from "@/context/AuthContext";
+import { Ionicons } from "@expo/vector-icons";
+import { Tabs } from "expo-router";
+import React from "react";
+import { Platform, TouchableOpacity, useWindowDimensions } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 function LogoutButton() {
   const { logout } = useAuth();
@@ -15,11 +15,11 @@ function LogoutButton() {
         width: 36,
         height: 36,
         borderRadius: 10,
-        backgroundColor: '#fef2f2',
-        justifyContent: 'center',
-        alignItems: 'center',
+        backgroundColor: "#fef2f2",
+        justifyContent: "center",
+        alignItems: "center",
         borderWidth: 1,
-        borderColor: '#fecaca',
+        borderColor: "#fecaca",
         marginRight: 8,
       }}
     >
@@ -31,6 +31,7 @@ function LogoutButton() {
 export default function AdminLayout() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
+  const { role } = useAuth();
   const isLarge = width >= 800;
 
   return (
@@ -38,33 +39,41 @@ export default function AdminLayout() {
       screenOptions={{
         headerShown: true,
         headerTransparent: true,
-        headerTitle: '',
+        headerTitle: "",
         headerRight: () => <LogoutButton />,
-        tabBarActiveTintColor: '#8b5cf6', // Neon Purple
-        tabBarInactiveTintColor: '#64748b', // Slate 500
+        tabBarActiveTintColor: "#8b5cf6", // Neon Purple
+        tabBarInactiveTintColor: "#64748b", // Slate 500
         headerStyle: {
-          backgroundColor: 'transparent',
+          backgroundColor: "transparent",
         },
         tabBarStyle: {
-          backgroundColor: '#1e293b',
+          backgroundColor: "#1e293b",
           borderTopWidth: 1,
-          borderTopColor: '#334155',
-          height: Platform.OS === 'ios' ? 90 : 75 + (insets.bottom > 0 ? insets.bottom : 10),
+          borderTopColor: "#334155",
+          height:
+            Platform.OS === "ios"
+              ? 90
+              : 75 + (insets.bottom > 0 ? insets.bottom : 10),
           paddingTop: 8,
-          paddingBottom: Platform.OS === 'ios' ? insets.bottom : (insets.bottom > 0 ? insets.bottom : 10),
-          position: 'absolute',
+          paddingBottom:
+            Platform.OS === "ios"
+              ? insets.bottom
+              : insets.bottom > 0
+                ? insets.bottom
+                : 10,
+          position: "absolute",
           bottom: 0,
           left: 0,
           right: 0,
-          width: '100%',
-          alignSelf: 'center',
-          shadowColor: '#000',
+          width: "100%",
+          alignSelf: "center",
+          shadowColor: "#000",
           ...Platform.select({
             web: {
-              boxShadow: '0 -4px 10px rgba(0,0,0,0.3)',
+              boxShadow: "0 -4px 10px rgba(0,0,0,0.3)",
             },
             default: {
-              shadowColor: '#000',
+              shadowColor: "#000",
               shadowOffset: { width: 0, height: -4 },
               shadowOpacity: 0.3,
               shadowRadius: 10,
@@ -74,16 +83,16 @@ export default function AdminLayout() {
         },
         tabBarItemStyle: {
           paddingVertical: 4,
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
         },
         tabBarLabelStyle: {
           fontSize: 10,
-          fontWeight: '700',
+          fontWeight: "700",
           marginTop: 2,
           paddingHorizontal: 2,
-          width: '100%',
+          width: "100%",
         },
         tabBarIconStyle: {
           marginBottom: 2,
@@ -94,7 +103,7 @@ export default function AdminLayout() {
       <Tabs.Screen
         name="scanner"
         options={{
-          title: 'Scanner',
+          title: "Scanner",
           headerRight: () => null,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="qr-code" size={size} color={color} />
@@ -104,7 +113,7 @@ export default function AdminLayout() {
       <Tabs.Screen
         name="panel"
         options={{
-          title: 'Dashboard',
+          title: "Dashboard",
           headerRight: () => null,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="bar-chart" size={size} color={color} />
@@ -114,7 +123,7 @@ export default function AdminLayout() {
       <Tabs.Screen
         name="guests"
         options={{
-          title: 'Guests',
+          title: "Guests",
           headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="people" size={size} color={color} />
@@ -124,7 +133,7 @@ export default function AdminLayout() {
       <Tabs.Screen
         name="agenda"
         options={{
-          title: 'Agenda',
+          title: "Agenda",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="calendar" size={size} color={color} />
           ),

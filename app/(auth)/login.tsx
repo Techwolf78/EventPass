@@ -1,24 +1,23 @@
+import { auth } from "@/config/firebase";
+import { loginGuestByEmail } from "@/utils/firestore";
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import React, { useState } from "react";
 import {
-  View,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  Image,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons } from "@expo/vector-icons";
-import { auth } from "@/config/firebase";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { loginGuestByEmail } from "@/utils/firestore";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -48,7 +47,8 @@ export default function LoginScreen() {
       const firebaseUser = userCredential.user;
 
       // Redirect based on user type after successful sign-in
-      if (firebaseUser.email === "admin@test.com") {
+      const adminEmails = ["admin@test.com", "superadmin@test.com"];
+      if (adminEmails.includes(firebaseUser.email)) {
         router.replace("/(admin)/panel");
       } else {
         router.replace("/(attendee)/agenda");

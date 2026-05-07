@@ -1,23 +1,23 @@
-import { db, auth } from "@/config/firebase";
+import { auth, db } from "@/config/firebase";
 import {
-  collection,
-  query,
-  where,
-  getDocs,
-  doc,
-  getDoc,
-  setDoc,
-  deleteDoc,
-  writeBatch,
-  Timestamp,
-  onSnapshot,
-  orderBy,
-  addDoc,
-} from "firebase/firestore";
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
 } from "firebase/auth";
+import {
+    Timestamp,
+    addDoc,
+    collection,
+    deleteDoc,
+    doc,
+    getDoc,
+    getDocs,
+    onSnapshot,
+    orderBy,
+    query,
+    setDoc,
+    where,
+    writeBatch,
+} from "firebase/firestore";
 
 // Custom random token generator for Expo compatibility (avoids crypto error)
 const generateToken = () => {
