@@ -1,14 +1,14 @@
-import { useEffect, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAuth } from '@/context/AuthContext';
+import { useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAuth } from "@/context/AuthContext";
 import {
   getCandidateByEmail,
   getCandidateByQRToken,
   getGuestByQRToken,
   Candidate,
-} from '@/utils/firestore';
+} from "@/utils/firestore";
 
-export type EnrollmentType = 'masterclass' | 'event';
+export type EnrollmentType = "masterclass" | "event";
 
 export type AttendeePalette = {
   primary: string;
@@ -22,27 +22,29 @@ export type AttendeePalette = {
 
 const ATTENDEE_PALETTES: Record<EnrollmentType, AttendeePalette> = {
   event: {
-    primary: '#6366f1', // Indigo instead of sharp purple
-    primaryDark: '#4f46e5',
-    primarySoft: '#e0e7ff',
-    primaryBorder: '#c7d2fe',
-    primaryText: '#4338ca',
-    gradient: ['#6366f1', '#4f46e5'], // Smoother transition
-    backgroundGradient: ['#f8fafc', '#eff6ff'], // Very subtle blue tint
+    primary: "#ef4444", // Red for Synergy Sphere
+    primaryDark: "#dc2626",
+    primarySoft: "#fee2e2",
+    primaryBorder: "#fecaca",
+    primaryText: "#b91c1c",
+    gradient: ["#ef4444", "#dc2626"],
+    backgroundGradient: ["#fef2f2", "#fff"],
   },
   masterclass: {
-    primary: '#f43f5e', // Rose instead of sharp red
-    primaryDark: '#e11d48',
-    primarySoft: '#ffe4e6',
-    primaryBorder: '#fecdd3',
-    primaryText: '#be123c',
-    gradient: ['#f43f5e', '#e11d48'],
-    backgroundGradient: ['#fdfbfb', '#fff0f2'],
+    primary: "#3b82f6", // Blue for Masterclass
+    primaryDark: "#2563eb",
+    primarySoft: "#dbeafe",
+    primaryBorder: "#bfdbfe",
+    primaryText: "#1d4ed8",
+    gradient: ["#3b82f6", "#2563eb"],
+    backgroundGradient: ["#eff6ff", "#fff"],
   },
 };
 
-export const getAttendeePalette = (enrollmentType?: EnrollmentType | null): AttendeePalette => {
-  if (enrollmentType === 'masterclass') {
+export const getAttendeePalette = (
+  enrollmentType?: EnrollmentType | null,
+): AttendeePalette => {
+  if (enrollmentType === "masterclass") {
     return ATTENDEE_PALETTES.masterclass;
   }
   return ATTENDEE_PALETTES.event;
@@ -50,7 +52,7 @@ export const getAttendeePalette = (enrollmentType?: EnrollmentType | null): Atte
 
 export function useAttendeeTheme(qrToken?: string | null) {
   const { user } = useAuth();
-  const [enrollmentType, setEnrollmentType] = useState<EnrollmentType>('event');
+  const [enrollmentType, setEnrollmentType] = useState<EnrollmentType>("event");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -68,7 +70,8 @@ export function useAttendeeTheme(qrToken?: string | null) {
         }
 
         if (!resolvedType) {
-          const storedToken = qrToken || (await AsyncStorage.getItem('guestQrToken'));
+          const storedToken =
+            qrToken || (await AsyncStorage.getItem("guestQrToken"));
           if (storedToken) {
             const candidateByToken = await getCandidateByQRToken(storedToken);
             if (candidateByToken?.enrollmentType) {
@@ -88,7 +91,7 @@ export function useAttendeeTheme(qrToken?: string | null) {
           setEnrollmentType(resolvedType);
         }
       } catch (error) {
-        console.error('Error resolving attendee theme:', error);
+        console.error("Error resolving attendee theme:", error);
       } finally {
         if (active) {
           setLoading(false);
