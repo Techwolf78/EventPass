@@ -6,7 +6,11 @@ import {
   getGuestList,
   GuestListItem,
   updateGuest,
+  getEvents,
+  validateAndCheckIn,
 } from "@/utils/firestore";
+import { collection, query, where, getDocs, deleteDoc } from "firebase/firestore";
+import { db } from "@/config/firebase";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
@@ -94,6 +98,7 @@ export default function GuestListScreen() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [linkedinUrl, setLinkedinUrl] = useState("");
   const [enrollmentType, setEnrollmentType] = useState<"masterclass" | "event">(
     "event",
   );
@@ -117,6 +122,37 @@ export default function GuestListScreen() {
     setLoading(false);
   };
 
+  const handleCheckIn = async (guest: GuestListItem) => {
+    const targetEventId = "test-event";
+    if (!guest.qrToken) {
+      showAlert("Error", "Guest has no QR token.");
+      return;
+    }
+    setLoading(true);
+    try {
+      // Clear old checked in time (delete existing attendance records)
+      const attendanceQuery = query(
+        collection(db, "attendance"),
+        where("candidateId", "==", guest.id),
+        where("eventId", "==", targetEventId)
+      );
+      const attendanceSnap = await getDocs(attendanceQuery);
+      const deletePromises = attendanceSnap.docs.map((doc) => deleteDoc(doc.ref));
+      await Promise.all(deletePromises);
+
+      // Set new as current (check in again)
+      const result = await validateAndCheckIn(guest.qrToken, targetEventId, "admin");
+      showAlert("Result", result.message);
+      if (result.success) {
+        loadGuests(); // Reload to update status
+      }
+    } catch (error: any) {
+      showAlert("Error", error.message || "Check-in failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAddGuest = async () => {
     if (!name.trim() || !email.trim()) {
       showAlert("Error", "Please fill in all fields");
@@ -130,9 +166,10 @@ export default function GuestListScreen() {
         name,
         email,
         enrollmentType,
+        linkedinUrl,
       });
     } else {
-      result = await addGuest(name, email, enrollmentType);
+      result = await addGuest(name, email, enrollmentType, linkedinUrl);
     }
 
     showAlert("Result", result.message);
@@ -146,6 +183,7 @@ export default function GuestListScreen() {
   const resetForm = () => {
     setName("");
     setEmail("");
+    setLinkedinUrl("");
     setEnrollmentType("event");
     setShowForm(false);
     setShowEditModal(false);
@@ -156,6 +194,7 @@ export default function GuestListScreen() {
     setName(guest.name);
     setEmail(guest.email);
     setEnrollmentType(guest.enrollmentType);
+    setLinkedinUrl(guest.linkedinUrl || "");
     setEditingId(guest.id);
     setShowEditModal(true);
   };
@@ -760,6 +799,15 @@ export default function GuestListScreen() {
               autoCapitalize="none"
               editable={!submitting}
             />
+            <TextInput
+              style={styles.formInput}
+              placeholder="LinkedIn URL (Optional)"
+              placeholderTextColor="#9ca3af"
+              value={linkedinUrl}
+              onChangeText={setLinkedinUrl}
+              autoCapitalize="none"
+              editable={!submitting}
+            />
             <Text style={styles.fieldLabel}>ENROLLMENT TYPE</Text>
             <View style={styles.enrollmentRow}>
               {["masterclass", "event"].map((type) => (
@@ -898,6 +946,14 @@ export default function GuestListScreen() {
 
                   {canEdit && (
                     <View style={styles.actionButtons}>
+                      {(status === "unarrived" || status === "arrived") && (
+                        <TouchableOpacity
+                          style={[styles.actionBtn, styles.checkInBtn]}
+                          onPress={() => handleCheckIn(item)}
+                        >
+                          <Ionicons name="checkmark-circle" size={16} color="#10b981" />
+                        </TouchableOpacity>
+                      )}
                       <TouchableOpacity
                         style={[styles.actionBtn, styles.editBtn]}
                         onPress={() => handleEditGuest(item)}
@@ -956,6 +1012,16 @@ export default function GuestListScreen() {
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
+              autoCapitalize="none"
+              editable={!submitting}
+            />
+
+            <TextInput
+              style={styles.modalInput}
+              placeholder="LinkedIn URL (Optional)"
+              placeholderTextColor="#64748b"
+              value={linkedinUrl}
+              onChangeText={setLinkedinUrl}
               autoCapitalize="none"
               editable={!submitting}
             />
@@ -1390,6 +1456,11 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(239, 68, 68, 0.1)",
     borderWidth: 1,
     borderColor: "rgba(239, 68, 68, 0.2)",
+  },
+  checkInBtn: {
+    backgroundColor: "rgba(16, 185, 129, 0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(16, 185, 129, 0.2)",
   },
   statusArrived: {
     backgroundColor: "rgba(16, 185, 129, 0.1)",

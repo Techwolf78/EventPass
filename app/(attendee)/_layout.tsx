@@ -20,6 +20,10 @@ const ProfileTabIcon = ({ color }: { color: string }) => (
   <Ionicons name="person" size={24} color={color} />
 );
 
+const GalleryTabIcon = ({ color }: { color: string }) => (
+  <Ionicons name="images" size={24} color={color} />
+);
+
 export default function AttendeeLayout() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -97,6 +101,14 @@ export default function AttendeeLayout() {
         }}
       />
       <Tabs.Screen
+        name="gallery"
+        options={{
+          title: 'Gallery',
+          headerShown: true,
+          tabBarIcon: GalleryTabIcon,
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
@@ -105,12 +117,6 @@ export default function AttendeeLayout() {
         }}
       />
 
-      <Tabs.Screen
-        name="register"
-        options={{
-          href: null,
-        }}
-      />
       <Tabs.Screen
         name="notifications"
         options={{

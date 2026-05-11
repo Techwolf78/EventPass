@@ -4,11 +4,14 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+// import * as MediaLibrary from "expo-media-library";
+import * as Notifications from "expo-notifications";
 import {
   Alert,
   Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -26,100 +29,117 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 32,
+    paddingHorizontal: 24,
     maxWidth: 440,
     alignSelf: "center",
     width: "100%",
   },
   logoContainer: {
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: 32,
     paddingTop: 16,
   },
   logo: {
-    width: 140,
-    height: 140,
+    width: 100,
+    height: 100,
   },
   title: {
-    fontSize: 30,
-    fontWeight: "900",
+    fontSize: 28,
+    fontWeight: "800",
     color: "#0f172a",
-    marginTop: 16,
+    marginTop: 12,
     letterSpacing: -0.5,
   },
   subtitle: {
-    color: "#94a3b8",
-    marginTop: 8,
-    fontSize: 16,
+    color: "#64748b",
+    marginTop: 6,
+    fontSize: 14,
     fontWeight: "500",
   },
   tabContainer: {
     flexDirection: "row",
     backgroundColor: "#f1f5f9",
     padding: 4,
-    borderRadius: 12,
-    marginBottom: 32,
+    borderRadius: 14,
+    marginBottom: 28,
   },
   tabButton: {
     flex: 1,
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingVertical: 12,
+    borderRadius: 10,
     alignItems: "center",
   },
   tabButtonActive: {
     backgroundColor: "#fff",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   tabText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: "600",
   },
   tabTextActive: {
     color: "#0f172a",
   },
   tabTextInactive: {
-    color: "#cbd5e1",
+    color: "#94a3b8",
+  },
+  // Label styles
+  label: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1e293b",
+    marginBottom: 8,
+    marginLeft: 4,
+  },
+  inputWrapper: {
+    marginBottom: 20,
   },
   input: {
-    backgroundColor: "#f1f5f9",
-    borderRadius: 12,
+    backgroundColor: "#f8fafc",
+    borderRadius: 14,
     paddingHorizontal: 16,
-    height: 56,
+    height: 54,
     color: "#0f172a",
     fontWeight: "500",
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: "#e2e8f0",
-    marginBottom: 16,
+    fontSize: 16,
   },
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#f1f5f9",
-    borderRadius: 12,
+    backgroundColor: "#f8fafc",
+    borderRadius: 14,
     paddingHorizontal: 16,
-    height: 56,
-    borderWidth: 1,
+    height: 54,
+    borderWidth: 1.5,
     borderColor: "#e2e8f0",
   },
   inputText: {
     flex: 1,
     color: "#0f172a",
     fontWeight: "500",
+    fontSize: 16,
     height: "100%",
   },
   passwordButton: {
-    padding: 4,
+    padding: 8,
   },
   submitButton: {
-    marginTop: 32,
+    marginTop: 24,
     height: 56,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   submitButtonGuest: {
     backgroundColor: "#4f46e5",
@@ -128,7 +148,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#1e293b",
   },
   submitButtonDisabled: {
-    opacity: 0.7,
+    opacity: 0.6,
+    shadowOpacity: 0,
   },
   submitText: {
     color: "#fff",
@@ -138,10 +159,113 @@ const styles = StyleSheet.create({
   footer: {
     marginTop: "auto",
     paddingTop: 40,
+    paddingBottom: 8,
   },
   footerText: {
     textAlign: "center",
     color: "#cbd5e1",
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  errorText: {
+    color: "#ef4444",
+    fontSize: 12,
+    fontWeight: "500",
+    marginTop: 4,
+    marginLeft: 4,
+  },
+  inputError: {
+    borderColor: "#ef4444",
+  },
+  termsContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  termsText: {
+    fontSize: 13,
+    color: "#64748b",
+    marginLeft: 10,
+  },
+  termsLink: {
+    color: "#4f46e5",
+    fontWeight: "600",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 24,
+    width: "100%",
+    maxWidth: 500,
+    maxHeight: "80%",
+    padding: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#0f172a",
+    marginBottom: 16,
+  },
+  modalScroll: {
+    marginBottom: 24,
+  },
+  modalSectionTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1e293b",
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  modalBody: {
+    fontSize: 14,
+    color: "#475569",
+    lineHeight: 22,
+  },
+  closeButton: {
+    backgroundColor: "#0f172a",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  closeButtonText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  // Guest helper text
+  helperText: {
+    fontSize: 12,
+    color: "#94a3b8",
+    marginTop: -12,
+    marginBottom: 8,
+    marginLeft: 4,
+  },
+  // Divider
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 24,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#e2e8f0",
+  },
+  dividerText: {
+    marginHorizontal: 12,
+    color: "#94a3b8",
     fontSize: 12,
     fontWeight: "500",
   },
@@ -158,10 +282,53 @@ export default function LoginScreen() {
   const [guestName, setGuestName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
   const [guestLoading, setGuestLoading] = useState(false);
+  const [emailError, setEmailError] = useState("");
+  const [adminError, setAdminError] = useState("");
+  const [showTerms, setShowTerms] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(true);
+
+  useEffect(() => {
+    const requestPermissions = async () => {
+      try {
+        // Request notifications permission
+        const { status } = await Notifications.requestPermissionsAsync({
+          ios: {
+            allowAlert: true,
+            allowBadge: true,
+            allowSound: true,
+          },
+        });
+        if (status !== "granted") {
+          console.warn("Notification permission not granted");
+        }
+      } catch (error) {
+        console.error("Error requesting permissions:", error);
+      }
+    };
+    
+    requestPermissions();
+  }, []);
+
+  // Clear errors when switching tabs
+  const handleTabChange = (tab: "guest" | "login") => {
+    setActiveTab(tab);
+    setEmailError("");
+    setAdminError("");
+  };
+
+  const validateEmail = (email: string) => {
+    const re = /\S+@\S+\.\S+/;
+    return re.test(email);
+  };
 
   const handleSignIn = async () => {
+    setAdminError("");
+    if (!acceptedTerms) {
+      setAdminError("Please accept terms and conditions");
+      return;
+    }
     if (!email || !password) {
-      Alert.alert("Error", "Please fill in all fields");
+      setAdminError("Invalid credentials");
       return;
     }
 
@@ -174,7 +341,6 @@ export default function LoginScreen() {
       );
       const firebaseUser = userCredential.user;
 
-      // Redirect based on user role from Firestore instead of hardcoded emails
       const userData = await getUserData(firebaseUser.uid);
       const role = userData?.role || "attendee";
 
@@ -192,15 +358,25 @@ export default function LoginScreen() {
         );
       }
     } catch (error: any) {
-      Alert.alert("Error", error.message);
+      setAdminError("Invalid email or password");
     } finally {
       setLoading(false);
     }
   };
 
   const handleGuestLogin = async () => {
-    if (!guestName.trim() || !guestEmail.trim()) {
-      Alert.alert("Error", "Please enter your name and email");
+    setEmailError("");
+    if (!acceptedTerms) {
+      setEmailError("Please accept terms and conditions");
+      return;
+    }
+    if (!guestName.trim()) {
+      setEmailError("Please enter your full name");
+      return;
+    }
+
+    if (!guestEmail.trim() || !validateEmail(guestEmail.trim())) {
+      setEmailError("Please enter a valid email address");
       return;
     }
 
@@ -225,9 +401,8 @@ export default function LoginScreen() {
       }
 
       if (result.message === "Not on the guest list") {
-        Alert.alert(
-          "Not Registered",
-          "This email is not in our guest list. Please contact the organizer.",
+        setEmailError(
+          "This email is not on the guest list. Please contact the event organizer.",
         );
       } else {
         Alert.alert(
@@ -250,117 +425,183 @@ export default function LoginScreen() {
       <ScrollView
         contentContainerStyle={{
           flexGrow: 1,
-          paddingTop: insets.top + 40,
-          paddingBottom: insets.bottom + 40,
+          paddingTop: insets.top + 20,
+          paddingBottom: insets.bottom + 20,
         }}
         style={styles.container}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.scrollContent}>
-          {/* Centered Square Logo */}
+          {/* Logo Section */}
           <View style={styles.logoContainer}>
             <Image
               source={require("../../assets/images/connecthq.png")}
               style={styles.logo}
               resizeMode="contain"
             />
-            <Text style={styles.title}>Login</Text>
-            <Text style={styles.subtitle}>Welcome back to ConnectHQ</Text>
+            <Text style={styles.title}>Welcome</Text>
+            <Text style={styles.subtitle}>ConnectHQ • Event Management</Text>
           </View>
 
-          {/* Clean Light Form */}
-          <View>
-            <View style={styles.tabContainer}>
-              <TouchableOpacity
+          {/* Tab Selector */}
+          <View style={styles.tabContainer}>
+            <TouchableOpacity
+              style={[
+                styles.tabButton,
+                activeTab === "guest" && styles.tabButtonActive,
+              ]}
+              onPress={() => handleTabChange("guest")}
+            >
+              <Text
                 style={[
-                  styles.tabButton,
-                  activeTab === "guest" && styles.tabButtonActive,
+                  styles.tabText,
+                  activeTab === "guest"
+                    ? styles.tabTextActive
+                    : styles.tabTextInactive,
                 ]}
-                onPress={() => setActiveTab("guest")}
               >
-                <Text
-                  style={[
-                    styles.tabText,
-                    activeTab === "guest"
-                      ? styles.tabTextActive
-                      : styles.tabTextInactive,
-                  ]}
-                >
-                  Guest
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
+                Guest
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.tabButton,
+                activeTab === "login" && styles.tabButtonActive,
+              ]}
+              onPress={() => handleTabChange("login")}
+            >
+              <Text
                 style={[
-                  styles.tabButton,
-                  activeTab === "login" && styles.tabButtonActive,
+                  styles.tabText,
+                  activeTab === "login"
+                    ? styles.tabTextActive
+                    : styles.tabTextInactive,
                 ]}
-                onPress={() => setActiveTab("login")}
               >
-                <Text
-                  style={[
-                    styles.tabText,
-                    activeTab === "login"
-                      ? styles.tabTextActive
-                      : styles.tabTextInactive,
-                  ]}
-                >
-                  Organizer
-                </Text>
-              </TouchableOpacity>
-            </View>
+                Organizer
+              </Text>
+            </TouchableOpacity>
+          </View>
 
-            {activeTab === "guest" ? (
-              <View>
+          {activeTab === "guest" ? (
+            <View>
+              {/* Name Field with Label */}
+              <View style={styles.inputWrapper}>
+                <Text style={styles.label}>Full Name</Text>
                 <TextInput
-                  style={styles.input}
-                  placeholder="Full Name"
+                  style={[
+                    styles.input,
+                    emailError && !guestName.trim() ? styles.inputError : null,
+                  ]}
+                  placeholder="John Doe"
                   placeholderTextColor="#cbd5e1"
                   value={guestName}
-                  onChangeText={setGuestName}
+                  onChangeText={(text) => {
+                    setGuestName(text);
+                    if (emailError) setEmailError("");
+                  }}
                   editable={!guestLoading}
                 />
+              </View>
+
+              {/* Email Field with Label */}
+              <View style={styles.inputWrapper}>
+                <Text style={styles.label}>Email Address</Text>
                 <TextInput
-                  style={styles.input}
-                  placeholder="Email Address"
+                  style={[styles.input, emailError ? styles.inputError : null]}
+                  placeholder="you@example.com"
                   placeholderTextColor="#cbd5e1"
                   value={guestEmail}
-                  onChangeText={setGuestEmail}
+                  onChangeText={(text) => {
+                    setGuestEmail(text);
+                    if (emailError) setEmailError("");
+                  }}
                   autoCapitalize="none"
                   keyboardType="email-address"
                   editable={!guestLoading}
                 />
-                <TouchableOpacity
-                  style={[
-                    styles.submitButton,
-                    styles.submitButtonGuest,
-                    guestLoading && styles.submitButtonDisabled,
-                  ]}
-                  onPress={handleGuestLogin}
-                  disabled={guestLoading}
-                >
-                  <Text style={styles.submitText}>Continue</Text>
-                </TouchableOpacity>
+                {emailError ? (
+                  <Text style={styles.errorText}>{emailError}</Text>
+                ) : null}
               </View>
-            ) : (
-              <View>
+
+              {/* Terms Checkbox */}
+              <View style={styles.termsContainer}>
+                <TouchableOpacity
+                  onPress={() => setAcceptedTerms(!acceptedTerms)}
+                >
+                  <Ionicons
+                    name={acceptedTerms ? "checkbox" : "square-outline"}
+                    size={22}
+                    color={acceptedTerms ? "#4f46e5" : "#cbd5e1"}
+                  />
+                </TouchableOpacity>
+                <Text style={styles.termsText}>
+                  I agree to the{" "}
+                  <Text
+                    style={styles.termsLink}
+                    onPress={() => setShowTerms(true)}
+                  >
+                    Terms and Conditions
+                  </Text>
+                </Text>
+              </View>
+
+              {/* Continue Button */}
+              <TouchableOpacity
+                style={[
+                  styles.submitButton,
+                  styles.submitButtonGuest,
+                  (guestLoading || !acceptedTerms) &&
+                    styles.submitButtonDisabled,
+                ]}
+                onPress={handleGuestLogin}
+                disabled={guestLoading || !acceptedTerms}
+              >
+                <Text style={styles.submitText}>
+                  {guestLoading ? "Verifying..." : "Continue to Event"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View>
+              {/* Email Field with Label */}
+              <View style={styles.inputWrapper}>
+                <Text style={styles.label}>Work Email</Text>
                 <TextInput
-                  style={styles.input}
-                  placeholder="Work Email"
+                  style={[styles.input, adminError ? styles.inputError : null]}
+                  placeholder="admin@yourcompany.com"
                   placeholderTextColor="#cbd5e1"
                   value={email}
-                  onChangeText={setEmail}
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    if (adminError) setAdminError("");
+                  }}
                   autoCapitalize="none"
                   keyboardType="email-address"
                   editable={!loading}
                 />
-                <View style={styles.inputContainer}>
+              </View>
+
+              {/* Password Field with Label */}
+              <View style={styles.inputWrapper}>
+                <Text style={styles.label}>Password</Text>
+                <View
+                  style={[
+                    styles.inputContainer,
+                    adminError ? styles.inputError : null,
+                  ]}
+                >
                   <TextInput
                     style={styles.inputText}
-                    placeholder="Password"
+                    placeholder="Enter your password"
                     placeholderTextColor="#cbd5e1"
                     value={password}
-                    onChangeText={setPassword}
+                    onChangeText={(text) => {
+                      setPassword(text);
+                      if (adminError) setAdminError("");
+                    }}
                     secureTextEntry={!showPassword}
                     editable={!loading}
                   />
@@ -369,33 +610,173 @@ export default function LoginScreen() {
                     onPress={() => setShowPassword(!showPassword)}
                   >
                     <Ionicons
-                      name={showPassword ? "eye-off" : "eye"}
-                      size={20}
-                      color="#cbd5e1"
+                      name={showPassword ? "eye-off-outline" : "eye-outline"}
+                      size={22}
+                      color="#94a3b8"
                     />
                   </TouchableOpacity>
                 </View>
-                <TouchableOpacity
-                  style={[
-                    styles.submitButton,
-                    styles.submitButtonAdmin,
-                    loading && styles.submitButtonDisabled,
-                  ]}
-                  onPress={handleSignIn}
-                  disabled={loading}
-                >
-                  <Text style={styles.submitText}>Sign In</Text>
-                </TouchableOpacity>
+                {adminError ? (
+                  <Text style={styles.errorText}>{adminError}</Text>
+                ) : null}
               </View>
-            )}
-          </View>
+
+              {/* Terms Checkbox */}
+              <View style={styles.termsContainer}>
+                <TouchableOpacity
+                  onPress={() => setAcceptedTerms(!acceptedTerms)}
+                >
+                  <Ionicons
+                    name={acceptedTerms ? "checkbox" : "square-outline"}
+                    size={22}
+                    color={acceptedTerms ? "#1e293b" : "#cbd5e1"}
+                  />
+                </TouchableOpacity>
+                <Text style={styles.termsText}>
+                  I agree to the{" "}
+                  <Text
+                    style={styles.termsLink}
+                    onPress={() => setShowTerms(true)}
+                  >
+                    Terms and Conditions
+                  </Text>
+                </Text>
+              </View>
+
+              {/* Sign In Button */}
+              <TouchableOpacity
+                style={[
+                  styles.submitButton,
+                  styles.submitButtonAdmin,
+                  (loading || !acceptedTerms) && styles.submitButtonDisabled,
+                ]}
+                onPress={handleSignIn}
+                disabled={loading || !acceptedTerms}
+              >
+                <Text style={styles.submitText}>
+                  {loading ? "Signing in..." : "Sign In"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Footer */}
           <View style={styles.footer}>
-            <Text style={styles.footerText}>ConnectHQ Event Management</Text>
+            <Text style={styles.footerText}>
+              © 2026 ConnectHQ — All rights reserved
+            </Text>
           </View>
         </View>
       </ScrollView>
+
+      {/* Terms and Conditions Modal */}
+      <Modal
+        visible={showTerms}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowTerms(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Terms and Conditions</Text>
+            <ScrollView
+              style={styles.modalScroll}
+              showsVerticalScrollIndicator={false}
+            >
+              <Text style={styles.modalBody}>
+                Last updated on April 27, 2026.{"\n\n"}
+                Please read these terms and conditions carefully before using
+                Our Service.
+              </Text>
+
+              <Text style={styles.modalSectionTitle}>1. Acknowledgment</Text>
+              <Text style={styles.modalBody}>
+                These are the Terms and Conditions governing the use of this
+                Service and the agreement that operates between You and the
+                Company. These Terms and Conditions set out the rights and
+                obligations of all users regarding the use of the Service.
+                {"\n\n"}
+                Your access to and use of the Service is conditioned on Your
+                acceptance of and compliance with these Terms and Conditions.
+              </Text>
+
+              <Text style={styles.modalSectionTitle}>2. User Accounts</Text>
+              <Text style={styles.modalBody}>
+                When You create an account with Us, You must provide Us
+                information that is accurate, complete, and current at all
+                times. Failure to do so constitutes a breach of the Terms, which
+                may result in immediate termination of Your account on Our
+                Service.{"\n\n"}
+                You are responsible for safeguarding the password that You use
+                to access the Service.
+              </Text>
+
+              <Text style={styles.modalSectionTitle}>3. Content</Text>
+              <Text style={styles.modalBody}>
+                Our Service allows You to post Content. You are responsible for
+                the Content that You post to the Service, including its
+                legality, reliability, and appropriateness.{"\n\n"}
+                By posting Content to the Service, You grant Us the right and
+                license to use, modify, publicly perform, publicly display,
+                reproduce, and distribute such Content.
+              </Text>
+
+              <Text style={styles.modalSectionTitle}>
+                4. Intellectual Property
+              </Text>
+              <Text style={styles.modalBody}>
+                The Service and its original content (excluding Content provided
+                by You or other users), features and functionality are and will
+                remain the exclusive property of the Company and its licensors.
+              </Text>
+
+              <Text style={styles.modalSectionTitle}>5. Termination</Text>
+              <Text style={styles.modalBody}>
+                We may terminate or suspend Your Account immediately, without
+                prior notice or liability, for any reason whatsoever, including
+                without limitation if You breach these Terms and Conditions.
+              </Text>
+
+              <Text style={styles.modalSectionTitle}>
+                6. Limitation of Liability
+              </Text>
+              <Text style={styles.modalBody}>
+                To the maximum extent permitted by applicable law, in no event
+                shall the Company or its suppliers be liable for any special,
+                incidental, indirect, or consequential damages whatsoever.
+              </Text>
+
+              <Text style={styles.modalSectionTitle}>7. Governing Law</Text>
+              <Text style={styles.modalBody}>
+                The laws of the Country, excluding its conflicts of law rules,
+                shall govern this Terms and Your use of the Service.
+              </Text>
+
+              <Text style={styles.modalSectionTitle}>
+                8. Changes to These Terms
+              </Text>
+              <Text style={styles.modalBody}>
+                We reserve the right, at Our sole discretion, to modify or
+                replace these Terms at any time. By continuing to access or use
+                Our Service after those revisions become effective, You agree to
+                be bound by the revised terms.
+              </Text>
+
+              <Text style={styles.modalSectionTitle}>9. Contact Us</Text>
+              <Text style={styles.modalBody}>
+                If you have any questions about these Terms and Conditions, You
+                can contact us through our website or via email.
+              </Text>
+            </ScrollView>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setShowTerms(false)}
+            >
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }

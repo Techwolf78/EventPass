@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Android build files (These are usually very large and unnecessary for EAS)
+android/build/
+android/app/build/
+android/.gradle/
+
+# iOS build files
+ios/build/
+ios/Pods/
+
+# Expo files
+.expo/
+dist/
+
+# Big files / Debug logs
+*.zip
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# Local environment files
+.env*.local

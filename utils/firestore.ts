@@ -37,6 +37,7 @@ export interface GuestListItem {
   registeredAt: Timestamp | null;
   qrToken: string | null;
   enrollmentType: "masterclass" | "event";
+  linkedinUrl?: string | null;
 }
 
 export interface Candidate {
@@ -49,6 +50,7 @@ export interface Candidate {
   fcmToken: string;
   registeredAt: Timestamp;
   enrollmentType: "masterclass" | "event";
+  linkedinUrl?: string | null;
 }
 
 export interface EventData {
@@ -66,6 +68,7 @@ export interface EventData {
 export interface AttendanceRecord {
   id: string;
   candidateId: string;
+  candidateName?: string;
   eventId: string;
   scannedAt: Timestamp;
   scannedBy: string;
@@ -313,6 +316,7 @@ export async function validateAndCheckIn(
     const attendanceRef = doc(collection(db, "attendance"));
     await setDoc(attendanceRef, {
       candidateId: candidateDoc.id,
+      candidateName: candidateData.name,
       eventId: eventId,
       scannedAt: Timestamp.now(),
       scannedBy: adminUid,
@@ -883,6 +887,7 @@ export async function addGuest(
   name: string,
   email: string,
   enrollmentType: "masterclass" | "event",
+  linkedinUrl?: string,
 ): Promise<{ success: boolean; message: string }> {
   try {
     const lowerEmail = email.toLowerCase().trim();
@@ -911,6 +916,7 @@ export async function addGuest(
       status: "pending",
       registeredAt: null,
       qrToken: null,
+      linkedinUrl: linkedinUrl || null,
     });
 
     return { success: true, message: "Guest added successfully" };
@@ -1068,6 +1074,7 @@ export async function updateGuest(
     name: string;
     email: string;
     enrollmentType: "masterclass" | "event";
+    linkedinUrl: string;
   }>,
 ): Promise<{ success: boolean; message: string }> {
   try {
@@ -1083,6 +1090,9 @@ export async function updateGuest(
     }
     if (updates.enrollmentType) {
       updateData.enrollmentType = updates.enrollmentType;
+    }
+    if (updates.linkedinUrl !== undefined) {
+      updateData.linkedinUrl = updates.linkedinUrl || null;
     }
 
     await setDoc(guestRef, updateData, { merge: true });

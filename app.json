@@ -27,7 +27,11 @@
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.POST_NOTIFICATIONS"
       ]
     },
     "web": {
@@ -57,6 +61,21 @@
         {
           "cameraPermission": "Allow ConnectHQ to use the camera to scan attendee QR codes."
         }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow ConnectHQ to access your photos to save certificates.",
+          "savePhotosPermission": "Allow ConnectHQ to save certificates to your photos."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/connecthq-square.png",
+          "color": "#4f46e5",
+          "mode": "production"
+        }
       ]
     ],
     "experiments": {
@@ -65,9 +84,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "bf6a2c87-f3b5-4576-a915-87a188d1c6c9"
+        "projectId": "9ae61a72-a51d-4ab6-b032-a67f1fa70e80"
       }
     },
-    "owner": "vanshsingla1601"
+    "owner": "techwolf78"
   }
 }

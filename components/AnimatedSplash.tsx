@@ -1,11 +1,11 @@
 import React, { useEffect, useRef } from "react";
 import {
-  View,
-  Image,
-  Text,
   Animated,
-  StyleSheet,
   Dimensions,
+  Image,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
 
 const { width, height } = Dimensions.get("window");
@@ -77,7 +77,8 @@ export default function AnimatedSplash({ onFinish }: AnimatedSplashProps) {
       ]),
 
       // 4. Hold for a moment
-      Animated.delay(800),
+      // 4. Hold for a moment
+      Animated.delay(1400), // ← 1.8 seconds
 
       // 5. Fade everything out
       Animated.timing(overlayOpacity, {
@@ -102,7 +103,7 @@ export default function AnimatedSplash({ onFinish }: AnimatedSplashProps) {
           duration: 1500,
           useNativeDriver: true,
         }),
-      ])
+      ]),
     ).start();
   }, []);
 
@@ -154,7 +155,8 @@ export default function AnimatedSplash({ onFinish }: AnimatedSplashProps) {
           transform: [{ translateY: taglineTranslateY }],
         }}
       >
-        <Text style={styles.tagline}>Your Event Command Center</Text>
+        <Text style={styles.tagline}>Powering Seamless Event Operations</Text>
+        <Text style={styles.subtagline}>Scan • Verify • Manage</Text>
       </Animated.View>
 
       {/* Bottom decoration dots */}
@@ -233,10 +235,19 @@ const styles = StyleSheet.create({
   tagline: {
     fontSize: 14,
     color: "rgba(148, 163, 184, 0.8)",
-    letterSpacing: 3,
+    letterSpacing: 2,
     textTransform: "uppercase",
     textAlign: "center",
     marginTop: 4,
+  },
+  subtagline: {
+    fontSize: 12,
+    color: "rgba(96, 165, 250, 0.7)",
+    letterSpacing: 4,
+    textTransform: "uppercase",
+    textAlign: "center",
+    marginTop: 8,
+    fontWeight: "500",
   },
   dotsContainer: {
     flexDirection: "row",

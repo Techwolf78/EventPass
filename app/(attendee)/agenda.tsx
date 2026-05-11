@@ -2,9 +2,10 @@ import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
-  StyleSheet,
   ActivityIndicator,
   ScrollView,
+  RefreshControl,
+  TouchableOpacity,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -17,6 +18,19 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useAttendeeTheme } from "@/hooks/use-attendee-theme";
 
+// Helper to parse time string to minutes (e.g., "10:00 AM" -> 600)
+const parseTimeToMinutes = (timeStr: string): number => {
+  try {
+    const [time, modifier] = timeStr.trim().split(" ");
+    let [hours, minutes] = time.split(":").map(Number);
+    if (modifier === "PM" && hours < 12) hours += 12;
+    if (modifier === "AM" && hours === 12) hours = 0;
+    return hours * 60 + minutes;
+  } catch (e) {
+    return 0;
+  }
+};
+
 export default function AgendaScreen() {
   const { qrToken } = useLocalSearchParams();
   const { user } = useAuth();
@@ -28,9 +42,10 @@ export default function AgendaScreen() {
   } = useAttendeeTheme(qrToken as string);
   const [agenda, setAgenda] = useState<EventData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const loadAgenda = useCallback(async () => {
-    setLoading(true);
+  const loadAgenda = useCallback(async (isRefresh = false) => {
+    if (!isRefresh) setLoading(true);
     try {
       if (resolvedEnrollmentType === "masterclass") {
         const masterclassAgenda = await getMasterclassAgenda();
@@ -43,8 +58,14 @@ export default function AgendaScreen() {
       console.error("Error loading agenda:", error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [resolvedEnrollmentType]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadAgenda(true);
+  }, [loadAgenda]);
 
   useEffect(() => {
     if (!themeLoading) {
@@ -52,15 +73,33 @@ export default function AgendaScreen() {
     }
   }, [loadAgenda, themeLoading]);
 
+  // Simulated current time for demo (10:15 AM)
+  const simulatedCurrentMinutes = 10 * 60 + 15;
+
+  const getSessionStatus = (timeStr: string) => {
+    const minutes = parseTimeToMinutes(timeStr);
+    if (!minutes) return "upcoming";
+    
+    const duration = 60; // Assume 1 hour
+    
+    if (simulatedCurrentMinutes >= minutes && simulatedCurrentMinutes < minutes + duration) {
+      return "live";
+    } else if (simulatedCurrentMinutes >= minutes + duration) {
+      return "completed";
+    } else {
+      return "upcoming";
+    }
+  };
+
   if (loading || themeLoading) {
     return (
-      <View className="flex-1 bg-white justify-center items-center">
+      <View className="flex-1 bg-slate-50 justify-center items-center">
         <ActivityIndicator size="large" color={palette.primary} />
         <Text
           style={{ color: palette.primary }}
           className="font-semibold mt-4 text-sm uppercase tracking-wider"
         >
-          Loading Agenda
+          Loading Agenda...
         </Text>
       </View>
     );
@@ -75,123 +114,178 @@ export default function AgendaScreen() {
 
   if (!agenda || agendaItems.length === 0) {
     return (
-      <View className="flex-1 bg-white">
+      <View className="flex-1 bg-slate-50">
         <View
-          style={{ paddingTop: insets.top + 40 }}
+          style={{ paddingTop: insets.top + 60 }}
           className="flex-1 items-center px-10"
         >
-          <View className="w-20 h-20 rounded-full bg-slate-50 items-center justify-center mb-6">
+          <View className="w-24 h-24 rounded-full bg-white shadow-sm items-center justify-center mb-6 border border-slate-100">
             <Ionicons
               name="calendar-outline"
-              size={32}
-              color={palette.primarySoft}
+              size={40}
+              color={palette.primary}
             />
           </View>
-          <Text className="text-xl font-black text-slate-900 mb-2">
-            No Agenda Found
+          <Text className="text-2xl font-bold text-slate-900 mb-2">
+            No Agenda Scheduled
           </Text>
-          <Text className="text-sm text-slate-400 text-center font-medium leading-relaxed">
+          <Text className="text-sm text-slate-500 text-center font-medium leading-relaxed mb-6">
             There is no schedule available for {displayTitle} yet. Please check
-            back later.
+            back later or contact support.
           </Text>
+          <TouchableOpacity 
+            onPress={() => loadAgenda()}
+            className="px-6 py-3 bg-white border border-slate-200 rounded-xl shadow-sm"
+          >
+            <Text className="text-slate-700 font-semibold text-sm">Refresh Schedule</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
   }
 
+  const liveSession = agendaItems.find(item => getSessionStatus(item.time) === "live");
+
   return (
-    <View className="flex-1 bg-white">
+    <View className="flex-1 bg-slate-50">
       <ScrollView
         contentContainerStyle={{
           paddingTop: insets.top + 20,
-          paddingBottom: insets.bottom + 100,
+          paddingBottom: insets.bottom + 120,
         }}
         className="flex-1"
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.primary} />
+        }
       >
+        {/* Hero Header */}
         <View className="px-6 mb-8">
-          <Text
-            style={{ color: palette.primary }}
-            className="text-[11px] font-black uppercase tracking-[2px] mb-2"
-          >
-            {displayDate}
-          </Text>
-          <Text className="text-3xl font-black text-slate-900 leading-tight mb-2">
+          <View className="flex-row justify-between items-start mb-2">
+            <Text
+              style={{ color: palette.primary }}
+              className="text-xs font-bold uppercase tracking-[2px]"
+            >
+              {displayDate}
+            </Text>
+            {liveSession && (
+              <View className="flex-row items-center bg-red-50 px-2.5 py-1 rounded-full border border-red-100">
+                <View className="w-1.5 h-1.5 bg-red-500 rounded-full mr-1.5" />
+                <Text className="text-red-600 text-[10px] font-bold uppercase">Live Now</Text>
+              </View>
+            )}
+          </View>
+          <Text className="text-3xl font-bold text-slate-900 leading-tight mb-2">
             {displayTitle}
           </Text>
           <View className="flex-row items-center gap-2">
-            <Ionicons name="location" size={14} color={palette.primary} />
-            <Text className="text-sm font-semibold text-slate-500">
+            <Ionicons name="location" size={14} color="#64748B" />
+            <Text className="text-sm font-medium text-slate-500">
               {displayLocation}
             </Text>
           </View>
         </View>
 
-        <View className="px-6">
-          <Text
-            style={{ color: palette.primary }}
-            className="text-xs font-black uppercase tracking-[1px] mb-6"
-          >
-            Event Schedule
-          </Text>
-
-          {agendaItems.map((item, index) => (
-            <View key={index} className="flex-row mb-8">
-              {/* Timeline */}
-              <View className="items-center mr-4 w-12">
-                <Text className="text-xs font-black text-slate-900 uppercase">
-                  {item.time}
-                </Text>
-                <View className="w-[2px] bg-slate-100 flex-1 my-2" />
+        {/* Happening Now Section */}
+        {liveSession && (
+          <View className="px-6 mb-8">
+            <Text className="text-sm font-bold text-slate-900 mb-3">Happening Now</Text>
+            <View className="bg-white rounded-2xl p-5 border-2 border-indigo-500 shadow-sm">
+              <View className="flex-row justify-between items-start mb-2">
+                <Text className="text-xs font-bold text-indigo-600">{liveSession.time}</Text>
+                <View className="bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
+                  <Text className="text-indigo-700 text-[10px] font-bold uppercase">
+                    {liveSession.tag || "Session"}
+                  </Text>
+                </View>
               </View>
-
-              {/* Content */}
-              <View className="flex-1 bg-slate-50 rounded-2xl p-5 border border-slate-100">
-                <View className="flex-row justify-between items-start mb-2">
-                  <Text className="flex-1 text-base font-black text-slate-900 mr-2 leading-tight">
-                    {item.title}
-                  </Text>
-                  <View
-                    style={{
-                      backgroundColor:
-                        item.tag?.toLowerCase() === "technical"
-                          ? palette.primarySoft
-                          : palette.primaryBorder,
-                      borderColor:
-                        item.tag?.toLowerCase() === "technical"
-                          ? palette.primaryBorder
-                          : palette.primarySoft,
-                      borderWidth: 1,
-                    }}
-                    className="px-2 py-0.5 rounded-md"
-                  >
-                    <Text
-                      style={{
-                        color: palette.primaryText,
-                      }}
-                      className="text-[10px] font-black uppercase tracking-tighter"
-                    >
-                      {item.tag || "Regular"}
-                    </Text>
-                  </View>
-                </View>
-
-                <View className="flex-row items-center">
-                  <Ionicons
-                    name="person-circle"
-                    size={14}
-                    color={palette.primary}
-                  />
-                  <Text
-                    style={{ color: palette.primaryText }}
-                    className="text-xs font-bold ml-1"
-                  >
-                    {item.speaker}
-                  </Text>
-                </View>
+              <Text className="text-lg font-bold text-slate-900 mb-2">{liveSession.title}</Text>
+              <View className="flex-row items-center">
+                <Ionicons name="person-circle" size={16} color="#64748B" />
+                <Text className="text-sm font-medium text-slate-600 ml-1.5">
+                  {liveSession.speaker}
+                </Text>
               </View>
             </View>
-          ))}
+          </View>
+        )}
+
+        {/* Timeline Section */}
+        <View className="px-6">
+          <Text className="text-sm font-bold text-slate-900 mb-6">Full Schedule</Text>
+
+          {agendaItems.map((item, index) => {
+            const status = getSessionStatus(item.time);
+            const isLive = status === "live";
+            const isCompleted = status === "completed";
+            const isLast = index === agendaItems.length - 1;
+
+            return (
+              <View key={index} className="flex-row min-h-[100px]">
+                {/* Time & Indicator Column */}
+                <View className="w-16 items-center">
+                  <Text className={`text-xs font-bold ${isLive ? "text-indigo-600" : isCompleted ? "text-slate-400" : "text-slate-900"} mb-2`}>
+                    {item.time}
+                  </Text>
+                  <View className={`w-[2px] ${isCompleted ? "bg-indigo-100" : "bg-slate-100"} flex-1 mb-2`} />
+                  <View 
+                    className={`w-3 h-3 rounded-full absolute top-5 ${
+                      isLive ? "bg-indigo-600 border-2 border-white shadow-sm" : 
+                      isCompleted ? "bg-slate-300" : "bg-white border-2 border-slate-300"
+                    }`}
+                  />
+                </View>
+
+                {/* Content Card Column */}
+                <View className="flex-1 pb-6 ml-2">
+                  <View className={`bg-white rounded-2xl p-5 border ${isLive ? "border-indigo-200 shadow-sm" : "border-slate-100"} ${isCompleted ? "opacity-60" : ""}`}>
+                    <View className="flex-row justify-between items-start mb-2">
+                      <Text className={`flex-1 text-base font-bold text-slate-900 mr-2 leading-tight ${isCompleted ? "text-slate-500" : ""}`}>
+                        {item.title}
+                      </Text>
+                      <View
+                        className={`px-2 py-0.5 rounded-md border ${
+                          isLive ? "bg-indigo-50 border-indigo-100" : "bg-slate-50 border-slate-100"
+                        }`}
+                      >
+                        <Text
+                          className={`text-[10px] font-bold uppercase tracking-wide ${
+                            isLive ? "text-indigo-700" : "text-slate-600"
+                          }`}
+                        >
+                          {item.tag || "Regular"}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View className="flex-row items-center justify-between">
+                      <View className="flex-row items-center">
+                        <Ionicons
+                          name="person-circle"
+                          size={14}
+                          color={isLive ? palette.primary : "#64748B"}
+                        />
+                        <Text
+                          className={`text-xs font-medium ml-1.5 ${
+                            isLive ? "text-indigo-700" : "text-slate-600"
+                          }`}
+                        >
+                          {item.speaker}
+                        </Text>
+                      </View>
+                      
+                      {isLive && (
+                        <View className="flex-row items-center">
+                          <View className="w-1.5 h-1.5 bg-red-500 rounded-full mr-1" />
+                          <Text className="text-red-600 text-[10px] font-bold uppercase">Happening</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                </View>
+              </View>
+            );
+          })}
         </View>
       </ScrollView>
     </View>

@@ -10,11 +10,12 @@ import "../global.css";
 
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useCheckInNotifications } from "@/hooks/useCheckInNotifications";
 import { ActivityIndicator, LogBox, View } from "react-native";
 
+import AnimatedSplash from "@/components/AnimatedSplash";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
-import AnimatedSplash from "@/components/AnimatedSplash";
 
 // Suppress CSS interop navigation context warnings from LogBox
 LogBox.ignoreLogs([
@@ -63,6 +64,8 @@ function RootLayoutInner() {
   const colorScheme = useColorScheme();
   const { loading, user, isAdmin } = useAuth();
   const [appIsReady, setAppIsReady] = useState(false);
+
+  useCheckInNotifications();
   const [showAnimatedSplash, setShowAnimatedSplash] = useState(true);
 
   const router = useRouter();
@@ -98,11 +101,11 @@ function RootLayoutInner() {
 
     const inAuthGroup = segments[0] === "(auth)";
     const guestAllowedScreens = new Set([
-      "register",
       "qr-pass",
       "agenda",
       "attendees",
       "profile",
+      "gallery",
     ]);
     const inGuestAllowed =
       segments[0] === "(attendee)" && guestAllowedScreens.has(segments[1]);
@@ -118,7 +121,15 @@ function RootLayoutInner() {
         router.replace("/(attendee)/agenda");
       }
     }
-  }, [user, loading, segments, isAdmin, appIsReady, showAnimatedSplash, router]);
+  }, [
+    user,
+    loading,
+    segments,
+    isAdmin,
+    appIsReady,
+    showAnimatedSplash,
+    router,
+  ]);
 
   if (!appIsReady || loading) {
     return (
