@@ -1,14 +1,13 @@
-import { useAuth } from "@/context/AuthContext";
 import {
   Candidate,
-  getAttendeeList,
+  getAttendeeListWithCheckIn,
   getCheckedInCandidateIds,
 } from "@/utils/firestore";
+import { formatTimeAgo } from "@/utils/time";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Dimensions,
   FlatList,
   Linking,
   ScrollView,
@@ -19,9 +18,6 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-const { width } = Dimensions.get("window");
-const CARD_WIDTH = width * 0.42; // For stats cards
 
 const getInitials = (name: string) => {
   const parts = name.split(" ").filter(Boolean);
@@ -48,10 +44,12 @@ const getAvatarColor = (name: string) => {
 
 export default function AttendeesScreen() {
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
-  const [attendees, setAttendees] = useState<Candidate[]>([]);
+  const [attendees, setAttendees] = useState<
+    (Candidate & { checkInTime?: any })[]
+  >([]);
   const [checkedInIds, setCheckedInIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<
@@ -67,7 +65,7 @@ export default function AttendeesScreen() {
     setError(null);
     try {
       const [list, checkIns] = await Promise.all([
-        getAttendeeList(),
+        getAttendeeListWithCheckIn(),
         getCheckedInCandidateIds(),
       ]);
 
@@ -80,6 +78,12 @@ export default function AttendeesScreen() {
       setLoading(false);
     }
   };
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadAttendees();
+    setRefreshing(false);
+  }, []);
 
   const stats = useMemo(() => {
     const total = attendees.length;
@@ -98,17 +102,15 @@ export default function AttendeesScreen() {
       if (activeFilter === "checked_in" && !isCheckedIn) return false;
       if (activeFilter === "pending" && isCheckedIn) return false;
 
-      // Mock VIP for demo (e.g., every 5th attendee or specific condition)
-      // In a real app, this would be a property on the attendee object
-      const isVIP = attendee.id.charCodeAt(0) % 5 === 0;
+      const isVIP = attendee.isVIP || false;
       if (activeFilter === "vip" && !isVIP) return false;
 
       if (!normalized) return true;
-      const department = attendee.department?.toLowerCase() || "";
+      const companyName = attendee.companyName?.toLowerCase() || "";
       return (
         attendee.name.toLowerCase().includes(normalized) ||
         attendee.email.toLowerCase().includes(normalized) ||
-        department.includes(normalized)
+        companyName.includes(normalized)
       );
     });
   }, [attendees, checkedInIds, searchQuery, activeFilter]);
@@ -158,18 +160,10 @@ export default function AttendeesScreen() {
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
             <View style={styles.statHeader}>
-              <Text style={styles.statLabel}>Total Registered</Text>
-              <Ionicons name="people-outline" size={16} color="#64748B" />
-            </View>
-            <Text style={styles.statValue}>{stats.total}</Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <View style={styles.statHeader}>
               <Text style={styles.statLabel}>Checked In</Text>
               <Ionicons
                 name="checkmark-circle-outline"
-                size={16}
+                size={14}
                 color="#10B981"
               />
             </View>
@@ -180,18 +174,8 @@ export default function AttendeesScreen() {
 
           <View style={styles.statCard}>
             <View style={styles.statHeader}>
-              <Text style={styles.statLabel}>Pending</Text>
-              <Ionicons name="time-outline" size={16} color="#F59E0B" />
-            </View>
-            <Text style={[styles.statValue, { color: "#F59E0B" }]}>
-              {stats.pending}
-            </Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <View style={styles.statHeader}>
               <Text style={styles.statLabel}>Attendance Rate</Text>
-              <Ionicons name="trending-up-outline" size={16} color="#3B82F6" />
+              <Ionicons name="trending-up-outline" size={14} color="#3B82F6" />
             </View>
             <Text style={[styles.statValue, { color: "#3B82F6" }]}>
               {stats.rate}%
@@ -211,7 +195,7 @@ export default function AttendeesScreen() {
           />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search name, email, or department"
+            placeholder="Search name, email, or company"
             placeholderTextColor="#94A3B8"
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -308,9 +292,11 @@ export default function AttendeesScreen() {
           { paddingBottom: insets.bottom + 100 },
         ]}
         showsVerticalScrollIndicator={false}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
         renderItem={({ item, index }) => {
           const isCheckedIn = checkedInIds.has(item.id);
-          const isVIP = item.id.charCodeAt(0) % 5 === 0; // Mock VIP
+          const isVIP = item.isVIP || false;
 
           return (
             <View style={styles.attendeeCard}>
@@ -347,14 +333,16 @@ export default function AttendeesScreen() {
                       color="#64748B"
                     />
                     <Text style={styles.departmentText} numberOfLines={1}>
-                      {item.department || "General"}
+                      {item.companyName || "General"}
                     </Text>
                   </View>
 
                   {isCheckedIn && (
                     <View style={styles.timeContainer}>
                       <Ionicons name="time-outline" size={12} color="#64748B" />
-                      <Text style={styles.timeText}>Just now</Text>
+                      <Text style={styles.timeText}>
+                        {formatTimeAgo(item.checkInTime)}
+                      </Text>
                     </View>
                   )}
                 </View>
@@ -363,9 +351,10 @@ export default function AttendeesScreen() {
               <TouchableOpacity
                 style={styles.linkedinButton}
                 onPress={() => {
-                  const url = item.linkedinUrl || "https://www.linkedin.com/feed/";
+                  const url =
+                    item.linkedinUrl || "https://www.linkedin.com/feed/";
                   Linking.openURL(url).catch((err) =>
-                    console.error("Couldn't load page", err)
+                    console.error("Couldn't load page", err),
                   );
                 }}
               >
@@ -409,8 +398,8 @@ export default function AttendeesScreen() {
             </View>
             <Text style={styles.emptyTitle}>No attendees found</Text>
             <Text style={styles.emptySubtitle}>
-              Try adjusting your search or filters to find what you're looking
-              for.
+              Try adjusting your search or filters to find what {"you're"}{" "}
+              looking for.
             </Text>
           </View>
         }
@@ -520,22 +509,21 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     backgroundColor: "#FFFFFF",
-    paddingVertical: 12,
+    paddingVertical: 8,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: "#F1F5F9",
   },
   statsGrid: {
     flexDirection: "row",
-    flexWrap: "wrap",
     justifyContent: "space-between",
+    gap: 12,
   },
   statCard: {
     backgroundColor: "#F8FAFC",
-    borderRadius: 12,
-    padding: 12,
-    width: "48%",
-    marginBottom: 8,
+    borderRadius: 10,
+    padding: 10,
+    flex: 1,
     borderWidth: 1,
     borderColor: "#F1F5F9",
   },
@@ -543,7 +531,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 6,
   },
   statLabel: {
     fontSize: 11,
@@ -553,7 +541,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   statValue: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "700",
     color: "#0F172A",
   },

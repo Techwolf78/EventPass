@@ -12,7 +12,8 @@
       "googleServicesFile": "./GoogleService-Info.plist",
       "bundleIdentifier": "Event.Pass",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": ["fetch", "remote-notification"]
       }
     },
     "android": {
@@ -31,7 +32,9 @@
         "android.permission.READ_MEDIA_AUDIO",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.POST_NOTIFICATIONS"
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE"
       ]
     },
     "web": {
@@ -74,9 +77,11 @@
         {
           "icon": "./assets/images/connecthq-square.png",
           "color": "#4f46e5",
+          "defaultChannel": "checkins",
           "mode": "production"
         }
-      ]
+      ],
+      "expo-task-manager"
     ],
     "experiments": {
       "typedRoutes": true

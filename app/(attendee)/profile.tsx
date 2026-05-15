@@ -1,35 +1,37 @@
-import React, { useEffect, useState, useCallback } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { getEnrollmentDisplayName } from "@/hooks/use-attendee-theme";
 import {
-  View,
-  Text,
-  StyleSheet,
-  ActivityIndicator,
-  TouchableOpacity,
-  ScrollView,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
-import {
+  Candidate,
   getCandidateByEmail,
   getCandidateByQRToken,
   getGuestByQRToken,
-  Candidate,
 } from "@/utils/firestore";
-import { useAuth } from "@/context/AuthContext";
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user, logout } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [profile, setProfile] = useState<{
     name: string;
     email: string;
     role: string;
     enrollmentType: string;
-    department: string;
+    companyName: string;
     qrToken: string;
   } | null>(null);
 
@@ -37,50 +39,96 @@ export default function ProfileScreen() {
     setLoading(true);
     try {
       let resolvedCandidate: Candidate | null = null;
+      let companyName = "";
       let resolvedProfile: {
         name: string;
         email: string;
         role: string;
         enrollmentType: string;
-        department: string;
+        companyName: string;
         qrToken: string;
       } | null = null;
 
+      console.log("=== LOADING PROFILE ===");
+      console.log("Current user:", user?.email);
+
       if (user?.email) {
+        console.log("Fetching candidate by email:", user.email);
         resolvedCandidate = await getCandidateByEmail(user.email);
+        console.log(
+          "Candidate from email:",
+          JSON.stringify(resolvedCandidate, null, 2),
+        );
       }
 
       if (!resolvedCandidate) {
         const storedToken = await AsyncStorage.getItem("guestQrToken");
+        console.log("Guest QR token from storage:", storedToken);
+
         if (storedToken) {
           resolvedCandidate = await getCandidateByQRToken(storedToken);
+          console.log(
+            "Candidate from QR token:",
+            JSON.stringify(resolvedCandidate, null, 2),
+          );
+
           if (!resolvedCandidate) {
             const guest = await getGuestByQRToken(storedToken);
+            console.log("Guest from QR token:", JSON.stringify(guest, null, 2));
+
             if (guest) {
+              companyName = guest.companyName || "";
               resolvedProfile = {
                 name: guest.name,
                 email: guest.email,
                 role: "attendee",
                 enrollmentType: guest.enrollmentType,
-                department: "",
+                companyName: guest.companyName || "",
                 qrToken: guest.qrToken || "",
               };
+              console.log("Created profile from guest:", resolvedProfile);
             }
           }
         }
       }
 
       if (resolvedCandidate) {
+        // Fetch the guest data to get companyName since it's not in candidates
+        let guestCompanyName = "";
+        try {
+          const guest = await getGuestByQRToken(resolvedCandidate.qrToken);
+          if (guest) {
+            guestCompanyName = guest.companyName || "";
+            console.log("Found guest data with companyName:", guestCompanyName);
+          }
+        } catch (err) {
+          console.log("Could not fetch guest data for company name");
+        }
+
+        console.log("Raw candidate data:", {
+          id: resolvedCandidate.id,
+          name: resolvedCandidate.name,
+          email: resolvedCandidate.email,
+          role: resolvedCandidate.role,
+          enrollmentType: resolvedCandidate.enrollmentType,
+          qrToken: resolvedCandidate.qrToken,
+        });
+
         resolvedProfile = {
           name: resolvedCandidate.name,
           email: resolvedCandidate.email,
           role: resolvedCandidate.role,
           enrollmentType: resolvedCandidate.enrollmentType,
-          department: resolvedCandidate.department || "",
+          companyName: guestCompanyName || "",
           qrToken: resolvedCandidate.qrToken,
         };
+        console.log(
+          "Final profile from candidate with company name:",
+          resolvedProfile,
+        );
       }
 
+      console.log("Final profile state:", resolvedProfile);
       setProfile(resolvedProfile);
     } catch (error) {
       console.error("Error loading profile:", error);
@@ -88,17 +136,21 @@ export default function ProfileScreen() {
     } finally {
       setLoading(false);
     }
-  }, [user, logout]);
+  }, [user]);
 
   useEffect(() => {
     loadProfile();
   }, [loadProfile]);
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadProfile();
+    setRefreshing(false);
+  }, [loadProfile]);
+
   const handleSignOut = async () => {
-    await AsyncStorage.removeItem("guestQrToken");
-    if (user) {
-      await logout();
-    }
+    // logout() in AuthContext clears both Firebase auth and guest session from AsyncStorage
+    await logout();
     router.replace("/(auth)/login");
   };
 
@@ -115,7 +167,7 @@ export default function ProfileScreen() {
     email: "—",
     role: "attendee",
     enrollmentType: "event",
-    department: "",
+    companyName: "",
     qrToken: "",
   };
 
@@ -129,6 +181,9 @@ export default function ProfileScreen() {
         }}
         className="flex-1"
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
         <View className="items-center mb-10">
           <View className="w-20 h-20 rounded-full bg-slate-50 items-center justify-center mb-5 border border-slate-100 shadow-sm">
@@ -157,16 +212,16 @@ export default function ProfileScreen() {
               Enrollment
             </Text>
             <Text className="text-sm font-black text-indigo-600 capitalize">
-              {safeProfile.enrollmentType}
+              {getEnrollmentDisplayName(safeProfile.enrollmentType)}
             </Text>
           </View>
 
           <View className="flex-row justify-between items-center py-4 border-b border-white/50">
             <Text className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
-              Department
+              Company
             </Text>
             <Text className="text-sm font-bold text-slate-900 capitalize">
-              {safeProfile.department || "—"}
+              {safeProfile.companyName || "—"}
             </Text>
           </View>
 
@@ -193,5 +248,3 @@ export default function ProfileScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({});

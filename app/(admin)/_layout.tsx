@@ -2,7 +2,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import React from "react";
-import { Platform, TouchableOpacity, useWindowDimensions } from "react-native";
+import { Platform, TouchableOpacity } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 function LogoutButton() {
@@ -14,25 +14,22 @@ function LogoutButton() {
       style={{
         width: 36,
         height: 36,
-        borderRadius: 10,
-        backgroundColor: "#fef2f2",
+        borderRadius: 8,
+        backgroundColor: "#FFFFFF",
         justifyContent: "center",
         alignItems: "center",
         borderWidth: 1,
-        borderColor: "#fecaca",
+        borderColor: "#E5E7EB",
         marginRight: 8,
       }}
     >
-      <Ionicons name="log-out-outline" size={18} color="#ef4444" />
+      <Ionicons name="log-out-outline" size={18} color="#000000" />
     </TouchableOpacity>
   );
 }
 
 export default function AdminLayout() {
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
-  const { role } = useAuth();
-  const isLarge = width >= 800;
 
   return (
     <Tabs
@@ -41,15 +38,15 @@ export default function AdminLayout() {
         headerTransparent: true,
         headerTitle: "",
         headerRight: () => <LogoutButton />,
-        tabBarActiveTintColor: "#8b5cf6", // Neon Purple
-        tabBarInactiveTintColor: "#64748b", // Slate 500
+        tabBarActiveTintColor: "#000000",
+        tabBarInactiveTintColor: "#9CA3AF",
         headerStyle: {
           backgroundColor: "transparent",
         },
         tabBarStyle: {
-          backgroundColor: "#1e293b",
+          backgroundColor: "#FFFFFF",
           borderTopWidth: 1,
-          borderTopColor: "#334155",
+          borderTopColor: "#E5E7EB",
           height:
             Platform.OS === "ios"
               ? 90
@@ -70,16 +67,16 @@ export default function AdminLayout() {
           shadowColor: "#000",
           ...Platform.select({
             web: {
-              boxShadow: "0 -4px 10px rgba(0,0,0,0.3)",
+              boxShadow: "0 -4px 10px rgba(0,0,0,0.05)",
             },
             default: {
               shadowColor: "#000",
-              shadowOffset: { width: 0, height: -4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 10,
+              shadowOffset: { width: 0, height: -2 },
+              shadowOpacity: 0.05,
+              shadowRadius: 5,
             },
           }),
-          elevation: 30,
+          elevation: 2,
         },
         tabBarItemStyle: {
           paddingVertical: 4,

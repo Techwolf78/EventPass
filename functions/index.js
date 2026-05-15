@@ -58,8 +58,8 @@ exports.sendCheckInNotification = onDocumentCreated(
       messages.push({
         to: token,
         sound: "default",
-        title: "Guest Arrived! 🎉",
-        body: `${candidateName} has arrived at the event.`,
+        title: "Guest Checked In",
+        body: `${candidateName} has arrived at the event`,
         priority: "high",
         channelId: "checkins",
       });

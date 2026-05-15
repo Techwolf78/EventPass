@@ -62,7 +62,7 @@ SplashScreen.preventAutoHideAsync();
 
 function RootLayoutInner() {
   const colorScheme = useColorScheme();
-  const { loading, user, isAdmin } = useAuth();
+  const { loading, user, isAdmin, guestSession, isGuest } = useAuth();
   const [appIsReady, setAppIsReady] = useState(false);
 
   useCheckInNotifications();
@@ -110,22 +110,36 @@ function RootLayoutInner() {
     const inGuestAllowed =
       segments[0] === "(attendee)" && guestAllowedScreens.has(segments[1]);
 
-    if (!user && !inAuthGroup && !inGuestAllowed) {
-      // Redirect to login if not authenticated
-      router.replace("/(auth)/login");
-    } else if (user && inAuthGroup) {
-      // Redirect away from login if already authenticated
+    if (user && inAuthGroup) {
+      // Firebase-authenticated user on login page → redirect to their dashboard
       if (isAdmin) {
         router.replace("/(admin)/panel");
       } else {
         router.replace("/(attendee)/agenda");
       }
+    } else if (!user && isGuest && inAuthGroup) {
+      // Guest with a saved session on login page → send them straight to QR pass
+      router.replace({
+        pathname: "/(attendee)/qr-pass",
+        params: { qrToken: guestSession!.qrToken },
+      });
+    } else if (!user && isGuest && !inGuestAllowed) {
+      // Guest with a saved session but on a non-guest screen → redirect to QR pass
+      router.replace({
+        pathname: "/(attendee)/qr-pass",
+        params: { qrToken: guestSession!.qrToken },
+      });
+    } else if (!user && !isGuest && !inAuthGroup && !inGuestAllowed) {
+      // No user, no guest session → redirect to login
+      router.replace("/(auth)/login");
     }
   }, [
     user,
     loading,
     segments,
     isAdmin,
+    isGuest,
+    guestSession,
     appIsReady,
     showAnimatedSplash,
     router,

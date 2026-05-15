@@ -28,6 +28,7 @@ const generateToken = () => {
 };
 
 // ============== TYPE DEFINITIONS ==============
+export type UserRole = "attendee" | "admin" | "superadmin";
 export interface GuestListItem {
   id: string;
   name: string;
@@ -38,6 +39,8 @@ export interface GuestListItem {
   qrToken: string | null;
   enrollmentType: "masterclass" | "event";
   linkedinUrl?: string | null;
+  companyName?: string;
+  isVIP?: boolean;
 }
 
 export interface Candidate {
@@ -45,12 +48,13 @@ export interface Candidate {
   name: string;
   email: string;
   role: "attendee" | "speaker" | "volunteer";
-  department: string;
+  companyName: string;
   qrToken: string;
   fcmToken: string;
   registeredAt: Timestamp;
   enrollmentType: "masterclass" | "event";
   linkedinUrl?: string | null;
+  isVIP?: boolean;
 }
 
 export interface EventData {
@@ -116,11 +120,11 @@ export async function validateAndRegisterAttendee(
   inputEmail: string,
   fcmToken: string,
   password: string,
-  department: string = "",
+  companyName: string = "",
 ): Promise<RegistrationResult> {
   const trimmedName = inputName.trim();
   const lowerEmail = inputEmail.toLowerCase().trim();
-  const deptToStore = department.trim();
+  const companyToStore = companyName.trim();
 
   try {
     // Step 1: Query guestList by email
@@ -197,11 +201,12 @@ export async function validateAndRegisterAttendee(
       name: trimmedName,
       email: lowerEmail,
       role: "attendee",
-      department: deptToStore,
+      companyName: companyToStore || guestData.companyName || "",
       qrToken: qrToken,
       fcmToken: fcmToken,
       enrollmentType: guestData.enrollmentType,
       registeredAt: Timestamp.now(),
+      isVIP: guestData.isVIP || false,
     });
 
     await batch.commit();
@@ -255,11 +260,12 @@ export async function loginGuestByEmail(
       name: guestData.name,
       email: lowerEmail,
       role: "attendee",
-      department: "",
+      companyName: "",
       qrToken,
       fcmToken: "guest-login",
       enrollmentType: guestData.enrollmentType,
       registeredAt: Timestamp.now(),
+      isVIP: guestData.isVIP || false,
     });
 
     await batch.commit();
@@ -609,14 +615,17 @@ export async function deleteAgenda(
     const existingSnap = await getDocs(existingQuery);
 
     if (existingSnap.empty) {
-      return { success: false, message: `No ${type} agenda found to delete` };
+      return {
+        success: false,
+        message: `No ${type === "masterclass" ? "masterclass" : "synergy sphere"} agenda found to delete`,
+      };
     }
 
     const docId = existingSnap.docs[0].id;
     await deleteDoc(doc(db, "agenda", docId));
     return {
       success: true,
-      message: `${type.charAt(0).toUpperCase() + type.slice(1)} agenda deleted successfully`,
+      message: `${type === "masterclass" ? "Masterclass" : "Synergy Sphere"} agenda deleted successfully`,
     };
   } catch (error) {
     console.error("Error deleting agenda:", error);
@@ -861,6 +870,66 @@ export async function getAttendeeList(): Promise<Candidate[]> {
 }
 
 /**
+ * Get all attendees with their check-in time and company name from guestList
+ */
+export async function getAttendeeListWithCheckIn(): Promise<
+  (Candidate & { checkInTime?: Timestamp })[]
+> {
+  try {
+    const attendeeQuery = query(
+      collection(db, "candidates"),
+      where("role", "==", "attendee"),
+    );
+    const [attendeeSnapshot, attendanceSnapshot, guestListSnapshot] =
+      await Promise.all([
+        getDocs(attendeeQuery),
+        getDocs(collection(db, "attendance")),
+        getDocs(collection(db, "guestList")),
+      ]);
+
+    // Map attendance by candidateId
+    const attendanceMap = new Map<string, Timestamp>();
+    attendanceSnapshot.docs.forEach((doc) => {
+      const data = doc.data() as AttendanceRecord;
+      attendanceMap.set(data.candidateId, data.scannedAt);
+    });
+
+    // Map company name from guestList by qrToken
+    const companyNameMap = new Map<string, string>();
+    guestListSnapshot.docs.forEach((doc) => {
+      const data = doc.data() as GuestListItem;
+      if (data.qrToken) {
+        companyNameMap.set(data.qrToken, data.companyName || "");
+      }
+    });
+
+    const attendees = attendeeSnapshot.docs.map((doc) => {
+      const data = doc.data();
+
+      // Get company name from guestList using qrToken, fallback to candidate's companyName or empty string
+      const companyName =
+        companyNameMap.get(data.qrToken) || data.companyName || "";
+
+      const candidate = {
+        id: doc.id,
+        ...data,
+        companyName: companyName, // Override with guestList company name
+      } as Candidate;
+
+      return {
+        ...candidate,
+        checkInTime: attendanceMap.get(doc.id),
+      };
+    });
+
+    return attendees.sort((a, b) => a.name.localeCompare(b.name));
+  } catch (error) {
+    console.error("Error fetching attendee list with check-in:", error);
+    return [];
+  }
+}
+
+/**
  * Get candidate IDs that have checked in (optionally for a specific event)
  */
 export async function getCheckedInCandidateIds(
@@ -888,6 +957,8 @@ export async function addGuest(
   email: string,
   enrollmentType: "masterclass" | "event",
   linkedinUrl?: string,
+  company?: string,
+  isVIP?: boolean,
 ): Promise<{ success: boolean; message: string }> {
   try {
     const lowerEmail = email.toLowerCase().trim();
@@ -917,6 +988,8 @@ export async function addGuest(
       registeredAt: null,
       qrToken: null,
       linkedinUrl: linkedinUrl || null,
+      companyName: company || "",
+      isVIP: isVIP || false,
     });
 
     return { success: true, message: "Guest added successfully" };
@@ -934,6 +1007,9 @@ export async function addGuestsFromCSV(
     name: string;
     email: string;
     enrollmentType: "masterclass" | "event";
+    linkedinUrl?: string;
+    company?: string;
+    isVIP?: boolean;
   }[],
 ): Promise<{
   success: boolean;
@@ -980,6 +1056,9 @@ export async function addGuestsFromCSV(
           status: "pending",
           registeredAt: null,
           qrToken: null,
+          linkedinUrl: guest.linkedinUrl || null,
+          companyName: guest.company || "",
+          isVIP: guest.isVIP || false,
         });
         added++;
       } catch (error) {
@@ -1075,6 +1154,8 @@ export async function updateGuest(
     email: string;
     enrollmentType: "masterclass" | "event";
     linkedinUrl: string;
+    companyName: string;
+    isVIP: boolean;
   }>,
 ): Promise<{ success: boolean; message: string }> {
   try {
@@ -1093,6 +1174,12 @@ export async function updateGuest(
     }
     if (updates.linkedinUrl !== undefined) {
       updateData.linkedinUrl = updates.linkedinUrl || null;
+    }
+    if (updates.companyName !== undefined) {
+      updateData.companyName = updates.companyName || "";
+    }
+    if (updates.isVIP !== undefined) {
+      updateData.isVIP = updates.isVIP;
     }
 
     await setDoc(guestRef, updateData, { merge: true });

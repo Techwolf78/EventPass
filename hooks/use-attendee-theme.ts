@@ -10,6 +10,18 @@ import {
 
 export type EnrollmentType = "masterclass" | "event";
 
+/**
+ * Maps internal enrollment type values to user-facing display names.
+ * "event" -> "Synergy Sphere", "masterclass" -> "Masterclass"
+ */
+export const getEnrollmentDisplayName = (
+  type?: EnrollmentType | string | null,
+): string => {
+  if (type === "masterclass") return "Masterclass";
+  if (type === "event") return "Synergy Sphere";
+  return "Synergy Sphere"; // default
+};
+
 export type AttendeePalette = {
   primary: string;
   primaryDark: string;
@@ -22,7 +34,7 @@ export type AttendeePalette = {
 
 const ATTENDEE_PALETTES: Record<EnrollmentType, AttendeePalette> = {
   event: {
-    primary: "#ef4444", // Red for Synergy Sphere
+    primary: "#ef4444", // Red for Synergy Sphere (event)
     primaryDark: "#dc2626",
     primarySoft: "#fee2e2",
     primaryBorder: "#fecaca",

@@ -1,4 +1,5 @@
 import { auth } from "@/config/firebase";
+import { useAuth } from "@/context/AuthContext";
 import { getUserData, loginGuestByEmail } from "@/utils/firestore";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -274,6 +275,7 @@ const styles = StyleSheet.create({
 export default function LoginScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { saveGuestSession } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -384,7 +386,12 @@ export default function LoginScreen() {
     try {
       const result = await loginGuestByEmail(guestEmail.trim());
       if (result.success && result.qrToken) {
-        await AsyncStorage.setItem("guestQrToken", result.qrToken);
+        // Save the full guest session for persistence across app kills
+        await saveGuestSession({
+          qrToken: result.qrToken,
+          name: guestName.trim(),
+          email: guestEmail.trim(),
+        });
         try {
           router.replace({
             pathname: "/(attendee)/qr-pass",

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 
 import { useAuth } from "@/context/AuthContext";
 import { getAllAgendas, saveAgenda } from "@/utils/firestore";
@@ -13,8 +13,10 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  RefreshControl,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { getEnrollmentDisplayName } from "@/hooks/use-attendee-theme";
 
 const AGENDA_TYPES = ["masterclass", "event"] as const;
 type AgendaType = (typeof AGENDA_TYPES)[number];
@@ -67,12 +69,9 @@ export default function AgendaScreen() {
   const [items, setItems] = useState<AgendaItemForm[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    loadAgenda(activeType);
-  }, [activeType]);
-
-  const loadAgenda = async (type: AgendaType) => {
+  const loadAgenda = useCallback(async (type: AgendaType) => {
     setLoading(true);
     try {
       const agendas = await getAllAgendas();
@@ -95,7 +94,17 @@ export default function AgendaScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadAgenda(activeType);
+  }, [activeType, loadAgenda]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadAgenda(activeType);
+    setRefreshing(false);
+  }, [activeType, loadAgenda]);
 
   const handleAddItem = () => {
     setItems((prev) => {
@@ -270,7 +279,7 @@ export default function AgendaScreen() {
     }
   };
 
-  const typeLabel = activeType.charAt(0).toUpperCase() + activeType.slice(1);
+  const typeLabel = getEnrollmentDisplayName(activeType);
 
   if (loading) {
     return (
@@ -281,7 +290,7 @@ export default function AgendaScreen() {
           { paddingTop: insets.top },
         ]}
       >
-        <ActivityIndicator size="large" color="#8B5CF6" />
+        <ActivityIndicator size="large" color="#000000" />
       </View>
     );
   }
@@ -292,6 +301,9 @@ export default function AgendaScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
         {/* Header */}
         <View style={styles.header}>
@@ -317,7 +329,7 @@ export default function AgendaScreen() {
                 <Ionicons
                   name={type === "masterclass" ? "school" : "people"}
                   size={18}
-                  color={activeType === type ? "#fff" : "#8B5CF6"}
+                  color={activeType === type ? "#fff" : "#000000"}
                   style={{ marginRight: 6 }}
                 />
                 <Text
@@ -326,7 +338,7 @@ export default function AgendaScreen() {
                     activeType === type && styles.toggleBtnTextActive,
                   ]}
                 >
-                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                  {getEnrollmentDisplayName(type)}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -340,7 +352,7 @@ export default function AgendaScreen() {
             <Text style={styles.fieldLabel}>Title</Text>
             <TextInput
               style={styles.input}
-              placeholder={`e.g. ${activeType === "masterclass" ? "Advanced React Native Workshop" : "InnovateSummit 2025"}`}
+              placeholder={`e.g. ${activeType === "masterclass" ? "Advanced React Native Workshop" : "Synergy Sphere 2026"}`}
               placeholderTextColor="#9ca3af"
               value={eventTitle}
               onChangeText={setEventTitle}
@@ -463,7 +475,7 @@ export default function AgendaScreen() {
               onPress={handleAddItem}
               disabled={saving}
             >
-              <Ionicons name="add-circle" size={20} color="#8B5CF6" />
+              <Ionicons name="add-circle" size={20} color="#000000" />
               <Text style={styles.addItemBtnText}>Add Agenda Item</Text>
             </TouchableOpacity>
           )}
@@ -499,11 +511,10 @@ export default function AgendaScreen() {
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0f172a",
+    backgroundColor: "#FFFFFF",
   },
   centerContent: {
     justifyContent: "center",
@@ -519,38 +530,43 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     paddingHorizontal: 20,
     paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
   },
   headerLeft: {
     flex: 1,
   },
   headerTitle: {
     fontSize: 24,
-    fontWeight: "800",
-    color: "#ffffff",
+    fontWeight: "700",
+    color: "#000000",
+    letterSpacing: -0.5,
   },
   headerSubtitle: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "600",
-    color: "#8B5CF6",
-    marginTop: 4,
+    color: "#6B7280",
+    marginTop: 2,
+    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   // Section Card
   sectionCard: {
-    backgroundColor: "#1e293b",
+    backgroundColor: "#FFFFFF",
     marginHorizontal: 20,
     marginBottom: 16,
-    borderRadius: 14,
+    borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#E5E7EB",
   },
   sectionLabel: {
     fontSize: 11,
-    fontWeight: "700",
-    color: "#94a3b8",
+    fontWeight: "600",
+    color: "#9CA3AF",
     letterSpacing: 0.5,
     marginBottom: 12,
+    textTransform: "uppercase",
   },
   sectionHeaderRow: {
     flexDirection: "row",
@@ -560,8 +576,8 @@ const styles = StyleSheet.create({
   },
   itemCount: {
     fontSize: 11,
-    fontWeight: "700",
-    color: "#8B5CF6",
+    fontWeight: "600",
+    color: "#000000",
   },
   // Toggle
   toggleRow: {
@@ -571,25 +587,26 @@ const styles = StyleSheet.create({
   toggleBtn: {
     flex: 1,
     flexDirection: "row",
-    paddingVertical: 12,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: "#334155",
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#0f172a",
+    backgroundColor: "#FFFFFF",
   },
   toggleBtnActive: {
-    backgroundColor: "#8B5CF6",
-    borderColor: "#8B5CF6",
+    backgroundColor: "#000000",
+    borderColor: "#000000",
   },
   toggleBtnText: {
     fontSize: 13,
-    fontWeight: "600",
-    color: "#8B5CF6",
+    fontWeight: "500",
+    color: "#4B5563",
   },
   toggleBtnTextActive: {
-    color: "#fff",
+    color: "#FFFFFF",
+    fontWeight: "600",
   },
   // Inputs
   inputGroup: {
@@ -598,41 +615,41 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#94a3b8",
+    color: "#9CA3AF",
     marginBottom: 6,
     textTransform: "uppercase",
     letterSpacing: 0.3,
   },
   input: {
-    backgroundColor: "#0f172a",
-    borderWidth: 1.5,
-    borderColor: "#334155",
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     fontSize: 14,
-    color: "#ffffff",
+    color: "#000000",
     fontWeight: "500",
   },
   inputSmall: {
-    backgroundColor: "#0f172a",
-    borderWidth: 1.5,
-    borderColor: "#334155",
-    borderRadius: 8,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 6,
     paddingHorizontal: 10,
-    paddingVertical: 10,
+    paddingVertical: 8,
     fontSize: 13,
-    color: "#ffffff",
+    color: "#000000",
     fontWeight: "500",
   },
   // Agenda Items
   agendaItemCard: {
-    borderWidth: 1.5,
-    borderColor: "#334155",
-    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 10,
     padding: 12,
     marginBottom: 10,
-    backgroundColor: "#0f172a",
+    backgroundColor: "#F9FAFB",
   },
   agendaItemHeader: {
     flexDirection: "row",
@@ -641,18 +658,18 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   deleteItemBtn: {
-    padding: 8,
+    padding: 4,
   },
   itemNumberBadge: {
-    backgroundColor: "#8B5CF6",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    backgroundColor: "#000000",
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
   },
   itemNumberText: {
-    color: "#fff",
-    fontSize: 11,
-    fontWeight: "700",
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "600",
   },
   itemRow: {
     flexDirection: "row",
@@ -673,65 +690,62 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   tagChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: "#1e293b",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#E5E7EB",
   },
   tagChipActive: {
-    backgroundColor: "rgba(139, 92, 246, 0.2)",
-    borderColor: "#8B5CF6",
+    backgroundColor: "#000000",
+    borderColor: "#000000",
   },
   tagChipText: {
     fontSize: 11,
-    fontWeight: "600",
-    color: "#94a3b8",
+    fontWeight: "500",
+    color: "#4B5563",
   },
   tagChipTextActive: {
-    color: "#8B5CF6",
+    color: "#FFFFFF",
+    fontWeight: "600",
   },
   // Add Item Button
   addItemBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 14,
-    borderRadius: 10,
-    borderWidth: 2,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
     borderStyle: "dashed",
-    borderColor: "#334155",
+    borderColor: "#E5E7EB",
     marginTop: 4,
+    backgroundColor: "#FFFFFF",
   },
   addItemBtnText: {
     marginLeft: 6,
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#8B5CF6",
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#000000",
   },
   // Save Button
   saveButton: {
-    backgroundColor: "#8B5CF6",
+    backgroundColor: "#000000",
     marginHorizontal: 20,
-    borderRadius: 14,
-    paddingVertical: 16,
+    borderRadius: 8,
+    paddingVertical: 14,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
-    shadowColor: "#8B5CF6",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
     marginTop: 4,
   },
   saveButtonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   saveButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "700",
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "600",
   },
 });

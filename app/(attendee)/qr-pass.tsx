@@ -1,406 +1,36 @@
+import CertificateCard from "@/components/qr-pass/CertificateCard";
+import DefaultPass from "@/components/qr-pass/DefaultPass";
 import { useAuth } from "@/context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system/legacy";
 import * as MediaLibrary from "expo-media-library";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Image,
+  RefreshControl,
   ScrollView,
-  StyleSheet,
   Text,
   TouchableOpacity,
   useWindowDimensions,
   View,
 } from "react-native";
-import QRCode from "react-native-qrcode-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import ViewShot from "react-native-view-shot";
 import {
   Candidate,
   CheckInStatusResult,
   getCandidateByEmail,
   getCandidateByQRToken,
+  getGuestByQRToken,
   subscribeToCheckInStatus,
 } from "../../utils/firestore";
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
-const NAVY = "#1a2870";
-const GOLD = "#c8a96e";
-const GOLD_L = "#e8d5a3"; // lighter gold for subtle accents
+const NAVY = "#0F172A";
+const GOLD = "#D4AF37";
+const GOLD_L = "#FAF8F5";
 const WHITE = "#ffffff";
-const SLATE = "#64748b";
-
-// ─── Certificate Styles ───────────────────────────────────────────────────────
-const cert = StyleSheet.create({
-  // Outer navy frame
-  outerFrame: {
-    backgroundColor: WHITE,
-    borderWidth: 10,
-    borderColor: NAVY,
-    borderRadius: 6,
-    padding: 10,
-  },
-  // Inner gold border
-  innerFrame: {
-    borderWidth: 1.5,
-    borderColor: GOLD,
-    borderRadius: 2,
-    paddingVertical: 28,
-    paddingHorizontal: 24,
-    position: "relative",
-    backgroundColor: WHITE,
-  },
-  // ── Corner bracket helper (shared) ──
-  cornerBase: {
-    position: "absolute",
-    width: 18,
-    height: 18,
-  },
-  cornerEdgeH: {
-    position: "absolute",
-    height: 2,
-    width: 18,
-    backgroundColor: GOLD,
-  },
-  cornerEdgeV: {
-    position: "absolute",
-    width: 2,
-    height: 18,
-    backgroundColor: GOLD,
-  },
-  cornerDot: {
-    position: "absolute",
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: GOLD,
-  },
-
-  // ── Typography ──
-  companyName: {
-    fontSize: 9,
-    fontWeight: "800",
-    color: NAVY,
-    letterSpacing: 2.5,
-    textTransform: "uppercase",
-  },
-  titleText: {
-    fontSize: 22,
-    fontWeight: "300",
-    color: NAVY,
-    textAlign: "center",
-    letterSpacing: 0.8,
-    marginTop: 10,
-    marginBottom: 4,
-  },
-  certifyLabel: {
-    fontSize: 8,
-    fontWeight: "700",
-    color: GOLD,
-    textAlign: "center",
-    letterSpacing: 3,
-    textTransform: "uppercase",
-    marginBottom: 14,
-  },
-  nameText: {
-    fontSize: 30,
-    fontStyle: "italic",
-    color: NAVY,
-    textAlign: "center",
-    fontWeight: "400",
-    marginBottom: 10,
-  },
-  goldDivider: {
-    height: 1,
-    backgroundColor: GOLD,
-    marginHorizontal: 32,
-    marginBottom: 14,
-    opacity: 0.7,
-  },
-  bodyText: {
-    fontSize: 10.5,
-    color: "#555",
-    textAlign: "center",
-    lineHeight: 18,
-    paddingHorizontal: 12,
-    marginBottom: 22,
-  },
-  bodyBold: {
-    fontWeight: "700",
-    color: NAVY,
-  },
-
-  // ── Signature Row ──
-  sigRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-    paddingHorizontal: 4,
-    marginBottom: 20,
-  },
-  sigCol: {
-    alignItems: "center",
-    flex: 1,
-  },
-  sigName: {
-    fontSize: 13,
-    fontStyle: "italic",
-    color: NAVY,
-    marginBottom: 4,
-    fontWeight: "400",
-  },
-  sigLine: {
-    height: 0.75,
-    backgroundColor: "#bbb",
-    width: 76,
-    marginBottom: 5,
-  },
-  sigRole: {
-    fontSize: 8,
-    color: "#999",
-    letterSpacing: 1.2,
-    fontWeight: "700",
-    textTransform: "uppercase",
-  },
-
-  // ── Stamp ──
-  stampOuter: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    borderWidth: 1.5,
-    borderColor: GOLD,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: WHITE,
-  },
-  stampInner: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    borderWidth: 0.5,
-    borderColor: GOLD_L,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  stampStars: {
-    fontSize: 7,
-    color: GOLD,
-    letterSpacing: 2,
-    marginBottom: 1,
-  },
-  stampWord: {
-    fontSize: 8,
-    color: GOLD,
-    fontWeight: "800",
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
-  },
-  stampYear: {
-    fontSize: 11,
-    color: GOLD,
-    fontWeight: "700",
-  },
-
-  // ── Footer ──
-  footerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderTopWidth: 0.5,
-    borderTopColor: GOLD_L,
-    paddingTop: 12,
-    paddingHorizontal: 4,
-  },
-  footerText: {
-    fontSize: 8.5,
-    color: "#888",
-    fontWeight: "600",
-    letterSpacing: 0.3,
-    flexShrink: 1,
-  },
-});
-
-// ─── Corner Bracket Component ─────────────────────────────────────────────────
-function CornerBracket({ position }: { position: "TL" | "TR" | "BL" | "BR" }) {
-  const isTop = position === "TL" || position === "TR";
-  const isLeft = position === "TL" || position === "BL";
-  const dotStyle = {
-    top: isTop ? -3 : undefined,
-    bottom: !isTop ? -3 : undefined,
-    left: isLeft ? -3 : undefined,
-    right: !isLeft ? -3 : undefined,
-  };
-  const hStyle = {
-    top: isTop ? 0 : undefined,
-    bottom: !isTop ? 0 : undefined,
-    left: isLeft ? 0 : undefined,
-    right: !isLeft ? 0 : undefined,
-  };
-  const vStyle = {
-    top: isTop ? 0 : undefined,
-    bottom: !isTop ? 0 : undefined,
-    left: isLeft ? 0 : undefined,
-    right: !isLeft ? 0 : undefined,
-  };
-
-  const containerStyle = {
-    position: "absolute" as const,
-    top: isTop ? -2 : undefined,
-    bottom: !isTop ? -2 : undefined,
-    left: isLeft ? -2 : undefined,
-    right: !isLeft ? -2 : undefined,
-    width: 20,
-    height: 20,
-  };
-
-  return (
-    <View style={containerStyle}>
-      <View style={[cert.cornerEdgeH, hStyle]} />
-      <View style={[cert.cornerEdgeV, vStyle]} />
-      <View style={[cert.cornerDot, dotStyle]} />
-    </View>
-  );
-}
-
-// ─── Premium Certificate Card ─────────────────────────────────────────────────
-function CertificateCard({
-  candidateName,
-  eventName,
-  eventLocation,
-  eventDate,
-  uniqueId,
-  certRef,
-}: {
-  candidateName: string;
-  eventName: string;
-  eventLocation: string;
-  eventDate: string;
-  uniqueId: string;
-  certRef: React.RefObject<any>;
-}) {
-  return (
-    <ViewShot ref={certRef} options={{ format: "png", quality: 1.0 }}>
-      <View style={cert.outerFrame}>
-        <View style={cert.innerFrame}>
-          {/* ── Corner Brackets ── */}
-          <CornerBracket position="TL" />
-          <CornerBracket position="TR" />
-          <CornerBracket position="BL" />
-          <CornerBracket position="BR" />
-
-          {/* ── Company Header with Bird Logo ── */}
-          <View style={{ alignItems: "center", marginBottom: 8 }}>
-            <View
-              style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
-            >
-              <Image
-                source={{
-                  uri: "https://res.cloudinary.com/dcjmaapvi/image/upload/v1730120218/Gryphon_Academy_Bird_Logo_yzzl3q.png",
-                }}
-                style={{ width: 18, height: 18, resizeMode: "contain" }}
-              />
-              <Text style={cert.companyName}>Gryphon Academy Pvt Ltd</Text>
-            </View>
-          </View>
-
-          {/* ── Thin Gold Rule ── */}
-          <View
-            style={{
-              height: 0.5,
-              backgroundColor: GOLD_L,
-              marginHorizontal: 0,
-              marginBottom: 10,
-              opacity: 0.8,
-            }}
-          />
-
-          {/* ── Main Title ── */}
-          <Text style={cert.titleText}>Certificate of participation</Text>
-
-          {/* ── Sub Label ── */}
-          <Text style={cert.certifyLabel}>This is to certify that</Text>
-
-          {/* ── Recipient Name ── */}
-          <Text style={cert.nameText}>{candidateName}</Text>
-
-          {/* ── Gold Divider ── */}
-          <View style={cert.goldDivider} />
-
-          {/* ── Body Text ── */}
-          <Text style={cert.bodyText}>
-            {"demonstrated successful participation and attendance at\n"}
-            <Text style={cert.bodyBold}>{eventName}</Text>
-            {"\norganized by Gryphon Academy\nat "}
-            <Text style={cert.bodyBold}>{eventLocation}</Text>
-            {" on "}
-            <Text style={cert.bodyBold}>{eventDate}</Text>
-          </Text>
-
-          {/* ── Signature Row ── */}
-          <View style={cert.sigRow}>
-            {/* Founder */}
-            <View style={cert.sigCol}>
-              <Text style={cert.sigName}>Shashi Bhat</Text>
-              <View style={cert.sigLine} />
-              <Text style={cert.sigRole}>Founder</Text>
-            </View>
-
-            {/* Center Stamp */}
-            <View style={[cert.sigCol, { paddingBottom: 2 }]}>
-              <View style={cert.stampOuter}>
-                <View style={cert.stampInner}>
-                  <Text style={cert.stampStars}>★ ★ ★</Text>
-                  <Text style={cert.stampWord}>Attended</Text>
-                  <Text style={cert.stampYear}>2026</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Co-Founder */}
-            <View style={cert.sigCol}>
-              <Text style={cert.sigName}>Umme Ansari</Text>
-              <View style={cert.sigLine} />
-              <Text style={cert.sigRole}>Co-Founder</Text>
-            </View>
-          </View>
-
-          {/* ── Footer ── */}
-          <View style={cert.footerRow}>
-            <View style={{ flex: 1, alignItems: "flex-start" }}>
-              <Text
-                style={cert.footerText}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.8}
-              >
-                Certificate ID: {uniqueId}
-              </Text>
-            </View>
-            <Text
-              style={{ ...cert.footerText, color: GOLD_L, marginHorizontal: 8 }}
-            >
-              │
-            </Text>
-            <View style={{ flex: 1, alignItems: "flex-end" }}>
-              <Text
-                style={cert.footerText}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.8}
-              >
-                Issuing Date: {eventDate}
-              </Text>
-            </View>
-          </View>
-        </View>
-      </View>
-    </ViewShot>
-  );
-}
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function QRPassScreen() {
@@ -420,6 +50,7 @@ export default function QRPassScreen() {
   const [showPassAnyway, setShowPassAnyway] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const certificateRef = useRef<any>(null);
 
   const qrSize = Math.min(width * 0.5, 220);
@@ -462,7 +93,30 @@ export default function QRPassScreen() {
 
       try {
         const candidateData = await getCandidateByQRToken(token);
-        setCandidate(candidateData);
+
+        // Fetch company name from guestList
+        let companyName = "";
+        if (candidateData) {
+          try {
+            const guest = await getGuestByQRToken(token);
+            if (guest) {
+              companyName = guest.companyName || "";
+              console.log("Found company name from guestList:", companyName);
+            }
+          } catch (err) {
+            console.log("Could not fetch guest data for company name");
+          }
+        }
+
+        // Merge companyName into candidate data
+        const candidateWithCompany = candidateData
+          ? {
+              ...candidateData,
+              companyName: companyName,
+            }
+          : null;
+
+        setCandidate(candidateWithCompany);
       } catch (error) {
         console.error("Error fetching candidate data:", error);
       }
@@ -479,6 +133,41 @@ export default function QRPassScreen() {
       if (unsubscribeStatus) unsubscribeStatus();
     };
   }, [qrToken, user]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    const token = activeToken;
+    if (token) {
+      try {
+        const candidateData = await getCandidateByQRToken(token);
+
+        // Fetch company name from guestList on refresh
+        let companyName = "";
+        if (candidateData) {
+          try {
+            const guest = await getGuestByQRToken(token);
+            if (guest) {
+              companyName = guest.companyName || "";
+            }
+          } catch (err) {
+            console.log("Could not fetch guest data for company name");
+          }
+        }
+
+        const candidateWithCompany = candidateData
+          ? {
+              ...candidateData,
+              companyName: companyName,
+            }
+          : null;
+
+        setCandidate(candidateWithCompany);
+      } catch (error) {
+        console.error("Error fetching candidate data on refresh:", error);
+      }
+    }
+    setRefreshing(false);
+  }, [activeToken]);
 
   // ── Derived values ──────────────────────────────────────────────────────────
   const isMasterclass =
@@ -602,6 +291,9 @@ export default function QRPassScreen() {
           }}
           className="flex-1 px-5"
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
         >
           {/* ── Hero ── */}
           <View className="items-center mb-8 mt-4">
@@ -786,6 +478,9 @@ export default function QRPassScreen() {
             }}
             className="flex-1 px-6"
             showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
           >
             <View className="items-center mb-12">
               <View
@@ -798,14 +493,14 @@ export default function QRPassScreen() {
                 />
               </View>
               <Text className="text-4xl font-bold text-slate-900 text-center mb-2 tracking-tight">
-                Welcome {checkInStatus.candidateName?.split(" ")[0]}!
+                Welcome back {checkInStatus.candidateName}!
               </Text>
               <Text className="text-xl text-slate-500 font-semibold text-center">
-                You're all checked in!
+                {"You're"} all checked in!
               </Text>
               <Text className="text-base text-slate-400 text-center mt-3 px-4 leading-6">
-                Get ready for an amazing experience at the event. We're glad to
-                have you here.
+                Get ready for an amazing experience at the event. {"We're"} glad
+                to have you here.
               </Text>
             </View>
 
@@ -879,11 +574,14 @@ export default function QRPassScreen() {
         <View className="flex-1 bg-slate-50" style={{ paddingTop: insets.top }}>
           <ScrollView
             contentContainerStyle={{
-              paddingBottom: insets.bottom + 40,
+              paddingBottom: insets.bottom + 80,
               paddingTop: 40,
             }}
-            className="flex-1 px-5"
+            className="flex-1 px-2"
             showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
           >
             <View className="items-center mb-8">
               <View
@@ -896,70 +594,71 @@ export default function QRPassScreen() {
                 />
               </View>
               <Text className="text-3xl font-black text-slate-900 text-center">
-                You're Checked In!
+                {"You're"} Checked In!
               </Text>
               <Text className="text-base text-slate-500 font-bold text-center mt-1">
-                Welcome back, {checkInStatus.candidateName?.split(" ")[0]}!
+                Welcome back, {checkInStatus.candidateName}!
               </Text>
             </View>
 
-            <View className="bg-white rounded-3xl p-6 shadow-xl shadow-slate-200 border border-slate-100 mb-8">
-              <Text className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">
+            {/* Check-in Details - Only Email and Time side by side */}
+            <View className="bg-white rounded-3xl p-4 shadow-xl shadow-slate-200 border border-slate-100 mb-8">
+              <Text className="text-xs text-blue-500 uppercase tracking-widest mb-4 text-center">
                 Check-in Details
               </Text>
-              <View className="gap-5">
-                <View className="flex-row items-center">
-                  <View className="w-10 h-10 rounded-xl bg-slate-50 items-center justify-center mr-4">
-                    <Ionicons name="person" size={20} color="#64748b" />
-                  </View>
-                  <View>
-                    <Text className="text-[10px] font-bold text-slate-400 uppercase">
-                      Name
-                    </Text>
-                    <Text className="text-base font-bold text-slate-800">
-                      {checkInStatus.candidateName}
-                    </Text>
-                  </View>
-                </View>
 
-                <View className="flex-row items-center">
-                  <View className="w-10 h-10 rounded-xl bg-slate-50 items-center justify-center mr-4">
-                    <Ionicons name="mail" size={20} color="#64748b" />
-                  </View>
-                  <View>
-                    <Text className="text-[10px] font-bold text-slate-400 uppercase">
-                      Email
-                    </Text>
-                    <Text className="text-base font-bold text-slate-800">
-                      {checkInStatus.candidateEmail}
-                    </Text>
-                  </View>
-                </View>
-
-                <View className="flex-row items-center">
-                  <View
-                    className={`w-10 h-10 rounded-xl ${brandAccentBg} items-center justify-center mr-4`}
+              {/* Horizontal 2-column layout */}
+              <View className="flex-row justify-between items-center gap-4">
+                {/* Email Column */}
+                <View className="flex-1 items-center">
+                  <Text className="text-[9px] font-bold text-slate-400 uppercase text-center">
+                    Email
+                  </Text>
+                  <Text
+                    className="text-[11px] font-bold text-slate-800 text-center mt-1"
+                    numberOfLines={1} // ← Single line only
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.7} // ← Smaller min scale to fit long emails
                   >
-                    <Ionicons name="time" size={20} color={brandColor} />
-                  </View>
-                  <View>
-                    <Text className="text-[10px] font-bold text-slate-400 uppercase">
-                      Check-in Time
-                    </Text>
-                    <Text className="text-base font-bold text-slate-800">
-                      {checkInDate.toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: true,
-                      })}
-                    </Text>
-                  </View>
+                    {checkInStatus.candidateEmail || ""}
+                  </Text>
+                </View>
+
+                {/* Time Column */}
+                <View className="flex-1 items-center">
+                  <Text className="text-[9px] font-bold text-slate-400 uppercase text-center">
+                    Time
+                  </Text>
+                  <Text className="text-xs font-bold text-slate-800 text-center mt-1">
+                    {checkInDate.toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: true,
+                    })}
+                  </Text>
                 </View>
               </View>
             </View>
 
+            {/* About Event Section */}
+            <View className="bg-white rounded-3xl px-4 py-5 shadow-xl shadow-slate-200 border border-slate-100 mb-8">
+              <Text
+                className={`text-[11px] font-black ${brandText} uppercase tracking-[1px] mb-2`}
+              >
+                About Event
+              </Text>
+              <Text className="text-lg font-bold text-slate-900 mb-1">
+                {eventName}
+              </Text>
+              <Text className="text-sm text-slate-600 leading-relaxed">
+                {isMasterclass
+                  ? " Unlock Your Leadership Potential! An intensive, high-impact session crafted for visionaries. Learn AI strategies that drive results and connect with the best in the industry."
+                  : " The Ultimate Networking Experience! Connect with 500+ industry leaders, discover game-changing insights, and create lasting partnerships. Your next big opportunity awaits!"}
+              </Text>
+            </View>
+
             <TouchableOpacity
-              className={`${brandBg} rounded-2xl py-4 items-center justify-center flex-row shadow-lg ${brandShadow}`}
+              className={`${brandBg} rounded-2xl py-4 items-center justify-center flex-row shadow-lg ${brandShadow} mb-6`}
               onPress={() =>
                 router.push({
                   pathname: "/(attendee)/agenda",
@@ -987,6 +686,9 @@ export default function QRPassScreen() {
           }}
           className="flex-1 px-5"
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
         >
           <View className="items-center mb-8">
             <View className="w-20 h-20 rounded-full bg-indigo-100 items-center justify-center mb-4">
@@ -1090,169 +792,22 @@ export default function QRPassScreen() {
   };
 
   return (
-    <View className="flex-1 bg-white">
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
-        className="flex-1"
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Event Banner */}
-        <View
-          className={`${brandBg}`}
-          style={{
-            paddingTop: insets.top + 24,
-            paddingBottom: 48,
-            borderBottomLeftRadius: 32,
-            borderBottomRightRadius: 32,
-          }}
-        >
-          <View className="flex-row justify-between items-center px-6">
-            <View className="flex-1">
-              <Text className="text-2xl font-black text-white mb-2 leading-tight tracking-tight">
-                {eventName}
-              </Text>
-              <View className="flex-row items-center mb-1 gap-2">
-                <Ionicons
-                  name="calendar"
-                  size={13}
-                  color="rgba(255,255,255,0.85)"
-                />
-                <Text className="text-xs text-white/85 font-semibold">
-                  {eventDate}
-                </Text>
-              </View>
-              <View className="flex-row items-center gap-2">
-                <Ionicons
-                  name="location"
-                  size={13}
-                  color="rgba(255,255,255,0.85)"
-                />
-                <Text
-                  className="text-xs text-white/85 font-semibold"
-                  numberOfLines={1}
-                >
-                  {eventLocation}
-                </Text>
-              </View>
-            </View>
-            <View className="w-14 h-14 rounded-full bg-white/20 items-center justify-center">
-              <Ionicons name="ticket" size={28} color="#fff" />
-            </View>
-          </View>
-        </View>
-
-        {/* Main Card */}
-        <View className="bg-white rounded-3xl mx-5 -mt-8 p-6 shadow-2xl shadow-slate-200 border border-slate-50">
-          {/* QR Section */}
-          <View className="items-center mb-6">
-            <View className="bg-white border border-slate-100 rounded-3xl p-5 mb-3 shadow-sm">
-              <QRCode
-                getRef={setQrRef}
-                value={activeToken}
-                size={qrSize}
-                color="#000"
-                backgroundColor="#fff"
-              />
-            </View>
-            <Text className="text-[10px] text-slate-400 font-extrabold tracking-[2px] uppercase">
-              Scan at entrance
-            </Text>
-          </View>
-
-          <View className="h-[1px] bg-slate-100 mb-6" />
-
-          {/* Attendee Details */}
-          <View className="mb-8">
-            <Text
-              className={`text-[11px] font-black ${brandText} uppercase tracking-[1px] mb-5`}
-            >
-              Attendee Pass
-            </Text>
-
-            <View className="flex-row mb-5 gap-4">
-              <View className="flex-1">
-                <Text className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 tracking-tight">
-                  Full Name
-                </Text>
-                <Text
-                  className="text-base font-bold text-slate-900"
-                  numberOfLines={1}
-                >
-                  {candidate?.name || "—"}
-                </Text>
-              </View>
-              <View className="flex-1">
-                <Text className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 tracking-tight">
-                  Email
-                </Text>
-                <Text
-                  className="text-base font-bold text-slate-900"
-                  numberOfLines={1}
-                >
-                  {candidate?.email || "—"}
-                </Text>
-              </View>
-            </View>
-
-            <View className="flex-row mb-5 gap-4">
-              <View className="flex-1">
-                <Text className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 tracking-tight">
-                  Role
-                </Text>
-                <Text className="text-base font-bold text-slate-900">
-                  {candidate?.role || "Attendee"}
-                </Text>
-              </View>
-              <View className="flex-1">
-                <Text className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 tracking-tight">
-                  Enrollment
-                </Text>
-                <Text className="text-base font-bold text-slate-900 capitalize">
-                  {candidate?.enrollmentType || "—"}
-                </Text>
-              </View>
-            </View>
-
-            <View className="flex-row gap-4">
-              <View className="flex-1">
-                <Text className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 tracking-tight">
-                  Department
-                </Text>
-                <Text className="text-base font-bold text-slate-900 capitalize">
-                  {candidate?.department || "—"}
-                </Text>
-              </View>
-              <View className="flex-1">
-                <Text className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 tracking-tight">
-                  Pass ID
-                </Text>
-                <Text
-                  className={`text-sm font-black ${brandText} font-mono`}
-                  numberOfLines={1}
-                >
-                  {uniqueId}
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          {/* CTA */}
-          <TouchableOpacity
-            className={`${brandBg} rounded-xl py-4 items-center justify-center flex-row shadow-lg ${brandShadow}`}
-            onPress={handleViewAgenda}
-          >
-            <Ionicons name="calendar" size={20} color="#fff" />
-            <Text className="text-white text-base font-bold ml-2">
-              View Agenda
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <Text className="text-center text-[11px] text-slate-400 mt-6 font-semibold px-10 leading-relaxed">
-          Present this QR code at the entrance for check-in. This pass is valid
-          for {eventName}.
-        </Text>
-      </ScrollView>
-    </View>
+    <DefaultPass
+      eventName={eventName}
+      eventDate={eventDate}
+      eventLocation={eventLocation}
+      brandBg={brandBg}
+      brandText={brandText}
+      brandShadow={brandShadow}
+      insets={insets}
+      activeToken={activeToken}
+      qrSize={qrSize}
+      candidate={candidate}
+      uniqueId={uniqueId}
+      refreshing={refreshing}
+      onRefresh={onRefresh}
+      handleViewAgenda={handleViewAgenda}
+      setQrRef={setQrRef}
+    />
   );
 }

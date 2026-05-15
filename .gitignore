@@ -3,6 +3,7 @@ node_modules/
 
 # Expo generated files
 expo-env.d.ts
+.expo/
 
 # macOS system files
 .DS_Store
@@ -21,6 +22,7 @@ yarn-error.*
 *.p12
 *.key
 *.mobileprovision
+config/event-mobile-app.json
 
 # Metro bundler health check
 .metro-health-check*

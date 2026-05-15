@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,11 +8,10 @@ import {
   ActivityIndicator,
   Platform,
   ScrollView,
+  RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import {
-  subscribeToAttendanceCount,
   subscribeToCheckInLog,
   AttendanceRecord,
   Candidate,
@@ -22,6 +21,8 @@ import {
   EventData,
   subscribeToCandidateCount,
 } from '@/utils/firestore';
+import { formatTimeAgo } from '@/utils/time';
+import { getEnrollmentDisplayName } from '@/hooks/use-attendee-theme';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,7 +33,7 @@ const getInitials = (name: string) => {
   return name.substring(0, 2).toUpperCase();
 };
 
-const AVATAR_COLORS = ['#8B5CF6', '#10B981', '#F59E0B', '#EF4444', '#3B82F6', '#EC4899'];
+const AVATAR_COLORS = ['#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5', '#2196F3', '#03A9F4', '#00BCD4', '#009688', '#4CAF50', '#8BC34A', '#FFC107', '#FF9800', '#FF5722'];
 
 const getAvatarColor = (name: string) => {
   let hash = 0;
@@ -42,31 +43,27 @@ const getAvatarColor = (name: string) => {
 
 type EnrollmentType = 'masterclass' | 'event';
 
-interface AgendaWithType extends EventData {
+interface AgendaWithType extends Omit<EventData, 'date' | 'agenda'> {
   type: EnrollmentType;
+  date: EventData['date'] | null;
 }
 
 export default function AdminPanelScreen() {
   const insets = useSafeAreaInsets();
   const [agendas, setAgendas] = useState<AgendaWithType[]>([]);
   const [selectedType, setSelectedType] = useState<EnrollmentType>('masterclass');
-  const [count, setCount] = useState(0);
   const [checkInLog, setCheckInLog] = useState<AttendanceRecord[]>([]);
   const [candidates, setCandidates] = useState<{
     [key: string]: Partial<Candidate>;
   }>({});
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
-  const [selectedAgendaTitle, setSelectedAgendaTitle] = useState('');
   const [registeredCount, setRegisteredCount] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
 
   const currentAgenda = agendas.find((a) => a.type === selectedType);
 
-  useEffect(() => {
-    loadAgendas();
-  }, []);
-
-  const loadAgendas = async () => {
+  const loadAgendas = useCallback(async () => {
     setLoading(true);
     try {
       const [masterclassAgenda, eventAgenda] = await Promise.all([
@@ -83,7 +80,7 @@ export default function AdminPanelScreen() {
         },
         {
           id: eventAgenda?.id || 'default-event',
-          title: eventAgenda?.title || 'General Event',
+          title: eventAgenda?.title || 'Synergy Sphere',
           date: eventAgenda?.date || null,
           type: 'event',
         }
@@ -94,17 +91,23 @@ export default function AdminPanelScreen() {
       // Auto-select based on availability or default to first
       if (!selectedType) {
         setSelectedType('masterclass');
-        setSelectedAgendaTitle(agendasList[0].title);
-      } else {
-        const current = agendasList.find(a => a.type === selectedType);
-        if (current) setSelectedAgendaTitle(current.title);
       }
     } catch (error) {
       console.error('Error loading agendas:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedType]);
+
+  useEffect(() => {
+    loadAgendas();
+  }, [loadAgendas]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadAgendas();
+    setRefreshing(false);
+  }, [loadAgendas]);
 
   useEffect(() => {
     if (!selectedType) return;
@@ -217,7 +220,7 @@ export default function AdminPanelScreen() {
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(filePath, {
           mimeType: 'text/csv',
-          dialogTitle: `Check-in records for ${selectedType.toUpperCase()}`,
+          dialogTitle: `Check-in records for ${getEnrollmentDisplayName(selectedType).toUpperCase()}`,
         });
       } else {
         Alert.alert('Success', `CSV saved to: ${filePath}`);
@@ -232,7 +235,7 @@ export default function AdminPanelScreen() {
   if (loading) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <ActivityIndicator size="large" color="#8B5CF6" />
+        <ActivityIndicator size="large" color="#000000" />
       </View>
     );
   }
@@ -242,6 +245,9 @@ export default function AdminPanelScreen() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
         {/* Header */}
         <View style={styles.header}>
@@ -255,9 +261,9 @@ export default function AdminPanelScreen() {
             disabled={exporting}
           >
             {exporting ? (
-              <ActivityIndicator size="small" color="#8B5CF6" />
+              <ActivityIndicator size="small" color="#000000" />
             ) : (
-              <Ionicons name="download" size={22} color="#8B5CF6" />
+              <Ionicons name="download" size={22} color="#000000" />
             )}
           </TouchableOpacity>
         </View>
@@ -276,7 +282,6 @@ export default function AdminPanelScreen() {
                 ]}
                 onPress={() => {
                   setSelectedType(agenda.type);
-                  setSelectedAgendaTitle(agenda.title);
                 }}
               >
                 <Ionicons
@@ -289,7 +294,7 @@ export default function AdminPanelScreen() {
                   styles.eventTabText,
                   selectedType === agenda.type && styles.eventTabTextActive,
                 ]} numberOfLines={1}>
-                  {agenda.type.charAt(0).toUpperCase() + agenda.type.slice(1)}
+                  {getEnrollmentDisplayName(agenda.type)}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -299,34 +304,27 @@ export default function AdminPanelScreen() {
         {/* Event Info Card */}
         {currentAgenda && (
           <View style={styles.eventInfoCard}>
-            <LinearGradient
-              colors={['#8B5CF6', '#7C3AED']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.eventInfoGradient}
-            >
-              <View style={styles.eventInfoContent}>
-                <View style={styles.eventIconContainer}>
-                  <Ionicons
-                    name={selectedType === 'masterclass' ? 'school' : 'calendar'}
-                    size={24}
-                    color="#fff"
-                  />
-                </View>
-                <View style={styles.eventInfoText}>
-                  <Text style={styles.eventInfoTitle}>{currentAgenda.title}</Text>
-                  <Text style={styles.eventInfoDate}>
-                    {currentAgenda.date?.toDate
-                      ? currentAgenda.date.toDate().toLocaleDateString('en-US', {
-                        weekday: 'long',
-                        month: 'long',
-                        day: 'numeric',
-                      })
-                      : 'Date TBA'}
-                  </Text>
-                </View>
+            <View style={styles.eventInfoContent}>
+              <View style={styles.eventIconContainer}>
+                <Ionicons
+                  name={selectedType === 'masterclass' ? 'school' : 'calendar'}
+                  size={24}
+                  color="#000000"
+                />
               </View>
-            </LinearGradient>
+              <View style={styles.eventInfoText}>
+                <Text style={styles.eventInfoTitle}>{currentAgenda.title}</Text>
+                <Text style={styles.eventInfoDate}>
+                  {currentAgenda.date?.toDate
+                    ? currentAgenda.date.toDate().toLocaleDateString('en-US', {
+                      weekday: 'long',
+                      month: 'long',
+                      day: 'numeric',
+                    })
+                    : 'Date TBA'}
+                </Text>
+              </View>
+            </View>
           </View>
         )}
 
@@ -359,10 +357,7 @@ export default function AdminPanelScreen() {
             <Text style={styles.progressPercent}>{attendanceRate}%</Text>
           </View>
           <View style={styles.progressTrack}>
-            <LinearGradient
-              colors={['#8B5CF6', '#7C3AED']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
+            <View
               style={[styles.progressFill, { width: `${Math.min(attendanceRate, 100)}%` }]}
             />
           </View>
@@ -370,7 +365,7 @@ export default function AdminPanelScreen() {
 
         {/* Section Header */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>LIVE CHECK-IN LOG ({selectedType.toUpperCase()})</Text>
+          <Text style={styles.sectionTitle}>LIVE CHECK-IN LOG ({getEnrollmentDisplayName(selectedType).toUpperCase()})</Text>
           <View style={styles.liveBadge}>
             <View style={styles.liveDot} />
             <Text style={styles.liveText}>Live</Text>
@@ -382,7 +377,7 @@ export default function AdminPanelScreen() {
           {filteredLog.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Ionicons name="scan" size={48} color="#d1d5db" />
-              <Text style={styles.emptyText}>No {selectedType} check-ins</Text>
+              <Text style={styles.emptyText}>No {getEnrollmentDisplayName(selectedType).toLowerCase()} check-ins</Text>
               <Text style={styles.emptySubtext}>
                 Candidates will appear here after scanning
               </Text>
@@ -391,10 +386,8 @@ export default function AdminPanelScreen() {
             filteredLog.slice(0, 15).map((item, idx) => {
               const candidateInfo = candidates[item.candidateId];
               const name = candidateInfo?.name || 'Loading...';
-              const role = candidateInfo?.enrollmentType === 'masterclass' ? 'Masterclass Attendee' : 'Event Attendee';
-              const time = item.scannedAt?.toDate
-                ? item.scannedAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-                : 'Just now';
+              const role = candidateInfo?.enrollmentType === 'masterclass' ? 'Masterclass Attendee' : 'Synergy Sphere Attendee';
+              const time = formatTimeAgo(item.scannedAt);
               const isCheckedIn = true;
 
               return (
@@ -456,7 +449,7 @@ export default function AdminPanelScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: '#FFFFFF',
   },
   scrollContent: {
     paddingBottom: 100,
@@ -471,77 +464,77 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     paddingHorizontal: 20,
     paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
   headerLeft: {
     flex: 1,
   },
   headerTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#f8fafc',
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#000000',
+    letterSpacing: -0.5,
   },
   headerSubtitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#8b5cf6',
-    marginTop: 4,
-    letterSpacing: 1,
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginTop: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   exportIconBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#1e293b',
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#E5E7EB',
   },
   // Event Selector
   eventSelectorRow: {
     paddingHorizontal: 20,
-    marginBottom: 20,
+    marginTop: 16,
+    marginBottom: 16,
   },
   eventSelectorContent: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
   },
   eventTab: {
-    backgroundColor: '#1e293b',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#E5E7EB',
     flexDirection: 'row',
     alignItems: 'center',
   },
   eventTabActive: {
-    backgroundColor: '#8b5cf6',
-    borderColor: '#a78bfa',
-    shadowColor: '#8b5cf6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 4,
+    backgroundColor: '#000000',
+    borderColor: '#000000',
   },
   eventTabText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#94a3b8',
+    fontWeight: '500',
+    color: '#4B5563',
   },
   eventTabTextActive: {
-    color: '#ffffff',
-    fontWeight: '700',
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
   // Event Info Card
   eventInfoCard: {
     marginHorizontal: 20,
-    marginBottom: 20,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  eventInfoGradient: {
+    marginBottom: 16,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
     padding: 16,
   },
   eventInfoContent: {
@@ -549,106 +542,100 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   eventIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 14,
+    marginRight: 12,
   },
   eventInfoText: {
     flex: 1,
   },
   eventInfoTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#fff',
-    marginBottom: 4,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 2,
   },
   eventInfoDate: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontWeight: '500',
+    color: '#6B7280',
+    fontWeight: '400',
   },
   // Stats
   statsRow: {
     flexDirection: 'row',
     paddingHorizontal: 20,
     gap: 12,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#1e293b',
-    borderRadius: 16,
-    paddingVertical: 18,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingVertical: 16,
     paddingHorizontal: 12,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#E5E7EB',
   },
   statNumber: {
-    fontSize: 28,
-    fontWeight: '800',
-  },
-  statNumberPurple: {
-    color: '#a78bfa',
-  },
-  statNumberGreen: {
-    color: '#34d399',
-  },
-  statNumberOrange: {
-    color: '#fbbf24',
-  },
-  statLabel: {
-    fontSize: 11,
+    fontSize: 24,
     fontWeight: '700',
-    color: '#64748b',
-    marginTop: 6,
+    color: '#000000',
+  },
+  statNumberPurple: { color: '#000000' },
+  statNumberGreen: { color: '#000000' },
+  statNumberOrange: { color: '#000000' },
+  statLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#9CA3AF',
+    marginTop: 4,
     textAlign: 'center',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   // Progress
   progressCard: {
-    backgroundColor: '#1e293b',
+    backgroundColor: '#FFFFFF',
     marginHorizontal: 20,
-    marginBottom: 24,
-    borderRadius: 16,
-    padding: 18,
+    marginBottom: 20,
+    borderRadius: 12,
+    padding: 16,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#E5E7EB',
   },
   progressHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   progressLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#94a3b8',
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#9CA3AF',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   progressPercent: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#a78bfa',
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#000000',
   },
   progressTrack: {
-    height: 10,
-    backgroundColor: '#0f172a',
-    borderRadius: 5,
+    height: 6,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 3,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#334155',
   },
   progressFill: {
     height: '100%',
-    borderRadius: 5,
+    backgroundColor: '#000000',
+    borderRadius: 3,
   },
   // Section Header
   sectionHeader: {
@@ -656,167 +643,147 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#64748b',
-    letterSpacing: 1,
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#9CA3AF',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   liveBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.3)',
-    gap: 6,
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    gap: 4,
   },
   liveDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#34d399',
-    shadowColor: '#34d399',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 4,
+    backgroundColor: '#000000',
   },
   liveText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#34d399',
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#000000',
     textTransform: 'uppercase',
   },
   // Log
   logCard: {
-    backgroundColor: '#1e293b',
+    backgroundColor: '#FFFFFF',
     marginHorizontal: 20,
-    borderRadius: 16,
+    borderRadius: 12,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#334155',
-    marginBottom: 20,
+    borderColor: '#E5E7EB',
+    marginBottom: 16,
   },
   logItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    padding: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#0f172a',
+    borderBottomColor: '#F3F4F6',
   },
   logAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 36,
+    height: 36,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 14,
+    marginRight: 12,
   },
   logAvatarText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '800',
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
   },
   logInfo: {
     flex: 1,
     minWidth: 0,
   },
   logName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#f8fafc',
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000000',
   },
   logRole: {
     fontSize: 12,
-    color: '#64748b',
-    marginTop: 4,
-    fontWeight: '600',
+    color: '#6B7280',
+    marginTop: 2,
+    fontWeight: '400',
   },
   logRight: {
     alignItems: 'flex-end',
     marginLeft: 10,
   },
   logTime: {
-    fontSize: 12,
-    color: '#94a3b8',
-    fontWeight: '600',
-    marginBottom: 6,
+    fontSize: 11,
+    color: '#9CA3AF',
+    fontWeight: '400',
+    marginBottom: 4,
   },
   logStatus: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-    gap: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    gap: 3,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   logStatusIn: {
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.2)',
+    backgroundColor: '#F9FAFB',
   },
   logStatusPending: {
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.2)',
+    backgroundColor: '#FFFFFF',
   },
   logStatusText: {
-    fontSize: 10,
-    fontWeight: '800',
+    fontSize: 9,
+    fontWeight: '600',
     textTransform: 'uppercase',
   },
   // Empty
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
+    paddingVertical: 40,
   },
   emptyText: {
-    color: '#94a3b8',
-    fontSize: 15,
-    marginTop: 16,
-    fontWeight: '700',
+    color: '#6B7280',
+    fontSize: 14,
+    marginTop: 12,
+    fontWeight: '600',
   },
   emptySubtext: {
-    color: '#64748b',
-    fontSize: 13,
-    marginTop: 6,
-    fontWeight: '500',
+    color: '#9CA3AF',
+    fontSize: 12,
+    marginTop: 4,
+    fontWeight: '400',
   },
   // Export Button
   exportBtn: {
-    backgroundColor: '#8b5cf6',
+    backgroundColor: '#000000',
     marginHorizontal: 20,
-    borderRadius: 16,
-    paddingVertical: 18,
+    borderRadius: 8,
+    paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
-    gap: 10,
-    shadowColor: '#8b5cf6',
-    ...Platform.select({
-      web: {
-        boxShadow: '0 6px 12px rgba(139, 92, 246, 0.4)',
-      },
-      default: {
-        shadowColor: '#8b5cf6',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.4,
-        shadowRadius: 12,
-      },
-    }),
-    elevation: 8,
+    gap: 8,
   },
   exportBtnDisabled: {
     opacity: 0.5,
   },
   exportBtnText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '800',
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

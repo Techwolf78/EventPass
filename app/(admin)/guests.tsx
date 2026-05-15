@@ -1,4 +1,6 @@
+import { db } from "@/config/firebase";
 import { useAuth } from "@/context/AuthContext";
+import { getEnrollmentDisplayName } from "@/hooks/use-attendee-theme";
 import {
   addGuest,
   deleteGuest,
@@ -6,21 +8,26 @@ import {
   getGuestList,
   GuestListItem,
   updateGuest,
-  getEvents,
   validateAndCheckIn,
 } from "@/utils/firestore";
-import { collection, query, where, getDocs, deleteDoc } from "firebase/firestore";
-import { db } from "@/config/firebase";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
+import {
+  collection,
+  deleteDoc,
+  getDocs,
+  query,
+  where,
+} from "firebase/firestore";
 import Papa from "papaparse";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Modal,
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -67,12 +74,20 @@ const getInitials = (name: string) => {
 };
 
 const AVATAR_COLORS = [
-  "#8B5CF6",
-  "#10B981",
-  "#F59E0B",
-  "#EF4444",
-  "#3B82F6",
-  "#EC4899",
+  "#F44336",
+  "#E91E63",
+  "#9C27B0",
+  "#673AB7",
+  "#3F51B5",
+  "#2196F3",
+  "#03A9F4",
+  "#00BCD4",
+  "#009688",
+  "#4CAF50",
+  "#8BC34A",
+  "#FFC107",
+  "#FF9800",
+  "#FF5722",
 ];
 
 const getAvatarColor = (name: string) => {
@@ -99,6 +114,8 @@ export default function GuestListScreen() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [linkedinUrl, setLinkedinUrl] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [isVIP, setIsVIP] = useState(false);
   const [enrollmentType, setEnrollmentType] = useState<"masterclass" | "event">(
     "event",
   );
@@ -106,12 +123,25 @@ export default function GuestListScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
   const [checkedInIds, setCheckedInIds] = useState<Set<string>>(new Set());
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    loadGuests();
-  }, []);
+  // CSV Upload Modal state
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<
+    "idle" | "parsing" | "uploading" | "success" | "error"
+  >("idle");
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadFileName, setUploadFileName] = useState("");
+  const [uploadResults, setUploadResults] = useState<{
+    successCount: number;
+    failureCount: number;
+    total: number;
+  }>({ successCount: 0, failureCount: 0, total: 0 });
+  const [uploadErrors, setUploadErrors] = useState<
+    { row: number; name: string; email: string; error: string }[]
+  >([]);
 
-  const loadGuests = async () => {
+  const loadGuests = useCallback(async () => {
     setLoading(true);
     const [guestList, checkIns] = await Promise.all([
       getGuestList(),
@@ -120,7 +150,17 @@ export default function GuestListScreen() {
     setGuests(guestList);
     setCheckedInIds(new Set(checkIns));
     setLoading(false);
-  };
+  }, []);
+
+  useEffect(() => {
+    loadGuests();
+  }, [loadGuests]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadGuests();
+    setRefreshing(false);
+  }, [loadGuests]);
 
   const handleCheckIn = async (guest: GuestListItem) => {
     const targetEventId = "test-event";
@@ -134,14 +174,20 @@ export default function GuestListScreen() {
       const attendanceQuery = query(
         collection(db, "attendance"),
         where("candidateId", "==", guest.id),
-        where("eventId", "==", targetEventId)
+        where("eventId", "==", targetEventId),
       );
       const attendanceSnap = await getDocs(attendanceQuery);
-      const deletePromises = attendanceSnap.docs.map((doc) => deleteDoc(doc.ref));
+      const deletePromises = attendanceSnap.docs.map((doc) =>
+        deleteDoc(doc.ref),
+      );
       await Promise.all(deletePromises);
 
       // Set new as current (check in again)
-      const result = await validateAndCheckIn(guest.qrToken, targetEventId, "admin");
+      const result = await validateAndCheckIn(
+        guest.qrToken,
+        targetEventId,
+        "admin",
+      );
       showAlert("Result", result.message);
       if (result.success) {
         loadGuests(); // Reload to update status
@@ -167,9 +213,11 @@ export default function GuestListScreen() {
         email,
         enrollmentType,
         linkedinUrl,
+        companyName,
+        isVIP,
       });
     } else {
-      result = await addGuest(name, email, enrollmentType, linkedinUrl);
+      result = await addGuest(name, email, enrollmentType, linkedinUrl, companyName, isVIP);
     }
 
     showAlert("Result", result.message);
@@ -184,6 +232,8 @@ export default function GuestListScreen() {
     setName("");
     setEmail("");
     setLinkedinUrl("");
+    setCompanyName("");
+    setIsVIP(false);
     setEnrollmentType("event");
     setShowForm(false);
     setShowEditModal(false);
@@ -195,6 +245,8 @@ export default function GuestListScreen() {
     setEmail(guest.email);
     setEnrollmentType(guest.enrollmentType);
     setLinkedinUrl(guest.linkedinUrl || "");
+    setCompanyName(guest.companyName || "");
+    setIsVIP(guest.isVIP || false);
     setEditingId(guest.id);
     setShowEditModal(true);
   };
@@ -219,17 +271,61 @@ export default function GuestListScreen() {
     ]);
   };
 
-  const uploadValidGuests = async (
+  const resetUploadModal = () => {
+    setUploadStatus("idle");
+    setUploadProgress(0);
+    setUploadFileName("");
+    setUploadResults({ successCount: 0, failureCount: 0, total: 0 });
+    setUploadErrors([]);
+  };
+
+  const handleDownloadTemplate = async () => {
+    const csvContent =
+      "name,email,enrollmentType,company,linkedinUrl,vip\nJohn Doe,john@example.com,event,Google,https://linkedin.com/in/johndoe,true\nJane Smith,jane@example.com,masterclass,Microsoft,,false";
+    try {
+      if (Platform.OS === "web") {
+        const blob = new Blob([csvContent], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "guest_template.csv";
+        a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        const fileUri = `${FileSystem.cacheDirectory}guest_template.csv`;
+        await FileSystem.writeAsStringAsync(fileUri, csvContent);
+        const { default: Sharing } = await import("expo-sharing");
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(fileUri, { mimeType: "text/csv" });
+        } else {
+          showAlert("Saved", `Template saved to: ${fileUri}`);
+        }
+      }
+    } catch (e) {
+      showAlert("Error", "Could not download template");
+    }
+  };
+
+  const uploadValidGuestsWithProgress = async (
     guestsToUpload: {
       name: string;
       email: string;
       enrollmentType: "masterclass" | "event";
+      linkedinUrl?: string;
+      company?: string;
+      isVIP?: boolean;
     }[],
   ) => {
-    setLoading(true);
+    setUploadStatus("uploading");
+    setUploadProgress(0);
     let successCount = 0;
     let failureCount = 0;
-    const failures: { name: string; email: string; error: string }[] = [];
+    const failures: {
+      row: number;
+      name: string;
+      email: string;
+      error: string;
+    }[] = [];
 
     for (let i = 0; i < guestsToUpload.length; i++) {
       const guest = guestsToUpload[i];
@@ -238,128 +334,84 @@ export default function GuestListScreen() {
           guest.name,
           guest.email,
           guest.enrollmentType,
+          guest.linkedinUrl,
+          guest.company,
+          guest.isVIP,
         );
         if (result.success) {
           successCount++;
         } else {
           failureCount++;
           failures.push({
+            row: i + 2,
             name: guest.name,
             email: guest.email,
             error: result.message,
           });
         }
-
-        // Add a small delay to avoid overwhelming the API
-        if (i < guestsToUpload.length - 1) {
-          await new Promise((resolve) => setTimeout(resolve, 100));
-        }
       } catch (error: any) {
         failureCount++;
         failures.push({
+          row: i + 2,
           name: guest.name,
           email: guest.email,
           error: error.message || "Unknown error",
         });
       }
+      setUploadProgress(Math.round(((i + 1) / guestsToUpload.length) * 100));
+      if (i < guestsToUpload.length - 1)
+        await new Promise((r) => setTimeout(r, 80));
     }
 
-    setLoading(false);
-
-    // Show upload summary
-    let summaryMessage = `Upload Complete!\n\n✅ Successfully added: ${successCount}\n❌ Failed: ${failureCount}`;
-
-    if (failures.length > 0) {
-      summaryMessage += `\n\nFailed Guests:\n`;
-      summaryMessage += failures
-        .slice(0, 5)
-        .map((f) => `• ${f.name} (${f.email})\n  Error: ${f.error}`)
-        .join("\n\n");
-
-      if (failures.length > 5) {
-        summaryMessage += `\n\n... and ${failures.length - 5} more failures`;
-      }
-    }
-
-    showAlert(
-      successCount > 0 && failureCount === 0 ? "Success" : "Upload Summary",
-      summaryMessage,
-      [{ text: "OK", onPress: () => loadGuests() }],
-    );
+    setUploadResults({
+      successCount,
+      failureCount,
+      total: guestsToUpload.length,
+    });
+    if (failures.length > 0) setUploadErrors(failures);
+    setUploadStatus(failureCount === 0 ? "success" : "error");
+    loadGuests();
   };
 
-  const handleUploadCSV = async () => {
+  const handlePickFile = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: [
-          "text/csv",
-          "application/vnd.ms-excel",
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        ],
+        type: ["text/csv", "application/vnd.ms-excel"],
         copyToCacheDirectory: true,
       });
 
-      if (result.canceled) {
-        showAlert("Upload canceled", "No file was selected.");
-        return;
-      }
-
-      if (!result.assets || result.assets.length === 0) {
-        showAlert(
-          "Upload Error",
-          "No file data returned by the picker. Please try again.",
-        );
-        return;
-      }
+      if (result.canceled || !result.assets?.length) return;
 
       const asset = result.assets[0];
-      const fileUri = asset.uri;
       const fileName = asset.name;
-      const fileExtension = fileName.split(".").pop()?.toLowerCase();
+      const fileUri = asset.uri;
+      const ext = fileName.split(".").pop()?.toLowerCase();
 
-      // Check if file is CSV or Excel
-      if (!["csv", "xls", "xlsx"].includes(fileExtension || "")) {
-        showAlert(
-          "Error",
-          "Please upload a CSV or Excel file (.csv, .xls, .xlsx)",
-        );
+      if (ext !== "csv") {
+        setUploadErrors([
+          { row: 0, name: "", email: "", error: "Please upload a .csv file" },
+        ]);
+        setUploadStatus("error");
         return;
       }
 
+      setUploadFileName(fileName);
+      setUploadStatus("parsing");
+
       let fileContent = "";
+      const webFile = "file" in asset ? (asset.file as File | null) : null;
+      const looksLikeWebUri =
+        fileUri.startsWith("blob:") ||
+        fileUri.startsWith("data:") ||
+        fileUri.startsWith("http");
 
-      // Handle CSV files
-      if (fileExtension === "csv") {
-        const webFile = "file" in asset ? (asset.file as File | null) : null;
-        const looksLikeWebUri =
-          fileUri.startsWith("blob:") ||
-          fileUri.startsWith("data:") ||
-          fileUri.startsWith("http");
-
-        try {
-          if (webFile) {
-            fileContent = await webFile.text();
-          } else if (Platform.OS === "web" || looksLikeWebUri) {
-            const response = await fetch(fileUri);
-            fileContent = await response.text();
-          } else {
-            fileContent = await FileSystem.readAsStringAsync(fileUri);
-          }
-        } catch (readError: any) {
-          const readMessage = readError?.message || String(readError);
-          showAlert(
-            "File Read Error",
-            `Could not read the CSV file.\n\n${readMessage}`,
-          );
-          return;
-        }
+      if (webFile) {
+        fileContent = await webFile.text();
+      } else if (Platform.OS === "web" || looksLikeWebUri) {
+        const response = await fetch(fileUri);
+        fileContent = await response.text();
       } else {
-        // For Excel files, we need to handle them differently
-        showAlert(
-          "Info",
-          "Excel files need to be converted to CSV format. Please upload a CSV file for now.",
-        );
-        return;
+        fileContent = await FileSystem.readAsStringAsync(fileUri);
       }
 
       const parseResult = Papa.parse(fileContent, {
@@ -370,18 +422,25 @@ export default function GuestListScreen() {
       });
 
       if (parseResult.errors.length > 0) {
-        showAlert(
-          "CSV Parse Error",
-          "Invalid CSV format. Please check the file structure.",
-        );
+        setUploadErrors([
+          {
+            row: 0,
+            name: "",
+            email: "",
+            error: "Invalid CSV format. Check the file structure.",
+          },
+        ]);
+        setUploadStatus("error");
         return;
       }
 
-      // Validate and process each row
       const validGuests: {
         name: string;
         email: string;
         enrollmentType: "masterclass" | "event";
+        linkedinUrl?: string;
+        company?: string;
+        isVIP?: boolean;
       }[] = [];
       const errors: {
         row: number;
@@ -390,16 +449,17 @@ export default function GuestListScreen() {
         error: string;
       }[] = [];
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
       const dataRows = parseResult.data as any[];
 
       dataRows.forEach((row, index) => {
-        const rowNumber = index + 2; // +2 because of header row and 0-index
+        const rowNumber = index + 2;
         const name = row.name?.trim();
         const email = row.email?.trim();
         let enrollmentType = row.enrollmentType?.trim().toLowerCase();
+        const linkedinUrl = row.linkedinUrl?.trim() || "";
+        const company = row.company?.trim() || "";
+        const vip = row.vip?.trim().toLowerCase() === "true";
 
-        // Validate required fields
         if (!name) {
           errors.push({
             row: rowNumber,
@@ -409,7 +469,6 @@ export default function GuestListScreen() {
           });
           return;
         }
-
         if (!email) {
           errors.push({
             row: rowNumber,
@@ -419,7 +478,6 @@ export default function GuestListScreen() {
           });
           return;
         }
-
         if (!emailRegex.test(email)) {
           errors.push({
             row: rowNumber,
@@ -429,7 +487,6 @@ export default function GuestListScreen() {
           });
           return;
         }
-
         if (!enrollmentType) {
           errors.push({
             row: rowNumber,
@@ -439,112 +496,83 @@ export default function GuestListScreen() {
           });
           return;
         }
-
-        // Validate enrollment type (case-insensitive)
         if (enrollmentType !== "masterclass" && enrollmentType !== "event") {
           errors.push({
             row: rowNumber,
             name,
             email,
-            error:
-              'Enrollment type must be "masterclass" or "event" (case-insensitive)',
+            error: 'Must be "masterclass" or "event"',
           });
           return;
         }
-
-        // Check for duplicate emails in the same upload
-        const isDuplicateInUpload = validGuests.some(
-          (guest) => guest.email.toLowerCase() === email.toLowerCase(),
+        const isDupe = validGuests.some(
+          (g) => g.email.toLowerCase() === email.toLowerCase(),
         );
-
-        if (isDuplicateInUpload) {
+        if (isDupe) {
           errors.push({
             row: rowNumber,
             name,
             email,
-            error: "Duplicate email in the same file",
+            error: "Duplicate email in file",
           });
           return;
         }
-
-        // Check if email already exists in the existing guest list
-        const existingGuest = guests.find(
-          (guest) => guest.email.toLowerCase() === email.toLowerCase(),
+        const existsInDb = guests.find(
+          (g) => g.email.toLowerCase() === email.toLowerCase(),
         );
-
-        if (existingGuest) {
+        if (existsInDb) {
           errors.push({
             row: rowNumber,
             name,
             email,
-            error: `Email already exists (${existingGuest.name})`,
+            error: `Already exists (${existsInDb.name})`,
           });
           return;
         }
 
-        // Add valid guest (enrollmentType is already lowercase)
         validGuests.push({
           name,
           email: email.toLowerCase(),
           enrollmentType: enrollmentType as "masterclass" | "event",
+          linkedinUrl: linkedinUrl || undefined,
+          company: company || undefined,
+          isVIP: vip,
         });
       });
 
-      // Show validation summary
+      if (errors.length > 0 && validGuests.length === 0) {
+        setUploadErrors(errors);
+        setUploadStatus("error");
+        setUploadResults({
+          successCount: 0,
+          failureCount: errors.length,
+          total: errors.length,
+        });
+        return;
+      }
+
       if (errors.length > 0) {
-        let errorMessage = `Found ${errors.length} error(s) in the file:\n\n`;
-        errorMessage += errors
-          .slice(0, 5)
-          .map(
-            (err) =>
-              `Row ${err.row}: ${err.error}\n   Name: ${err.name}\n   Email: ${err.email}`,
-          )
-          .join("\n\n");
+        setUploadErrors(errors);
+      }
 
-        if (errors.length > 5) {
-          errorMessage += `\n\n... and ${errors.length - 5} more errors`;
-        }
-
-        if (validGuests.length === 0) {
-          showAlert("Validation Failed", errorMessage);
-          return;
-        }
-
-        showAlert(
-          "Partial Validation",
-          `${validGuests.length} valid guest(s) found.\n${errors.length} error(s) found.\n\n${errorMessage}`,
-          [
-            { text: "Cancel", style: "cancel" },
-            {
-              text: `Upload ${validGuests.length} Valid Guest(s)`,
-              onPress: async () => {
-                await uploadValidGuests(validGuests);
-              },
-            },
-          ],
-        );
-      } else if (validGuests.length > 0) {
-        // All guests are valid
-        showAlert(
-          "Confirm Upload",
-          `Upload ${validGuests.length} valid guest(s) from CSV/Excel?\n\nAll enrollment types will be stored in lowercase.`,
-          [
-            { text: "Cancel", style: "cancel" },
-            {
-              text: "Upload",
-              onPress: async () => {
-                await uploadValidGuests(validGuests);
-              },
-            },
-          ],
-        );
+      if (validGuests.length > 0) {
+        await uploadValidGuestsWithProgress(validGuests);
       } else {
-        showAlert("Error", "No valid guest entries found in the file");
+        setUploadErrors([
+          { row: 0, name: "", email: "", error: "No valid entries found" },
+        ]);
+        setUploadStatus("error");
       }
     } catch (error: any) {
-      console.error("File upload error:", error);
-      const errorMessage = error?.message || String(error);
-      showAlert("Upload Error", `Upload failed.\n\n${errorMessage}`);
+      setUploadErrors([
+        {
+          row: 0,
+          name: "",
+          email: "",
+          error: error?.message || "Upload failed",
+        },
+      ]);
+      setUploadStatus("error");
     }
   };
 
@@ -584,7 +612,7 @@ export default function GuestListScreen() {
   if (loading) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <ActivityIndicator size="large" color="#8B5CF6" />
+        <ActivityIndicator size="large" color="#000000" />
       </View>
     );
   }
@@ -773,6 +801,9 @@ export default function GuestListScreen() {
       </View>
 
       <ScrollView
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -808,6 +839,14 @@ export default function GuestListScreen() {
               autoCapitalize="none"
               editable={!submitting}
             />
+            <TextInput
+              style={styles.formInput}
+              placeholder="Company Name"
+              placeholderTextColor="#9ca3af"
+              value={companyName}
+              onChangeText={setCompanyName}
+              editable={!submitting}
+            />
             <Text style={styles.fieldLabel}>ENROLLMENT TYPE</Text>
             <View style={styles.enrollmentRow}>
               {["masterclass", "event"].map((type) => (
@@ -828,10 +867,27 @@ export default function GuestListScreen() {
                       enrollmentType === type && styles.enrollmentBtnTextActive,
                     ]}
                   >
-                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                    {getEnrollmentDisplayName(type)}
                   </Text>
                 </TouchableOpacity>
               ))}
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 16, marginTop: 4 }}>
+              <TouchableOpacity
+                style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+                onPress={() => setIsVIP(!isVIP)}
+                disabled={submitting}
+              >
+                <View
+                  style={[
+                    styles.radioCircle,
+                    isVIP && styles.radioCircleActive,
+                  ]}
+                >
+                  {isVIP && <View style={styles.radioInner} />}
+                </View>
+                <Text style={{ color: "#f8fafc", fontSize: 14, fontWeight: "600" }}>Mark as VIP</Text>
+              </TouchableOpacity>
             </View>
             <TouchableOpacity
               style={[
@@ -852,15 +908,21 @@ export default function GuestListScreen() {
 
         {/* Upload CSV Card */}
         {canEdit && (
-          <TouchableOpacity style={styles.uploadCard} onPress={handleUploadCSV}>
+          <TouchableOpacity
+            style={styles.uploadCard}
+            onPress={() => {
+              resetUploadModal();
+              setShowUploadModal(true);
+            }}
+          >
             <View style={styles.uploadContent}>
               <View style={styles.uploadIconBg}>
-                <Ionicons name="cloud-upload" size={22} color="#8B5CF6" />
+                <Ionicons name="cloud-upload" size={22} color="#000000" />
               </View>
               <View style={styles.uploadTextBlock}>
                 <Text style={styles.uploadTitle}>Upload CSV file</Text>
                 <Text style={styles.uploadSubtitle}>
-                  name, email, enrollmentType (masterclass/event)
+                  name, email, enrollmentType, company, linkedinUrl
                 </Text>
               </View>
             </View>
@@ -909,9 +971,16 @@ export default function GuestListScreen() {
                     </Text>
                   </View>
                   <View style={styles.guestInfo}>
-                    <Text style={styles.guestName} numberOfLines={1}>
-                      {item.name}
-                    </Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      <Text style={styles.guestName} numberOfLines={1}>
+                        {item.name}
+                      </Text>
+                      {item.isVIP && (
+                        <View style={{ backgroundColor: "#f59e0b", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                          <Text style={{ color: "#fff", fontSize: 10, fontWeight: "800" }}>VIP</Text>
+                        </View>
+                      )}
+                    </View>
                     <Text style={styles.guestEmail} numberOfLines={1}>
                       {item.email}
                     </Text>
@@ -951,14 +1020,18 @@ export default function GuestListScreen() {
                           style={[styles.actionBtn, styles.checkInBtn]}
                           onPress={() => handleCheckIn(item)}
                         >
-                          <Ionicons name="checkmark-circle" size={16} color="#10b981" />
+                          <Ionicons
+                            name="checkmark-circle"
+                            size={16}
+                            color="#10b981"
+                          />
                         </TouchableOpacity>
                       )}
                       <TouchableOpacity
                         style={[styles.actionBtn, styles.editBtn]}
                         onPress={() => handleEditGuest(item)}
                       >
-                        <Ionicons name="pencil" size={16} color="#8b5cf6" />
+                        <Ionicons name="pencil" size={16} color="#000000" />
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[styles.actionBtn, styles.deleteBtn]}
@@ -1026,6 +1099,15 @@ export default function GuestListScreen() {
               editable={!submitting}
             />
 
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Company Name"
+              placeholderTextColor="#64748b"
+              value={companyName}
+              onChangeText={setCompanyName}
+              editable={!submitting}
+            />
+
             <Text style={styles.modalFieldLabel}>ENROLLMENT TYPE</Text>
             <View style={styles.modalEnrollmentRow}>
               {["masterclass", "event"].map((type) => (
@@ -1047,10 +1129,28 @@ export default function GuestListScreen() {
                         styles.modalEnrollmentBtnTextActive,
                     ]}
                   >
-                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                    {getEnrollmentDisplayName(type)}
                   </Text>
                 </TouchableOpacity>
               ))}
+            </View>
+
+            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 16, marginTop: 4 }}>
+              <TouchableOpacity
+                style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+                onPress={() => setIsVIP(!isVIP)}
+                disabled={submitting}
+              >
+                <View
+                  style={[
+                    styles.radioCircle,
+                    isVIP && styles.radioCircleActive,
+                  ]}
+                >
+                  {isVIP && <View style={styles.radioInner} />}
+                </View>
+                <Text style={{ color: "#f8fafc", fontSize: 14, fontWeight: "600" }}>Mark as VIP</Text>
+              </TouchableOpacity>
             </View>
 
             <View style={styles.modalButtonRow}>
@@ -1080,6 +1180,539 @@ export default function GuestListScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* CSV Upload Modal */}
+      <Modal
+        visible={showUploadModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {
+          if (uploadStatus !== "uploading") {
+            setShowUploadModal(false);
+          }
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxWidth: 420 }]}>
+            {/* Header */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {uploadStatus === "success"
+                  ? "Upload Complete"
+                  : uploadStatus === "error"
+                    ? "Upload Results"
+                    : "Import Guests"}
+              </Text>
+              {uploadStatus !== "uploading" && (
+                <TouchableOpacity
+                  onPress={() => setShowUploadModal(false)}
+                  style={styles.modalCloseButton}
+                >
+                  <Ionicons name="close" size={24} color="#94a3b8" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Idle State */}
+            {uploadStatus === "idle" && (
+              <View>
+                {/* Template Download */}
+                <TouchableOpacity
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    backgroundColor: "#F0FDF4",
+                    borderRadius: 10,
+                    padding: 14,
+                    marginBottom: 16,
+                    borderWidth: 1,
+                    borderColor: "#BBF7D0",
+                  }}
+                  onPress={handleDownloadTemplate}
+                >
+                  <View
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 8,
+                      backgroundColor: "#DCFCE7",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      marginRight: 12,
+                    }}
+                  >
+                    <Ionicons
+                      name="download-outline"
+                      size={18}
+                      color="#16A34A"
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        fontWeight: "600",
+                        color: "#15803D",
+                      }}
+                    >
+                      Download Template
+                    </Text>
+                    <Text
+                      style={{ fontSize: 11, color: "#4ADE80", marginTop: 1 }}
+                    >
+                      name, email, enrollmentType, company, linkedinUrl
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color="#86EFAC" />
+                </TouchableOpacity>
+
+                {/* File Drop Zone */}
+                <TouchableOpacity
+                  style={{
+                    borderWidth: 2,
+                    borderStyle: "dashed",
+                    borderColor: "#D1D5DB",
+                    borderRadius: 14,
+                    paddingVertical: 36,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: "#FAFAFA",
+                    marginBottom: 16,
+                  }}
+                  onPress={handlePickFile}
+                >
+                  <View
+                    style={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: 28,
+                      backgroundColor: "#F3F4F6",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      marginBottom: 12,
+                    }}
+                  >
+                    <Ionicons
+                      name="document-text-outline"
+                      size={28}
+                      color="#9CA3AF"
+                    />
+                  </View>
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      fontWeight: "600",
+                      color: "#374151",
+                      marginBottom: 4,
+                    }}
+                  >
+                    Click to select a CSV file
+                  </Text>
+                  <Text style={{ fontSize: 12, color: "#9CA3AF" }}>
+                    Supports .csv files only
+                  </Text>
+                </TouchableOpacity>
+
+                <View
+                  style={{
+                    backgroundColor: "#F8FAFC",
+                    borderRadius: 10,
+                    padding: 12,
+                    borderWidth: 1,
+                    borderColor: "#E5E7EB",
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 10,
+                      fontWeight: "700",
+                      color: "#9CA3AF",
+                      letterSpacing: 0.5,
+                      marginBottom: 6,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Columns
+                  </Text>
+                  <View
+                    style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}
+                  >
+                    {["name", "email", "enrollmentType", "company"].map(
+                      (col) => (
+                        <View
+                          key={col}
+                          style={{
+                            backgroundColor: "#FFFFFF",
+                            paddingHorizontal: 10,
+                            paddingVertical: 5,
+                            borderRadius: 6,
+                            borderWidth: 1,
+                            borderColor: "#E5E7EB",
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 11,
+                              fontWeight: "600",
+                              color: "#4B5563",
+                            }}
+                          >
+                            {col}
+                          </Text>
+                        </View>
+                      ),
+                    )}
+                    <View
+                      style={{
+                        backgroundColor: "#FFFFFF",
+                        paddingHorizontal: 10,
+                        paddingVertical: 5,
+                        borderRadius: 6,
+                        borderWidth: 1,
+                        borderColor: "#E5E7EB",
+                        borderStyle: "dashed",
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          fontWeight: "500",
+                          color: "#9CA3AF",
+                        }}
+                      >
+                        linkedinUrl{" "}
+                        <Text style={{ fontSize: 9, color: "#D1D5DB" }}>
+                          (optional)
+                        </Text>
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* Parsing State */}
+            {uploadStatus === "parsing" && (
+              <View style={{ alignItems: "center", paddingVertical: 30 }}>
+                <ActivityIndicator size="large" color="#000000" />
+                <Text
+                  style={{
+                    fontSize: 14,
+                    fontWeight: "600",
+                    color: "#374151",
+                    marginTop: 12,
+                  }}
+                >
+                  Parsing {uploadFileName}...
+                </Text>
+                <Text style={{ fontSize: 12, color: "#9CA3AF", marginTop: 4 }}>
+                  Validating data format
+                </Text>
+              </View>
+            )}
+
+            {/* Uploading State */}
+            {uploadStatus === "uploading" && (
+              <View style={{ paddingVertical: 20 }}>
+                <View style={{ alignItems: "center", marginBottom: 20 }}>
+                  <Text style={{ fontSize: 40, marginBottom: 4 }}>📤</Text>
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      fontWeight: "700",
+                      color: "#000000",
+                    }}
+                  >
+                    {uploadProgress}%
+                  </Text>
+                  <Text
+                    style={{ fontSize: 12, color: "#6B7280", marginTop: 2 }}
+                  >
+                    Uploading guests...
+                  </Text>
+                </View>
+                {/* Progress Bar */}
+                <View
+                  style={{
+                    height: 8,
+                    backgroundColor: "#F3F4F6",
+                    borderRadius: 4,
+                    overflow: "hidden",
+                  }}
+                >
+                  <View
+                    style={{
+                      height: 8,
+                      backgroundColor: "#000000",
+                      borderRadius: 4,
+                      width: `${uploadProgress}%`,
+                    }}
+                  />
+                </View>
+                <Text
+                  style={{
+                    fontSize: 11,
+                    color: "#9CA3AF",
+                    textAlign: "center",
+                    marginTop: 8,
+                  }}
+                >
+                  {uploadFileName} • Please wait...
+                </Text>
+              </View>
+            )}
+
+            {/* Success State */}
+            {uploadStatus === "success" && (
+              <View style={{ alignItems: "center", paddingVertical: 24 }}>
+                <View
+                  style={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: 32,
+                    backgroundColor: "#F0FDF4",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    marginBottom: 14,
+                  }}
+                >
+                  <Ionicons name="checkmark-circle" size={40} color="#22C55E" />
+                </View>
+                <Text
+                  style={{
+                    fontSize: 18,
+                    fontWeight: "700",
+                    color: "#15803D",
+                    marginBottom: 4,
+                  }}
+                >
+                  All guests imported!
+                </Text>
+                <Text style={{ fontSize: 13, color: "#6B7280" }}>
+                  {uploadResults.successCount} guest
+                  {uploadResults.successCount !== 1 ? "s" : ""} added
+                  successfully
+                </Text>
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: "#000000",
+                    borderRadius: 10,
+                    paddingVertical: 12,
+                    paddingHorizontal: 32,
+                    marginTop: 20,
+                  }}
+                  onPress={() => setShowUploadModal(false)}
+                >
+                  <Text
+                    style={{
+                      color: "#FFFFFF",
+                      fontSize: 14,
+                      fontWeight: "600",
+                    }}
+                  >
+                    Done
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Error State */}
+            {uploadStatus === "error" && (
+              <View>
+                {/* Summary */}
+                {uploadResults.total > 0 && (
+                  <View
+                    style={{ flexDirection: "row", gap: 8, marginBottom: 14 }}
+                  >
+                    {uploadResults.successCount > 0 && (
+                      <View
+                        style={{
+                          flex: 1,
+                          backgroundColor: "#F0FDF4",
+                          borderRadius: 8,
+                          padding: 10,
+                          alignItems: "center",
+                          borderWidth: 1,
+                          borderColor: "#BBF7D0",
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 18,
+                            fontWeight: "700",
+                            color: "#16A34A",
+                          }}
+                        >
+                          {uploadResults.successCount}
+                        </Text>
+                        <Text
+                          style={{
+                            fontSize: 10,
+                            fontWeight: "600",
+                            color: "#4ADE80",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          Added
+                        </Text>
+                      </View>
+                    )}
+                    <View
+                      style={{
+                        flex: 1,
+                        backgroundColor: "#FEF2F2",
+                        borderRadius: 8,
+                        padding: 10,
+                        alignItems: "center",
+                        borderWidth: 1,
+                        borderColor: "#FECACA",
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 18,
+                          fontWeight: "700",
+                          color: "#DC2626",
+                        }}
+                      >
+                        {uploadResults.failureCount || uploadErrors.length}
+                      </Text>
+                      <Text
+                        style={{
+                          fontSize: 10,
+                          fontWeight: "600",
+                          color: "#F87171",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        Failed
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Error List */}
+                <ScrollView
+                  style={{ maxHeight: 200 }}
+                  showsVerticalScrollIndicator={false}
+                >
+                  {uploadErrors.slice(0, 10).map((err, idx) => (
+                    <View
+                      key={idx}
+                      style={{
+                        backgroundColor: "#FEF2F2",
+                        borderRadius: 8,
+                        padding: 10,
+                        marginBottom: 6,
+                        borderWidth: 1,
+                        borderColor: "#FECACA",
+                      }}
+                    >
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          marginBottom: 3,
+                        }}
+                      >
+                        <Ionicons
+                          name="alert-circle"
+                          size={14}
+                          color="#EF4444"
+                        />
+                        <Text
+                          style={{
+                            fontSize: 12,
+                            fontWeight: "600",
+                            color: "#DC2626",
+                            marginLeft: 6,
+                          }}
+                        >
+                          {err.row > 0 ? `Row ${err.row}` : "Error"}
+                        </Text>
+                      </View>
+                      <Text style={{ fontSize: 11, color: "#7F1D1D" }}>
+                        {err.error}
+                      </Text>
+                      {err.name && err.name !== "" && (
+                        <Text
+                          style={{
+                            fontSize: 10,
+                            color: "#9CA3AF",
+                            marginTop: 2,
+                          }}
+                        >
+                          {err.name} • {err.email}
+                        </Text>
+                      )}
+                    </View>
+                  ))}
+                  {uploadErrors.length > 10 && (
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        color: "#9CA3AF",
+                        textAlign: "center",
+                        marginTop: 4,
+                      }}
+                    >
+                      +{uploadErrors.length - 10} more errors
+                    </Text>
+                  )}
+                </ScrollView>
+
+                {/* Actions */}
+                <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
+                  <TouchableOpacity
+                    style={{
+                      flex: 1,
+                      backgroundColor: "#FFFFFF",
+                      paddingVertical: 12,
+                      borderRadius: 10,
+                      alignItems: "center",
+                      borderWidth: 1,
+                      borderColor: "#E5E7EB",
+                    }}
+                    onPress={() => setShowUploadModal(false)}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        fontWeight: "600",
+                        color: "#4B5563",
+                      }}
+                    >
+                      Close
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{
+                      flex: 1,
+                      backgroundColor: "#000000",
+                      paddingVertical: 12,
+                      borderRadius: 10,
+                      alignItems: "center",
+                    }}
+                    onPress={() => {
+                      resetUploadModal();
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        fontWeight: "600",
+                        color: "#FFFFFF",
+                      }}
+                    >
+                      Try Again
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1087,10 +1720,10 @@ export default function GuestListScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0f172a", // slate-900
+    backgroundColor: "#FFFFFF",
   },
   scrollContent: {
-    paddingBottom: 100, // accommodate tab bar
+    paddingBottom: 20,
     maxWidth: 800,
     alignSelf: "center",
     width: "100%",
@@ -1102,31 +1735,33 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     paddingHorizontal: 20,
     paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
   },
   headerLeft: {
     flex: 1,
   },
   headerTitle: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: "#f8fafc",
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#000000",
+    letterSpacing: -0.5,
   },
   headerSubtitle: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#8b5cf6",
-    marginTop: 4,
-    letterSpacing: 1,
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#6B7280",
+    marginTop: 2,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   addButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#1e293b",
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: "#000000",
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#334155",
   },
   // Stats
   statsRow: {
@@ -1134,58 +1769,59 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     gap: 12,
     marginBottom: 20,
+    marginTop: 16,
   },
   statCard: {
     flex: 1,
-    backgroundColor: "#1e293b",
-    borderRadius: 16,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 8,
     paddingVertical: 16,
     paddingHorizontal: 10,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#E5E7EB",
   },
   statNumber: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#a78bfa",
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#000000",
   },
   statNumberGreen: {
-    color: "#34d399",
+    color: "#000000",
   },
   statNumberOrange: {
-    color: "#fbbf24",
+    color: "#000000",
   },
   statNumberBlue: {
-    color: "#60a5fa",
+    color: "#000000",
   },
   statLabel: {
     fontSize: 10,
-    fontWeight: "700",
-    color: "#64748b",
-    marginTop: 6,
+    fontWeight: "600",
+    color: "#9CA3AF",
+    marginTop: 4,
     textAlign: "center",
     textTransform: "uppercase",
   },
   statLabelGreen: {
-    color: "#34d399",
+    color: "#9CA3AF",
   },
   statLabelOrange: {
-    color: "#fbbf24",
+    color: "#9CA3AF",
   },
   statLabelBlue: {
-    color: "#60a5fa",
+    color: "#9CA3AF",
   },
   // Filter Bar
   filterBar: {
     flexDirection: "row",
-    backgroundColor: "#1e293b",
+    backgroundColor: "#FFFFFF",
     marginHorizontal: 20,
     marginBottom: 20,
-    borderRadius: 30,
-    padding: 6,
+    borderRadius: 8,
+    padding: 4,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#E5E7EB",
   },
   filterOption: {
     flex: 1,
@@ -1193,104 +1829,108 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 10,
-    borderRadius: 24,
     gap: 6,
+    borderRightWidth: 1,
+    borderRightColor: "#E5E7EB",
   },
   filterOptionActive: {
-    backgroundColor: "rgba(139, 92, 246, 0.15)",
+    backgroundColor: "#F9FAFB",
   },
   radioCircle: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: "#475569",
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#9CA3AF",
     alignItems: "center",
     justifyContent: "center",
   },
   radioCircleActive: {
-    borderColor: "#a78bfa",
+    borderColor: "#000000",
   },
   radioInner: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#a78bfa",
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#000000",
   },
   filterText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#64748b",
+    fontSize: 12,
+    fontWeight: "500",
+    color: "#4B5563",
   },
   filterTextActive: {
-    color: "#a78bfa",
+    color: "#000000",
+    fontWeight: "600",
   },
   // Form Card
   formCard: {
-    backgroundColor: "#1e293b",
+    backgroundColor: "#FFFFFF",
     marginHorizontal: 20,
-    marginBottom: 20,
-    borderRadius: 16,
-    padding: 18,
+    marginBottom: 16,
+    borderRadius: 12,
+    padding: 16,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#E5E7EB",
   },
   formTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#f8fafc",
-    marginBottom: 14,
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#000000",
+    marginBottom: 12,
   },
   formInput: {
-    backgroundColor: "#0f172a",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#334155",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    borderColor: "#E5E7EB",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     fontSize: 14,
-    color: "#f8fafc",
-    marginBottom: 12,
-    fontWeight: "600",
+    color: "#000000",
+    marginBottom: 10,
+    fontWeight: "500",
   },
   fieldLabel: {
     fontSize: 11,
-    fontWeight: "800",
-    color: "#64748b",
-    letterSpacing: 1,
-    marginTop: 4,
-    marginBottom: 10,
+    fontWeight: "600",
+    color: "#9CA3AF",
+    letterSpacing: 0.5,
+    marginTop: 2,
+    marginBottom: 8,
+    textTransform: "uppercase",
   },
   enrollmentRow: {
     flexDirection: "row",
-    gap: 10,
-    marginBottom: 16,
+    gap: 8,
+    marginBottom: 12,
   },
   enrollmentBtn: {
     flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#E5E7EB",
     alignItems: "center",
-    backgroundColor: "#0f172a",
+    backgroundColor: "#FFFFFF",
   },
   enrollmentBtnActive: {
-    backgroundColor: "rgba(139, 92, 246, 0.15)",
-    borderColor: "#8b5cf6",
+    backgroundColor: "#000000",
+    borderColor: "#000000",
   },
   enrollmentBtnText: {
     fontSize: 13,
-    fontWeight: "700",
-    color: "#64748b",
+    fontWeight: "500",
+    color: "#4B5563",
   },
   enrollmentBtnTextActive: {
-    color: "#a78bfa",
+    color: "#FFFFFF",
+    fontWeight: "600",
   },
   submitButton: {
-    backgroundColor: "#8b5cf6",
-    borderRadius: 12,
-    paddingVertical: 16,
+    backgroundColor: "#000000",
+    borderRadius: 8,
+    paddingVertical: 12,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1298,20 +1938,20 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   submitButtonText: {
-    color: "#ffffff",
-    fontSize: 15,
-    fontWeight: "800",
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "600",
   },
   // Upload Card
   uploadCard: {
-    backgroundColor: "#1e293b",
+    backgroundColor: "#FFFFFF",
     marginHorizontal: 20,
-    marginBottom: 20,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1.5,
+    marginBottom: 16,
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
     borderStyle: "dashed",
-    borderColor: "#8b5cf6",
+    borderColor: "#E5E7EB",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -1319,13 +1959,13 @@ const styles = StyleSheet.create({
   uploadContent: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
+    gap: 12,
   },
   uploadIconBg: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: "rgba(139, 92, 246, 0.15)",
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: "#F3F4F6",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -1333,37 +1973,37 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   uploadTitle: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: "#f8fafc",
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#000000",
   },
   uploadSubtitle: {
     fontSize: 11,
-    color: "#64748b",
-    marginTop: 4,
-    fontWeight: "600",
+    color: "#6B7280",
+    marginTop: 2,
+    fontWeight: "400",
   },
   // Search
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#1e293b",
+    backgroundColor: "#FFFFFF",
     marginHorizontal: 20,
-    marginBottom: 20,
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    height: 52,
+    marginBottom: 16,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    height: 44,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#E5E7EB",
   },
   searchIcon: {
-    marginRight: 10,
+    marginRight: 8,
   },
   searchInput: {
     flex: 1,
     fontSize: 14,
-    color: "#f8fafc",
-    fontWeight: "600",
+    color: "#000000",
+    fontWeight: "500",
   },
   // Section Header
   sectionHeader: {
@@ -1371,238 +2011,229 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 20,
-    marginBottom: 16,
-    backgroundColor: "#0f172a",
-    paddingVertical: 10,
+    marginBottom: 12,
+    backgroundColor: "#FFFFFF",
+    paddingVertical: 8,
   },
   sectionTitle: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: "#64748b",
-    letterSpacing: 1,
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#9CA3AF",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
   },
   sectionCount: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#a78bfa",
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#000000",
   },
   // Guest List
   listContainer: {
     paddingHorizontal: 20,
   },
   guestItem: {
-    backgroundColor: "#1e293b",
+    backgroundColor: "#FFFFFF",
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
-    marginBottom: 12,
-    borderRadius: 16,
+    padding: 12,
+    marginBottom: 10,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#E5E7EB",
   },
   avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 36,
+    height: 36,
+    borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 14,
+    marginRight: 12,
   },
   avatarText: {
-    color: "#ffffff",
-    fontSize: 15,
-    fontWeight: "800",
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "600",
   },
   guestInfo: {
     flex: 1,
     minWidth: 0,
   },
   guestName: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: "#f8fafc",
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#000000",
   },
   guestEmail: {
-    fontSize: 13,
-    color: "#94a3b8",
-    marginTop: 4,
-    fontWeight: "600",
+    fontSize: 12,
+    color: "#6B7280",
+    marginTop: 2,
+    fontWeight: "400",
   },
   statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    marginLeft: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+    marginLeft: 6,
     borderWidth: 1,
+    borderColor: "#E5E7EB",
   },
   actionButtons: {
     flexDirection: "row",
-    marginLeft: 10,
+    marginLeft: 8,
   },
   actionBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 6,
     justifyContent: "center",
     alignItems: "center",
-    marginLeft: 6,
+    marginLeft: 4,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
   },
   editBtn: {
-    backgroundColor: "rgba(139, 92, 246, 0.1)",
-    borderWidth: 1,
-    borderColor: "rgba(139, 92, 246, 0.2)",
+    backgroundColor: "#FFFFFF",
   },
   deleteBtn: {
-    backgroundColor: "rgba(239, 68, 68, 0.1)",
-    borderWidth: 1,
-    borderColor: "rgba(239, 68, 68, 0.2)",
+    backgroundColor: "#FFFFFF",
   },
   checkInBtn: {
-    backgroundColor: "rgba(16, 185, 129, 0.1)",
-    borderWidth: 1,
-    borderColor: "rgba(16, 185, 129, 0.2)",
+    backgroundColor: "#FFFFFF",
   },
   statusArrived: {
-    backgroundColor: "rgba(16, 185, 129, 0.1)",
-    borderColor: "rgba(16, 185, 129, 0.2)",
+    backgroundColor: "#F9FAFB",
   },
   statusUnarrived: {
-    backgroundColor: "rgba(245, 158, 11, 0.1)",
-    borderColor: "rgba(245, 158, 11, 0.2)",
+    backgroundColor: "#FFFFFF",
   },
   statusPending: {
-    backgroundColor: "rgba(96, 165, 250, 0.1)",
-    borderColor: "rgba(96, 165, 250, 0.2)",
+    backgroundColor: "#FFFFFF",
   },
   statusText: {
-    fontSize: 11,
-    fontWeight: "800",
+    fontSize: 9,
+    fontWeight: "600",
     textTransform: "uppercase",
   },
-  statusTextArrived: {
-    color: "#34d399",
-  },
-  statusTextUnarrived: {
-    color: "#fbbf24",
-  },
-  statusTextPending: {
-    color: "#60a5fa",
-  },
+  statusTextArrived: { color: "#000000" },
+  statusTextUnarrived: { color: "#6B7280" },
+  statusTextPending: { color: "#9CA3AF" },
   // Empty
   emptyContainer: {
     alignItems: "center",
-    paddingVertical: 60,
+    paddingVertical: 40,
   },
   emptyText: {
-    marginTop: 16,
-    fontSize: 15,
-    color: "#64748b",
-    fontWeight: "700",
+    marginTop: 12,
+    fontSize: 14,
+    color: "#6B7280",
+    fontWeight: "600",
   },
   // Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.85)",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
     alignItems: "center",
   },
   modalContent: {
-    backgroundColor: "#1e293b",
-    borderRadius: 20,
-    padding: 24,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 20,
     width: "90%",
     maxWidth: 400,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#E5E7EB",
   },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 16,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#f8fafc",
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#000000",
   },
   modalCloseButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#0f172a",
+    backgroundColor: "#F3F4F6",
   },
   modalInput: {
-    backgroundColor: "#0f172a",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#334155",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    borderColor: "#E5E7EB",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     fontSize: 14,
-    color: "#f8fafc",
-    marginBottom: 16,
-    fontWeight: "600",
+    color: "#000000",
+    marginBottom: 12,
+    fontWeight: "500",
   },
   modalFieldLabel: {
     fontSize: 11,
-    fontWeight: "800",
-    color: "#64748b",
-    letterSpacing: 1,
-    marginBottom: 10,
+    fontWeight: "600",
+    color: "#9CA3AF",
+    letterSpacing: 0.5,
+    marginBottom: 6,
+    textTransform: "uppercase",
   },
   modalEnrollmentRow: {
     flexDirection: "row",
-    gap: 10,
-    marginBottom: 24,
+    gap: 8,
+    marginBottom: 16,
   },
   modalEnrollmentBtn: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#E5E7EB",
     alignItems: "center",
-    backgroundColor: "#0f172a",
+    backgroundColor: "#FFFFFF",
   },
   modalEnrollmentBtnActive: {
-    backgroundColor: "rgba(139, 92, 246, 0.15)",
-    borderColor: "#8b5cf6",
+    backgroundColor: "#000000",
+    borderColor: "#000000",
   },
   modalEnrollmentBtnText: {
     fontSize: 13,
-    fontWeight: "700",
-    color: "#64748b",
+    fontWeight: "500",
+    color: "#4B5563",
   },
   modalEnrollmentBtnTextActive: {
-    color: "#a78bfa",
+    color: "#FFFFFF",
+    fontWeight: "600",
   },
   modalButtonRow: {
     flexDirection: "row",
-    gap: 12,
-    marginTop: 8,
+    gap: 10,
+    marginTop: 4,
   },
   modalCancelButton: {
     flex: 1,
-    backgroundColor: "#0f172a",
-    paddingVertical: 14,
-    borderRadius: 12,
+    backgroundColor: "#FFFFFF",
+    paddingVertical: 12,
+    borderRadius: 8,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#E5E7EB",
   },
   modalCancelButtonText: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#94a3b8",
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#4B5563",
   },
   modalUpdateButton: {
     flex: 1,
-    backgroundColor: "#8b5cf6",
-    paddingVertical: 14,
-    borderRadius: 12,
+    backgroundColor: "#000000",
+    paddingVertical: 12,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1610,8 +2241,8 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   modalUpdateButtonText: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
 });

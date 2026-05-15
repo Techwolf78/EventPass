@@ -8,6 +8,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  RefreshControl,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -43,33 +44,41 @@ export default function GalleryScreen() {
     "masterclass" | "event"
   >("event");
   const [loading, setLoading] = React.useState(true);
+  const [refreshing, setRefreshing] = React.useState(false);
+
+  const fetchEnrollment = React.useCallback(async () => {
+    try {
+      let token = await AsyncStorage.getItem("guestQrToken");
+      let candidateData = null;
+
+      if (token) {
+        candidateData = await getCandidateByQRToken(token);
+      } else if (user?.email) {
+        candidateData = await getCandidateByEmail(user.email);
+      }
+
+      if (candidateData) {
+        setEnrollmentType(
+          (candidateData.enrollmentType as "masterclass" | "event") ||
+            "event",
+        );
+      }
+    } catch (error) {
+      console.error("Error fetching enrollment type:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
 
   React.useEffect(() => {
-    const fetchEnrollment = async () => {
-      try {
-        let token = await AsyncStorage.getItem("guestQrToken");
-        let candidateData = null;
-
-        if (token) {
-          candidateData = await getCandidateByQRToken(token);
-        } else if (user?.email) {
-          candidateData = await getCandidateByEmail(user.email);
-        }
-
-        if (candidateData) {
-          setEnrollmentType(
-            (candidateData.enrollmentType as "masterclass" | "event") ||
-              "event",
-          );
-        }
-      } catch (error) {
-        console.error("Error fetching enrollment type:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchEnrollment();
-  }, [user]);
+  }, [fetchEnrollment]);
+
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await fetchEnrollment();
+    setRefreshing(false);
+  }, [fetchEnrollment]);
 
   const images =
     enrollmentType === "masterclass" ? MASTERCLASS_IMAGES : EVENT_IMAGES;
@@ -99,6 +108,9 @@ export default function GalleryScreen() {
           paddingHorizontal: 16,
         }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
         <View className="mb-8">
           <View className="flex-row justify-between items-center">

@@ -78,7 +78,7 @@ export default function AnimatedSplash({ onFinish }: AnimatedSplashProps) {
 
       // 4. Hold for a moment
       // 4. Hold for a moment
-      Animated.delay(1400), // ← 1.8 seconds
+      Animated.delay(300), // ← 1.8 seconds
 
       // 5. Fade everything out
       Animated.timing(overlayOpacity, {
@@ -95,12 +95,12 @@ export default function AnimatedSplash({ onFinish }: AnimatedSplashProps) {
       Animated.sequence([
         Animated.timing(pulseAnim, {
           toValue: 1.05,
-          duration: 1500,
+          duration: 1200,
           useNativeDriver: true,
         }),
         Animated.timing(pulseAnim, {
           toValue: 1,
-          duration: 1500,
+          duration: 1200,
           useNativeDriver: true,
         }),
       ]),
