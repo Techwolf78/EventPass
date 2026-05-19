@@ -245,7 +245,9 @@ export default function ProfileScreen() {
           <TouchableOpacity
             className="bg-slate-50 border border-slate-100 rounded-xl py-4 px-4 mb-2 flex-row items-center justify-between"
             onPress={() =>
-              Linking.openURL("https://eventpass.vercel.app/privacy-policy")
+              Linking.openURL(
+                "https://event-pass-eta.vercel.app/privacy-policy",
+              )
             }
           >
             <Text className="text-sm font-semibold text-slate-900">
@@ -258,7 +260,7 @@ export default function ProfileScreen() {
             className="bg-slate-50 border border-slate-100 rounded-xl py-4 px-4 mb-2 flex-row items-center justify-between"
             onPress={() =>
               Linking.openURL(
-                "https://eventpass.vercel.app/terms-and-conditions",
+                "https://event-pass-eta.vercel.app/terms-and-conditions",
               )
             }
           >
@@ -271,7 +273,9 @@ export default function ProfileScreen() {
           <TouchableOpacity
             className="bg-red-50 border border-red-200 rounded-xl py-4 px-4 flex-row items-center justify-between"
             onPress={() =>
-              Linking.openURL("https://eventpass.vercel.app/delete-account")
+              Linking.openURL(
+                "https://event-pass-eta.vercel.app/delete-account",
+              )
             }
           >
             <Text className="text-sm font-semibold text-red-600">
