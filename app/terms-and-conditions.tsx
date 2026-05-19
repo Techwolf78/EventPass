@@ -11,7 +11,7 @@ export default function TermsAndConditions() {
     <ScrollView
       style={{ flex: 1, backgroundColor: isDark ? "#0f172a" : "#f9fafb" }}
     >
-      <ThemedView style={{ padding: 20, maxWidth: 900, margin: "0 auto" }}>
+      <ThemedView style={{ padding: 20 }}>
         <ThemedText type="title" style={{ fontSize: 28, marginBottom: 10 }}>
           Terms and Conditions
         </ThemedText>

@@ -6,14 +6,7 @@ import { ScrollView } from "react-native";
 export default function DeleteAccount() {
   return (
     <ScrollView style={{ flex: 1, backgroundColor: "#0f172a" }}>
-      <ThemedView
-        style={{
-          padding: 20,
-          maxWidth: 900,
-          margin: "0 auto",
-          backgroundColor: "#0f172a",
-        }}
-      >
+      <ThemedView style={{ padding: 20, backgroundColor: "#0f172a" }}>
         <ThemedText
           type="title"
           style={{ fontSize: 28, marginBottom: 10, color: "#dc2626" }}
