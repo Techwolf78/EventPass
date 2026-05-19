@@ -1,22 +1,23 @@
 import { useAuth } from "@/context/AuthContext";
 import { getEnrollmentDisplayName } from "@/hooks/use-attendee-theme";
 import {
-    Candidate,
-    getCandidateByEmail,
-    getCandidateByQRToken,
-    getGuestByQRToken,
+  Candidate,
+  getCandidateByEmail,
+  getCandidateByQRToken,
+  getGuestByQRToken,
 } from "@/utils/firestore";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Linking,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -243,7 +244,9 @@ export default function ProfileScreen() {
           </Text>
           <TouchableOpacity
             className="bg-slate-50 border border-slate-100 rounded-xl py-4 px-4 mb-2 flex-row items-center justify-between"
-            onPress={() => router.push("/privacy-policy")}
+            onPress={() =>
+              Linking.openURL("https://eventpass.vercel.app/privacy-policy")
+            }
           >
             <Text className="text-sm font-semibold text-slate-900">
               Privacy Policy
@@ -253,7 +256,11 @@ export default function ProfileScreen() {
 
           <TouchableOpacity
             className="bg-slate-50 border border-slate-100 rounded-xl py-4 px-4 mb-2 flex-row items-center justify-between"
-            onPress={() => router.push("/terms-and-conditions")}
+            onPress={() =>
+              Linking.openURL(
+                "https://eventpass.vercel.app/terms-and-conditions",
+              )
+            }
           >
             <Text className="text-sm font-semibold text-slate-900">
               Terms & Conditions
@@ -263,7 +270,9 @@ export default function ProfileScreen() {
 
           <TouchableOpacity
             className="bg-red-50 border border-red-200 rounded-xl py-4 px-4 flex-row items-center justify-between"
-            onPress={() => router.push("/delete-account")}
+            onPress={() =>
+              Linking.openURL("https://eventpass.vercel.app/delete-account")
+            }
           >
             <Text className="text-sm font-semibold text-red-600">
               Delete Account
