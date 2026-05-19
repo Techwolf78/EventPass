@@ -110,28 +110,45 @@ function RootLayoutInner() {
     const inGuestAllowed =
       segments[0] === "(attendee)" && guestAllowedScreens.has(segments[1]);
 
+    const time = new Date().toLocaleTimeString();
+    console.log(`\n[${time}] 🔍 ROUTING CHECK:`);
+    console.log(`  Current route: ${segments.join("/")} or /`);
+    console.log(`  user: ${user?.email || "null"}, isAdmin: ${isAdmin}, isGuest: ${isGuest}`);
+    console.log(`  inAuthGroup: ${inAuthGroup}, inGuestAllowed: ${inGuestAllowed}`);
+
     if (user && inAuthGroup) {
       // Firebase-authenticated user on login page → redirect to their dashboard
+      console.log(`  ❌ REDIRECT: Authenticated user on login page`);
       if (isAdmin) {
+        console.log(`  → Going to /(admin)/panel`);
         router.replace("/(admin)/panel");
       } else {
+        console.log(`  → Going to /(attendee)/agenda`);
         router.replace("/(attendee)/agenda");
       }
     } else if (!user && isGuest && inAuthGroup) {
       // Guest with a saved session on login page → send them straight to QR pass
+      console.log(`  ❌ REDIRECT: Guest on login page`);
+      console.log(`  → Going to /(attendee)/qr-pass`);
       router.replace({
         pathname: "/(attendee)/qr-pass",
         params: { qrToken: guestSession!.qrToken },
       });
     } else if (!user && isGuest && !inGuestAllowed) {
       // Guest with a saved session but on a non-guest screen → redirect to QR pass
+      console.log(`  ❌ REDIRECT: Guest on non-guest-allowed screen`);
+      console.log(`  → Going to /(attendee)/qr-pass`);
       router.replace({
         pathname: "/(attendee)/qr-pass",
         params: { qrToken: guestSession!.qrToken },
       });
     } else if (!user && !isGuest && !inAuthGroup && !inGuestAllowed) {
       // No user, no guest session → redirect to login
+      console.log(`  ❌ REDIRECT: No auth, no guest → sending to login`);
+      console.log(`  → Going to /(auth)/login`);
       router.replace("/(auth)/login");
+    } else {
+      console.log(`  ✅ ALLOWED: Page is accessible`);
     }
   }, [
     user,
