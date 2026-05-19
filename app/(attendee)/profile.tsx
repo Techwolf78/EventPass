@@ -1,22 +1,22 @@
 import { useAuth } from "@/context/AuthContext";
 import { getEnrollmentDisplayName } from "@/hooks/use-attendee-theme";
 import {
-  Candidate,
-  getCandidateByEmail,
-  getCandidateByQRToken,
-  getGuestByQRToken,
+    Candidate,
+    getCandidateByEmail,
+    getCandidateByQRToken,
+    getGuestByQRToken,
 } from "@/utils/firestore";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    RefreshControl,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -235,6 +235,41 @@ export default function ProfileScreen() {
                 : "EVNT-2025-—"}
             </Text>
           </View>
+        </View>
+
+        <View className="mb-6">
+          <Text className="text-xs font-black text-slate-400 uppercase tracking-wider mb-3 px-1">
+            Legal & Support
+          </Text>
+          <TouchableOpacity
+            className="bg-slate-50 border border-slate-100 rounded-xl py-4 px-4 mb-2 flex-row items-center justify-between"
+            onPress={() => router.push("/privacy-policy")}
+          >
+            <Text className="text-sm font-semibold text-slate-900">
+              Privacy Policy
+            </Text>
+            <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            className="bg-slate-50 border border-slate-100 rounded-xl py-4 px-4 mb-2 flex-row items-center justify-between"
+            onPress={() => router.push("/terms-and-conditions")}
+          >
+            <Text className="text-sm font-semibold text-slate-900">
+              Terms & Conditions
+            </Text>
+            <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            className="bg-red-50 border border-red-200 rounded-xl py-4 px-4 flex-row items-center justify-between"
+            onPress={() => router.push("/delete-account")}
+          >
+            <Text className="text-sm font-semibold text-red-600">
+              Delete Account
+            </Text>
+            <Ionicons name="chevron-forward" size={18} color="#dc2626" />
+          </TouchableOpacity>
         </View>
 
         <TouchableOpacity
