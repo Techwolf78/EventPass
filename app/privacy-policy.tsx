@@ -14,13 +14,17 @@ export default function PrivacyPolicy() {
     // Set a timer to check if page stays loaded (no redirect)
     const checkTimer = setTimeout(() => {
       const checkTime = new Date().toLocaleTimeString();
-      console.log(`[${checkTime}] ✅ Still on Privacy Policy after 3 seconds (NO REDIRECT)`);
+      console.log(
+        `[${checkTime}] ✅ Still on Privacy Policy after 3 seconds (NO REDIRECT)`,
+      );
     }, 3000);
 
     return () => {
       clearTimeout(checkTimer);
       const unloadTime = new Date().toLocaleTimeString();
-      console.log(`[${unloadTime}] ❌ REDIRECTED away from Privacy Policy page`);
+      console.log(
+        `[${unloadTime}] ❌ REDIRECTED away from Privacy Policy page`,
+      );
     };
   }, []);
 

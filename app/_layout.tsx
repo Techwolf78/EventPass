@@ -1,7 +1,7 @@
 import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider,
+    DarkTheme,
+    DefaultTheme,
+    ThemeProvider,
 } from "@react-navigation/native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -100,6 +100,13 @@ function RootLayoutInner() {
     if (loading || !appIsReady || showAnimatedSplash) return;
 
     const inAuthGroup = segments[0] === "(auth)";
+    const legalPages = new Set([
+      "privacy-policy",
+      "terms-and-conditions",
+      "delete-account",
+    ]);
+    const isLegalPage = legalPages.has(segments[0]);
+
     const guestAllowedScreens = new Set([
       "qr-pass",
       "agenda",
@@ -113,8 +120,18 @@ function RootLayoutInner() {
     const time = new Date().toLocaleTimeString();
     console.log(`\n[${time}] 🔍 ROUTING CHECK:`);
     console.log(`  Current route: ${segments.join("/")} or /`);
-    console.log(`  user: ${user?.email || "null"}, isAdmin: ${isAdmin}, isGuest: ${isGuest}`);
-    console.log(`  inAuthGroup: ${inAuthGroup}, inGuestAllowed: ${inGuestAllowed}`);
+    console.log(
+      `  user: ${user?.email || "null"}, isAdmin: ${isAdmin}, isGuest: ${isGuest}`,
+    );
+    console.log(
+      `  inAuthGroup: ${inAuthGroup}, inGuestAllowed: ${inGuestAllowed}, isLegalPage: ${isLegalPage}`,
+    );
+
+    // Allow legal pages without auth check
+    if (isLegalPage) {
+      console.log(`  ✅ ALLOWED: Legal page (no auth required)`);
+      return;
+    }
 
     if (user && inAuthGroup) {
       // Firebase-authenticated user on login page → redirect to their dashboard
