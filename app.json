@@ -78,7 +78,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow ConnectHQ to use the camera to scan attendee QR codes."
+          "cameraPermission": "ConnectHQ requires camera access to scan event QR codes for attendee check-in and attendance tracking."
         }
       ],
 

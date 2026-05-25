@@ -411,6 +411,8 @@ export default function LoginScreen() {
         setEmailError(
           "This email is not on the guest list. Please contact the event organizer.",
         );
+      } else if (result.message && result.message.toLowerCase().includes("deleted")) {
+        setEmailError(result.message);
       } else {
         Alert.alert(
           "Login Failed",

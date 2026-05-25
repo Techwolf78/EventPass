@@ -1,22 +1,23 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 import { useAuth } from "@/context/AuthContext";
+import { getEnrollmentDisplayName } from "@/hooks/use-attendee-theme";
 import { getAllAgendas, saveAgenda } from "@/utils/firestore";
 import { Ionicons } from "@expo/vector-icons";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import {
   ActivityIndicator,
   Alert,
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  RefreshControl,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { getEnrollmentDisplayName } from "@/hooks/use-attendee-theme";
 
 const AGENDA_TYPES = ["masterclass", "event"] as const;
 type AgendaType = (typeof AGENDA_TYPES)[number];
@@ -56,6 +57,9 @@ interface AgendaItemForm {
   title: string;
   speaker: string;
   tag: string;
+  hour?: number;
+  minute?: number;
+  meridiem?: "AM" | "PM";
 }
 
 export default function AgendaScreen() {
@@ -70,6 +74,13 @@ export default function AgendaScreen() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Time picker states
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [selectedItemIndex, setSelectedItemIndex] = useState<number | null>(
+    null,
+  );
+  const [tempTime, setTempTime] = useState(new Date());
 
   const loadAgenda = useCallback(async (type: AgendaType) => {
     setLoading(true);
@@ -106,6 +117,69 @@ export default function AgendaScreen() {
     setRefreshing(false);
   }, [activeType, loadAgenda]);
 
+  // Helper function to format time display
+  const formatTimeDisplay = (
+    hour?: number,
+    minute?: number,
+    meridiem?: string,
+  ) => {
+    if (hour === undefined || minute === undefined || !meridiem) return "";
+    return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")} ${meridiem}`;
+  };
+
+  // Handle DateTimePicker time change
+  const handleTimePickerChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === "android" || event.type === "set") {
+      setShowTimePicker(false);
+    }
+
+    if (selectedDate && selectedItemIndex !== null) {
+      const hours = selectedDate.getHours();
+      const minutes = selectedDate.getMinutes();
+      const meridiem = hours >= 12 ? "PM" : "AM";
+      const displayHour = hours > 12 ? hours - 12 : hours === 0 ? 12 : hours;
+
+      handleUpdateItem(selectedItemIndex, "hour", displayHour);
+      handleUpdateItem(selectedItemIndex, "minute", minutes);
+      handleUpdateItem(selectedItemIndex, "meridiem", meridiem);
+    }
+  };
+
+  // Open time picker for an item
+  const openTimePicker = (index: number, item: AgendaItemForm) => {
+    const hour = item.hour || 9;
+    const minute = item.minute || 0;
+    const meridiem = item.meridiem || "AM";
+
+    // Convert to 24-hour format for the picker
+    let hours24 = hour;
+    if (meridiem === "PM" && hour !== 12) {
+      hours24 = hour + 12;
+    } else if (meridiem === "AM" && hour === 12) {
+      hours24 = 0;
+    }
+
+    const newDate = new Date();
+    newDate.setHours(hours24, minute, 0);
+    setTempTime(newDate);
+    setSelectedItemIndex(index);
+    setShowTimePicker(true);
+  };
+
+  // Helper function to parse time string to components
+  const parseTimeString = (timeStr: string) => {
+    if (!timeStr) return { hour: 9, minute: 0, meridiem: "AM" };
+    const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if (match) {
+      return {
+        hour: parseInt(match[1]),
+        minute: parseInt(match[2]),
+        meridiem: match[3].toUpperCase(),
+      };
+    }
+    return { hour: 9, minute: 0, meridiem: "AM" };
+  };
+
   const handleAddItem = () => {
     setItems((prev) => {
       const nextIndex = prev.length;
@@ -114,7 +188,15 @@ export default function AgendaScreen() {
       const defaultTitle = defaultTitles[nextIndex % defaultTitles.length];
       return [
         ...prev,
-        { time: "", title: defaultTitle, speaker: "", tag: "General" },
+        {
+          time: "09:00 AM",
+          title: defaultTitle,
+          speaker: "",
+          tag: "General",
+          hour: 9,
+          minute: 0,
+          meridiem: "AM",
+        },
       ];
     });
   };
@@ -154,6 +236,9 @@ export default function AgendaScreen() {
             title: item.title.trim(),
             speaker: item.speaker.trim(),
             tag: item.tag,
+            hour: item.hour || 9,
+            minute: item.minute || 0,
+            meridiem: item.meridiem || "AM",
           })),
         );
         if (!result.success) {
@@ -192,10 +277,33 @@ export default function AgendaScreen() {
   const handleUpdateItem = (
     index: number,
     field: keyof AgendaItemForm,
-    value: string,
+    value: string | number,
   ) => {
     setItems((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
+      prev.map((item, i) => {
+        if (i === index) {
+          const updated = { ...item, [field]: value };
+          // Auto-update time string when hour, minute, or meridiem changes
+          if (field === "hour" || field === "minute" || field === "meridiem") {
+            const hour = field === "hour" ? (value as number) : item.hour || 9;
+            const minute =
+              field === "minute" ? (value as number) : item.minute || 0;
+            const meridiem =
+              field === "meridiem" ? (value as string) : item.meridiem || "AM";
+            updated.time = formatTimeDisplay(hour, minute, meridiem);
+            updated.hour = hour;
+            updated.minute = minute;
+            updated.meridiem = meridiem as "AM" | "PM";
+          } else if (field === "time") {
+            const parsed = parseTimeString(value as string);
+            updated.hour = parsed.hour;
+            updated.minute = parsed.minute;
+            updated.meridiem = parsed.meridiem as "AM" | "PM";
+          }
+          return updated;
+        }
+        return item;
+      }),
     );
   };
 
@@ -250,6 +358,9 @@ export default function AgendaScreen() {
           title: item.title.trim(),
           speaker: item.speaker.trim(),
           tag: item.tag,
+          hour: item.hour || 9,
+          minute: item.minute || 0,
+          meridiem: item.meridiem || "AM",
         })),
       );
       console.log("Save result:", result);
@@ -399,17 +510,34 @@ export default function AgendaScreen() {
               </View>
 
               <View style={styles.itemRow}>
+                {/* Time Picker Button */}
                 <View style={[styles.itemField, { flex: 0.35 }]}>
                   <Text style={styles.fieldLabel}>Time *</Text>
-                  <TextInput
-                    style={styles.inputSmall}
-                    placeholder="09:00 AM"
-                    placeholderTextColor="#9ca3af"
-                    value={item.time}
-                    onChangeText={(v) => handleUpdateItem(index, "time", v)}
-                    editable={!saving && canEdit}
-                  />
+                  <TouchableOpacity
+                    style={[
+                      styles.timePickerButton,
+                      !canEdit && styles.timePickerButtonDisabled,
+                    ]}
+                    onPress={() => openTimePicker(index, item)}
+                    disabled={saving || !canEdit}
+                  >
+                    <Ionicons
+                      name="time-outline"
+                      size={16}
+                      color={canEdit && !saving ? "#1F2937" : "#9CA3AF"}
+                    />
+                    <Text
+                      style={[
+                        styles.timePickerButtonText,
+                        !canEdit && styles.timePickerButtonTextDisabled,
+                      ]}
+                    >
+                      {formatTimeDisplay(item.hour, item.minute, item.meridiem)}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
+
+                {/* Title */}
                 <View style={[styles.itemField, { flex: 0.65 }]}>
                   <Text style={styles.fieldLabel}>Title *</Text>
                   <TextInput
@@ -508,6 +636,16 @@ export default function AgendaScreen() {
 
         <View style={{ height: insets.bottom + 100 }} />
       </ScrollView>
+
+      {/* DateTimePicker Modal */}
+      {showTimePicker && (
+        <DateTimePicker
+          value={tempTime}
+          mode="time"
+          display={Platform.OS === "ios" ? "spinner" : "default"}
+          onChange={handleTimePickerChange}
+        />
+      )}
     </View>
   );
 }
@@ -746,6 +884,84 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: "#FFFFFF",
     fontSize: 14,
+    fontWeight: "600",
+  },
+  // Time Picker Styles
+  timePickerButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8, // Changed from 10 to 8 to match inputSmall
+  },
+  timePickerButtonDisabled: {
+    opacity: 0.6,
+    backgroundColor: "#F9FAFB",
+  },
+  timePickerButtonText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#1F2937",
+  },
+  timePickerButtonTextDisabled: {
+    color: "#9CA3AF",
+  },
+  timePickerScroll: {
+    maxHeight: 120,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 6,
+    backgroundColor: "#FFFFFF",
+  },
+  timeOption: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 4,
+    marginVertical: 2,
+  },
+  timeOptionActive: {
+    backgroundColor: "#000000",
+  },
+  timeOptionText: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: "#4B5563",
+    textAlign: "center",
+  },
+  timeOptionTextActive: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+  },
+  meridlemRow: {
+    flexDirection: "row",
+    gap: 6,
+    marginTop: 6,
+  },
+  meridiemOption: {
+    flex: 1,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+  },
+  meridiemOptionActive: {
+    backgroundColor: "#000000",
+    borderColor: "#000000",
+  },
+  meridiemText: {
+    fontSize: 11,
+    fontWeight: "500",
+    color: "#4B5563",
+  },
+  meridiemTextActive: {
+    color: "#FFFFFF",
     fontWeight: "600",
   },
 });

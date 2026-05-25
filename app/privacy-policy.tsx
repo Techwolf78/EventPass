@@ -57,14 +57,24 @@ export default function PrivacyPolicy() {
           We collect information you provide directly to us, such as:
         </ThemedText>
         <ThemedText style={{ marginLeft: 15, marginVertical: 8 }}>
-          • <strong>Authentication Information:</strong> Email address, name,
-          and account credentials{"\n"}• <strong>Profile Information:</strong>{" "}
+          •{" "}
+          <ThemedText style={{ fontWeight: "bold" }}>
+            Authentication Information:
+          </ThemedText>{" "}
+          Email address, name, and account credentials{"\n"}•{" "}
+          <ThemedText style={{ fontWeight: "bold" }}>
+            Profile Information:
+          </ThemedText>{" "}
           Information you provide in your user profile{"\n"}•{" "}
-          <strong>Event Data:</strong> Information related to events, guest
-          lists, and attendance records{"\n"}•{" "}
-          <strong>Device Information:</strong> Device identifiers, device type,
-          operating system{"\n"}• <strong>Camera Access:</strong> Information
-          related to QR code scanning
+          <ThemedText style={{ fontWeight: "bold" }}>Event Data:</ThemedText>{" "}
+          Information related to events, guest lists, and attendance records
+          {"\n"}•{" "}
+          <ThemedText style={{ fontWeight: "bold" }}>
+            Device Information:
+          </ThemedText>{" "}
+          Device identifiers, device type, operating system{"\n"}•{" "}
+          <ThemedText style={{ fontWeight: "bold" }}>Camera Access:</ThemedText>{" "}
+          Information related to QR code scanning
         </ThemedText>
 
         <ThemedText type="subtitle" style={{ marginTop: 20, marginBottom: 10 }}>
@@ -111,7 +121,7 @@ export default function PrivacyPolicy() {
         </ThemedText>
         <ThemedText>
           For questions about this Privacy Policy:{"\n"}
-          Email: support@connecthq.app
+          Email: synergysphere@gryphonacademy.co.in
         </ThemedText>
 
         <ThemedText

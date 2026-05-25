@@ -273,9 +273,7 @@ export default function ProfileScreen() {
           <TouchableOpacity
             className="bg-red-50 border border-red-200 rounded-xl py-4 px-4 flex-row items-center justify-between"
             onPress={() =>
-              Linking.openURL(
-                "https://event-pass-eta.vercel.app/delete-account",
-              )
+              router.push("/delete-account")
             }
           >
             <Text className="text-sm font-semibold text-red-600">

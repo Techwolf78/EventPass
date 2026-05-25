@@ -1,22 +1,22 @@
 import { auth, db } from "@/config/firebase";
 import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
 } from "firebase/auth";
 import {
-  Timestamp,
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDoc,
-  getDocs,
-  onSnapshot,
-  orderBy,
-  query,
-  setDoc,
-  where,
-  writeBatch,
+    Timestamp,
+    addDoc,
+    collection,
+    deleteDoc,
+    doc,
+    getDoc,
+    getDocs,
+    onSnapshot,
+    orderBy,
+    query,
+    setDoc,
+    where,
+    writeBatch,
 } from "firebase/firestore";
 
 // Custom random token generator for Expo compatibility (avoids crypto error)
@@ -139,7 +139,14 @@ export async function validateAndRegisterAttendee(
     }
 
     const guestDoc = guestSnap.docs[0];
-    const guestData = guestDoc.data() as GuestListItem;
+    const guestData = guestDoc.data() as any;
+
+    if (guestData.isDeleted === true || guestData.isDelete === true) {
+      return {
+        success: false,
+        message: "This account has been deleted. Please contact support at synergysphere@gryphonacademy.co.in.",
+      };
+    }
 
     // Step 2: Check if already registered
     if (guestData.status === "registered") {
@@ -241,7 +248,14 @@ export async function loginGuestByEmail(
     }
 
     const guestDoc = guestSnap.docs[0];
-    const guestData = guestDoc.data() as GuestListItem;
+    const guestData = guestDoc.data() as any;
+
+    if (guestData.isDeleted === true || guestData.isDelete === true) {
+      return {
+        success: false,
+        message: "This account has been deleted. Please contact support at synergysphere@gryphonacademy.co.in.",
+      };
+    }
 
     if (guestData.status === "registered" && guestData.qrToken) {
       return { success: true, qrToken: guestData.qrToken };
@@ -347,6 +361,7 @@ export interface CheckInStatusResult {
   checkedInAt?: Timestamp;
   candidateName?: string;
   candidateEmail?: string;
+  isFirstTimeCheckIn?: boolean;
 }
 
 /**
@@ -387,6 +402,7 @@ export function subscribeToCheckInStatus(
             checkedInAt: doc.scannedAt,
             candidateName: candidateData.name,
             candidateEmail: candidateData.email,
+            isFirstTimeCheckIn: snapshot.docs.length === 1,
           });
         } else {
           callback({ hasCheckedIn: false });
@@ -452,6 +468,7 @@ export async function getCheckInStatus(
         checkedInAt: attendanceData.scannedAt,
         candidateName: candidateData.name,
         candidateEmail: candidateData.email,
+        isFirstTimeCheckIn: attendanceSnap.docs.length === 1,
       };
     }
 

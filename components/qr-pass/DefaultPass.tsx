@@ -1,8 +1,15 @@
-import { Ionicons } from "@expo/vector-icons";
-import React from "react";
-import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
-import QRCode from "react-native-qrcode-svg";
 import { getEnrollmentDisplayName } from "@/hooks/use-attendee-theme";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import React from "react";
+import {
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import QRCode from "react-native-qrcode-svg";
 
 export interface DefaultPassProps {
   eventName: string;
@@ -20,6 +27,7 @@ export interface DefaultPassProps {
   onRefresh: () => void;
   handleViewAgenda: () => void;
   setQrRef: (ref: any) => void;
+  isMasterclass?: boolean;
 }
 
 export default function DefaultPass({
@@ -38,7 +46,44 @@ export default function DefaultPass({
   onRefresh,
   handleViewAgenda,
   setQrRef,
+  isMasterclass = true,
 }: DefaultPassProps) {
+  // Teal/Cyan gradient for Masterclass, Fire/Water gradient for Synergy Sphere
+  const gradientColors = isMasterclass
+    ? (["#0f172a", "#0d9488", "#14b8a6", "#06b6d4"] as const)
+    : (["#06b6d4", "#0369a1", "#dc2626", "#ea580c", "#f97316"] as const);
+
+  const bannerContent = (
+    <View className="flex-row justify-between items-center px-6">
+      <View className="flex-1">
+        <Text className="text-3xl font-bold text-white mb-2 leading-tight tracking-tight">
+          {eventName}
+        </Text>
+        <View className="flex-row items-center mb-1 gap-2">
+          <Ionicons
+            name="calendar-outline"
+            size={14}
+            color="rgba(255,255,255,0.85)"
+          />
+          <Text className="text-sm text-white/85 font-medium">{eventDate}</Text>
+        </View>
+        <View className="flex-row items-center gap-2">
+          <Ionicons
+            name="location-outline"
+            size={14}
+            color="rgba(255,255,255,0.85)"
+          />
+          <Text className="text-sm text-white/85 font-medium" numberOfLines={1}>
+            {eventLocation}
+          </Text>
+        </View>
+      </View>
+      <View className="w-12 h-12 rounded-full bg-white/20 items-center justify-center">
+        <Ionicons name="ticket-outline" size={24} color="#fff" />
+      </View>
+    </View>
+  );
+
   return (
     <View className="flex-1 bg-slate-50">
       <ScrollView
@@ -50,8 +95,10 @@ export default function DefaultPass({
         }
       >
         {/* Event Banner */}
-        <View
-          className={`${brandBg}`}
+        <LinearGradient
+          colors={gradientColors}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
           style={{
             paddingTop: insets.top + 24,
             paddingBottom: 60,
@@ -59,49 +106,17 @@ export default function DefaultPass({
             borderBottomRightRadius: 32,
           }}
         >
-          <View className="flex-row justify-between items-center px-6">
-            <View className="flex-1">
-              <Text className="text-3xl font-bold text-white mb-2 leading-tight tracking-tight">
-                {eventName}
-              </Text>
-              <View className="flex-row items-center mb-1 gap-2">
-                <Ionicons
-                  name="calendar-outline"
-                  size={14}
-                  color="rgba(255,255,255,0.85)"
-                />
-                <Text className="text-sm text-white/85 font-medium">
-                  {eventDate}
-                </Text>
-              </View>
-              <View className="flex-row items-center gap-2">
-                <Ionicons
-                  name="location-outline"
-                  size={14}
-                  color="rgba(255,255,255,0.85)"
-                />
-                <Text
-                  className="text-sm text-white/85 font-medium"
-                  numberOfLines={1}
-                >
-                  {eventLocation}
-                </Text>
-              </View>
-            </View>
-            <View className="w-12 h-12 rounded-full bg-white/20 items-center justify-center">
-              <Ionicons name="ticket-outline" size={24} color="#fff" />
-            </View>
-          </View>
-        </View>
+          {bannerContent}
+        </LinearGradient>
 
         {/* Main Floating Card */}
-        <View 
+        <View
           className="bg-white rounded-3xl mx-5 -mt-10 p-6 shadow-xl shadow-slate-200 border border-slate-100"
           style={{ borderRadius: 24 }}
         >
           {/* QR Section */}
           <View className="items-center mb-6">
-            <View 
+            <View
               className="bg-white border border-slate-100 rounded-2xl p-4 mb-3 shadow-inner"
               style={{ borderRadius: 20 }}
             >
@@ -134,7 +149,10 @@ export default function DefaultPass({
                 <Ionicons name="person" size={24} color="#64748B" />
               </View>
               <View className="flex-1">
-                <Text className="text-lg font-bold text-slate-900" numberOfLines={1}>
+                <Text
+                  className="text-lg font-bold text-slate-900"
+                  numberOfLines={1}
+                >
                   {candidate?.name || "—"}
                 </Text>
                 <Text className="text-sm text-slate-500" numberOfLines={1}>

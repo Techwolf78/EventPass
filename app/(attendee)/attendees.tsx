@@ -1,21 +1,22 @@
+import { useAuth } from "@/context/AuthContext";
 import {
-  Candidate,
-  getAttendeeListWithCheckIn,
-  getCheckedInCandidateIds,
+    Candidate,
+    getAttendeeListWithCheckIn,
+    getCheckedInCandidateIds,
 } from "@/utils/firestore";
 import { formatTimeAgo } from "@/utils/time";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  FlatList,
-  Linking,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    FlatList,
+    Linking,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -44,6 +45,7 @@ const getAvatarColor = (name: string) => {
 
 export default function AttendeesScreen() {
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const [attendees, setAttendees] = useState<
     (Candidate & { checkInTime?: any })[]
   >([]);
@@ -55,6 +57,16 @@ export default function AttendeesScreen() {
   const [activeFilter, setActiveFilter] = useState<
     "all" | "checked_in" | "pending" | "vip"
   >("all");
+
+  // Determine event type from user's enrollment
+  const isMasterclass = useMemo(() => {
+    return user?.enrollmentType?.toLowerCase() === "masterclass" ?? false;
+  }, [user?.enrollmentType]);
+
+  // Theme colors based on event type
+  const themeColor = isMasterclass ? "#06b6d4" : "#3B82F6"; // Cyan for Masterclass, blue for others
+  const accentColor = isMasterclass ? "#0d9488" : "#3B82F6";
+  const statusColor = isMasterclass ? "#06b6d4" : "#10B981"; // Cyan for Masterclass
 
   useEffect(() => {
     loadAttendees();
@@ -146,7 +158,9 @@ export default function AttendeesScreen() {
         <View>
           <Text style={styles.headerTitle}>Attendee Management</Text>
           <View style={styles.subtitleRow}>
-            <View style={styles.liveIndicator} />
+            <View
+              style={[styles.liveIndicator, { backgroundColor: statusColor }]}
+            />
             <Text style={styles.headerSubtitle}>Live Check-In Monitoring</Text>
           </View>
         </View>
@@ -164,10 +178,10 @@ export default function AttendeesScreen() {
               <Ionicons
                 name="checkmark-circle-outline"
                 size={14}
-                color="#10B981"
+                color={statusColor}
               />
             </View>
-            <Text style={[styles.statValue, { color: "#10B981" }]}>
+            <Text style={[styles.statValue, { color: statusColor }]}>
               {stats.checkedIn}
             </Text>
           </View>
@@ -175,9 +189,13 @@ export default function AttendeesScreen() {
           <View style={styles.statCard}>
             <View style={styles.statHeader}>
               <Text style={styles.statLabel}>Attendance Rate</Text>
-              <Ionicons name="trending-up-outline" size={14} color="#3B82F6" />
+              <Ionicons
+                name="trending-up-outline"
+                size={14}
+                color={themeColor}
+              />
             </View>
-            <Text style={[styles.statValue, { color: "#3B82F6" }]}>
+            <Text style={[styles.statValue, { color: themeColor }]}>
               {stats.rate}%
             </Text>
           </View>
@@ -216,7 +234,10 @@ export default function AttendeesScreen() {
           <TouchableOpacity
             style={[
               styles.filterChip,
-              activeFilter === "all" && styles.activeFilterChip,
+              activeFilter === "all" && [
+                styles.activeFilterChip,
+                { backgroundColor: themeColor, borderColor: themeColor },
+              ],
             ]}
             onPress={() => setActiveFilter("all")}
           >
@@ -233,7 +254,10 @@ export default function AttendeesScreen() {
           <TouchableOpacity
             style={[
               styles.filterChip,
-              activeFilter === "checked_in" && styles.activeFilterChip,
+              activeFilter === "checked_in" && [
+                styles.activeFilterChip,
+                { backgroundColor: themeColor, borderColor: themeColor },
+              ],
             ]}
             onPress={() => setActiveFilter("checked_in")}
           >
@@ -250,7 +274,10 @@ export default function AttendeesScreen() {
           <TouchableOpacity
             style={[
               styles.filterChip,
-              activeFilter === "pending" && styles.activeFilterChip,
+              activeFilter === "pending" && [
+                styles.activeFilterChip,
+                { backgroundColor: themeColor, borderColor: themeColor },
+              ],
             ]}
             onPress={() => setActiveFilter("pending")}
           >
@@ -267,7 +294,10 @@ export default function AttendeesScreen() {
           <TouchableOpacity
             style={[
               styles.filterChip,
-              activeFilter === "vip" && styles.activeFilterChip,
+              activeFilter === "vip" && [
+                styles.activeFilterChip,
+                { backgroundColor: themeColor, borderColor: themeColor },
+              ],
             ]}
             onPress={() => setActiveFilter("vip")}
           >
@@ -365,7 +395,7 @@ export default function AttendeesScreen() {
                 style={[
                   styles.statusBadge,
                   isCheckedIn
-                    ? styles.statusBadgeChecked
+                    ? [styles.statusBadgeChecked, { borderColor: statusColor }]
                     : styles.statusBadgePending,
                 ]}
               >
@@ -373,7 +403,7 @@ export default function AttendeesScreen() {
                   style={[
                     styles.statusDot,
                     isCheckedIn
-                      ? styles.statusDotChecked
+                      ? { backgroundColor: statusColor }
                       : styles.statusDotPending,
                   ]}
                 />

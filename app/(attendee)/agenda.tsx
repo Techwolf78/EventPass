@@ -1,22 +1,22 @@
-import React, { useEffect, useState, useCallback } from "react";
-import {
-  View,
-  Text,
-  ActivityIndicator,
-  ScrollView,
-  RefreshControl,
-  TouchableOpacity,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams } from "expo-router";
-import {
-  getMasterclassAgenda,
-  getEventAgenda,
-  EventData,
-} from "@/utils/firestore";
 import { useAuth } from "@/context/AuthContext";
 import { useAttendeeTheme } from "@/hooks/use-attendee-theme";
+import {
+  EventData,
+  getEventAgenda,
+  getMasterclassAgenda,
+} from "@/utils/firestore";
+import { Ionicons } from "@expo/vector-icons";
+import { useLocalSearchParams } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // Helper to parse time string to minutes (e.g., "10:00 AM" -> 600)
 const parseTimeToMinutes = (timeStr: string): number => {
@@ -43,24 +43,28 @@ export default function AgendaScreen() {
   const [agenda, setAgenda] = useState<EventData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
-  const loadAgenda = useCallback(async (isRefresh = false) => {
-    if (!isRefresh) setLoading(true);
-    try {
-      if (resolvedEnrollmentType === "masterclass") {
-        const masterclassAgenda = await getMasterclassAgenda();
-        setAgenda(masterclassAgenda);
-      } else {
-        const eventAgenda = await getEventAgenda();
-        setAgenda(eventAgenda);
+  const loadAgenda = useCallback(
+    async (isRefresh = false) => {
+      if (!isRefresh) setLoading(true);
+      try {
+        if (resolvedEnrollmentType === "masterclass") {
+          const masterclassAgenda = await getMasterclassAgenda();
+          setAgenda(masterclassAgenda);
+        } else {
+          const eventAgenda = await getEventAgenda();
+          setAgenda(eventAgenda);
+        }
+      } catch (error) {
+        console.error("Error loading agenda:", error);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
       }
-    } catch (error) {
-      console.error("Error loading agenda:", error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [resolvedEnrollmentType]);
+    },
+    [resolvedEnrollmentType],
+  );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -73,18 +77,31 @@ export default function AgendaScreen() {
     }
   }, [loadAgenda, themeLoading]);
 
-  // Simulated current time for demo (10:15 AM)
-  const simulatedCurrentMinutes = 10 * 60 + 15;
+  // Update current time every minute to refresh "Happening Now" status
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000); // Update every minute
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Get actual current time in minutes from state
+  const actualCurrentMinutes =
+    currentTime.getHours() * 60 + currentTime.getMinutes();
 
   const getSessionStatus = (timeStr: string) => {
     const minutes = parseTimeToMinutes(timeStr);
     if (!minutes) return "upcoming";
-    
+
     const duration = 60; // Assume 1 hour
-    
-    if (simulatedCurrentMinutes >= minutes && simulatedCurrentMinutes < minutes + duration) {
+
+    if (
+      actualCurrentMinutes >= minutes &&
+      actualCurrentMinutes < minutes + duration
+    ) {
       return "live";
-    } else if (simulatedCurrentMinutes >= minutes + duration) {
+    } else if (actualCurrentMinutes >= minutes + duration) {
       return "completed";
     } else {
       return "upcoming";
@@ -133,18 +150,22 @@ export default function AgendaScreen() {
             There is no schedule available for {displayTitle} yet. Please check
             back later or contact support.
           </Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => loadAgenda()}
             className="px-6 py-3 bg-white border border-slate-200 rounded-xl shadow-sm"
           >
-            <Text className="text-slate-700 font-semibold text-sm">Refresh Schedule</Text>
+            <Text className="text-slate-700 font-semibold text-sm">
+              Refresh Schedule
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
     );
   }
 
-  const liveSession = agendaItems.find(item => getSessionStatus(item.time) === "live");
+  const liveSession = agendaItems.find(
+    (item) => getSessionStatus(item.time) === "live",
+  );
 
   return (
     <View className="flex-1 bg-slate-50">
@@ -156,7 +177,11 @@ export default function AgendaScreen() {
         className="flex-1"
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.primary} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={palette.primary}
+          />
         }
       >
         {/* Hero Header */}
@@ -171,7 +196,9 @@ export default function AgendaScreen() {
             {liveSession && (
               <View className="flex-row items-center bg-red-50 px-2.5 py-1 rounded-full border border-red-100">
                 <View className="w-1.5 h-1.5 bg-red-500 rounded-full mr-1.5" />
-                <Text className="text-red-600 text-[10px] font-bold uppercase">Live Now</Text>
+                <Text className="text-red-600 text-[10px] font-bold uppercase">
+                  Live Now
+                </Text>
               </View>
             )}
           </View>
@@ -189,17 +216,23 @@ export default function AgendaScreen() {
         {/* Happening Now Section */}
         {liveSession && (
           <View className="px-6 mb-8">
-            <Text className="text-sm font-bold text-slate-900 mb-3">Happening Now</Text>
+            <Text className="text-sm font-bold text-slate-900 mb-3">
+              Happening Now
+            </Text>
             <View className="bg-white rounded-2xl p-5 border-2 border-indigo-500 shadow-sm">
               <View className="flex-row justify-between items-start mb-2">
-                <Text className="text-xs font-bold text-indigo-600">{liveSession.time}</Text>
+                <Text className="text-xs font-bold text-indigo-600">
+                  {liveSession.time}
+                </Text>
                 <View className="bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
                   <Text className="text-indigo-700 text-[10px] font-bold uppercase">
                     {liveSession.tag || "Session"}
                   </Text>
                 </View>
               </View>
-              <Text className="text-lg font-bold text-slate-900 mb-2">{liveSession.title}</Text>
+              <Text className="text-lg font-bold text-slate-900 mb-2">
+                {liveSession.title}
+              </Text>
               <View className="flex-row items-center">
                 <Ionicons name="person-circle" size={16} color="#64748B" />
                 <Text className="text-sm font-medium text-slate-600 ml-1.5">
@@ -212,7 +245,9 @@ export default function AgendaScreen() {
 
         {/* Timeline Section */}
         <View className="px-6">
-          <Text className="text-sm font-bold text-slate-900 mb-6">Full Schedule</Text>
+          <Text className="text-sm font-bold text-slate-900 mb-6">
+            Full Schedule
+          </Text>
 
           {agendaItems.map((item, index) => {
             const status = getSessionStatus(item.time);
@@ -224,28 +259,41 @@ export default function AgendaScreen() {
               <View key={index} className="flex-row min-h-[100px]">
                 {/* Time & Indicator Column */}
                 <View className="w-16 items-center">
-                  <Text className={`text-xs font-bold ${isLive ? "text-indigo-600" : isCompleted ? "text-slate-400" : "text-slate-900"} mb-2`}>
+                  <Text
+                    className={`text-xs font-bold ${isLive ? "text-indigo-600" : isCompleted ? "text-slate-400" : "text-slate-900"} mb-2`}
+                  >
                     {item.time}
                   </Text>
-                  <View className={`w-[2px] ${isCompleted ? "bg-indigo-100" : "bg-slate-100"} flex-1 mb-2`} />
-                  <View 
+                  <View
+                    className={`w-[2px] ${isCompleted ? "bg-indigo-100" : "bg-slate-100"} flex-1 mb-2`}
+                  />
+                  <View
                     className={`w-3 h-3 rounded-full absolute top-5 ${
-                      isLive ? "bg-indigo-600 border-2 border-white shadow-sm" : 
-                      isCompleted ? "bg-slate-300" : "bg-white border-2 border-slate-300"
+                      isLive
+                        ? "bg-indigo-600 border-2 border-white shadow-sm"
+                        : isCompleted
+                          ? "bg-slate-300"
+                          : "bg-white border-2 border-slate-300"
                     }`}
                   />
                 </View>
 
                 {/* Content Card Column */}
                 <View className="flex-1 pb-6 ml-2">
-                  <View className={`bg-white rounded-2xl p-5 border ${isLive ? "border-indigo-200 shadow-sm" : "border-slate-100"} ${isCompleted ? "opacity-60" : ""}`}>
+                  <View
+                    className={`bg-white rounded-2xl p-5 border ${isLive ? "border-indigo-200 shadow-sm" : "border-slate-100"} ${isCompleted ? "opacity-60" : ""}`}
+                  >
                     <View className="flex-row justify-between items-start mb-2">
-                      <Text className={`flex-1 text-base font-bold text-slate-900 mr-2 leading-tight ${isCompleted ? "text-slate-500" : ""}`}>
+                      <Text
+                        className={`flex-1 text-base font-bold text-slate-900 mr-2 leading-tight ${isCompleted ? "text-slate-500" : ""}`}
+                      >
                         {item.title}
                       </Text>
                       <View
                         className={`px-2 py-0.5 rounded-md border ${
-                          isLive ? "bg-indigo-50 border-indigo-100" : "bg-slate-50 border-slate-100"
+                          isLive
+                            ? "bg-indigo-50 border-indigo-100"
+                            : "bg-slate-50 border-slate-100"
                         }`}
                       >
                         <Text
@@ -273,11 +321,13 @@ export default function AgendaScreen() {
                           {item.speaker}
                         </Text>
                       </View>
-                      
+
                       {isLive && (
                         <View className="flex-row items-center">
                           <View className="w-1.5 h-1.5 bg-red-500 rounded-full mr-1" />
-                          <Text className="text-red-600 text-[10px] font-bold uppercase">Happening</Text>
+                          <Text className="text-red-600 text-[10px] font-bold uppercase">
+                            Happening
+                          </Text>
                         </View>
                       )}
                     </View>

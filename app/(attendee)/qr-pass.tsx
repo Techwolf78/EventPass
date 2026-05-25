@@ -176,12 +176,12 @@ export default function QRPassScreen() {
   const eventDate = "June 27, 2026";
   const eventLocation = "Ritz-Carlton, Pune";
 
-  const brandColor = isMasterclass ? "#3b82f6" : "#ef4444";
-  const brandBg = isMasterclass ? "bg-blue-600" : "bg-red-500";
-  const brandShadow = isMasterclass ? "shadow-blue-200" : "shadow-red-200";
-  const brandText = isMasterclass ? "text-blue-600" : "text-red-500";
-  const brandAccentBg = isMasterclass ? "bg-blue-50" : "bg-red-50";
-  const brandAccentText = isMasterclass ? "text-blue-700" : "text-red-700";
+  const brandColor = isMasterclass ? "#06b6d4" : "#ef4444";
+  const brandBg = isMasterclass ? "bg-teal-600" : "bg-red-500";
+  const brandShadow = isMasterclass ? "shadow-teal-200" : "shadow-red-200";
+  const brandText = isMasterclass ? "text-teal-600" : "text-red-500";
+  const brandAccentBg = isMasterclass ? "bg-teal-50" : "bg-red-50";
+  const brandAccentText = isMasterclass ? "text-teal-700" : "text-red-700";
 
   const uniqueId = candidate?.qrToken
     ? `EVNT-2025-${candidate.qrToken.substring(0, 4).toUpperCase()}`
@@ -484,16 +484,19 @@ export default function QRPassScreen() {
           >
             <View className="items-center mb-12">
               <View
-                className={`w-24 h-24 rounded-full ${brandAccentBg} items-center justify-center mb-6`}
+                className={`${checkInStatus.isFirstTimeCheckIn ? "w-16 h-16" : "w-24 h-24"} rounded-full ${brandAccentBg} items-center justify-center mb-6`}
               >
                 <Ionicons
                   name="checkmark-circle"
-                  size={80}
+                  size={checkInStatus.isFirstTimeCheckIn ? 48 : 80}
                   color={brandColor}
                 />
               </View>
-              <Text className="text-4xl font-bold text-slate-900 text-center mb-2 tracking-tight">
-                Welcome back {checkInStatus.candidateName}!
+              <Text
+                className={`${checkInStatus.isFirstTimeCheckIn ? "text-3xl" : "text-4xl"} font-bold text-slate-900 text-center mb-2 tracking-tight`}
+              >
+                {checkInStatus.isFirstTimeCheckIn ? "Welcome" : "Welcome back"}{" "}
+                {checkInStatus.candidateName}!
               </Text>
               <Text className="text-xl text-slate-500 font-semibold text-center">
                 {"You're"} all checked in!
@@ -597,7 +600,8 @@ export default function QRPassScreen() {
                 {"You're"} Checked In!
               </Text>
               <Text className="text-base text-slate-500 font-bold text-center mt-1">
-                Welcome back, {checkInStatus.candidateName}!
+                {checkInStatus.isFirstTimeCheckIn ? "Welcome" : "Welcome back"},{" "}
+                {checkInStatus.candidateName}!
               </Text>
             </View>
 
@@ -808,6 +812,7 @@ export default function QRPassScreen() {
       onRefresh={onRefresh}
       handleViewAgenda={handleViewAgenda}
       setQrRef={setQrRef}
+      isMasterclass={isMasterclass}
     />
   );
 }

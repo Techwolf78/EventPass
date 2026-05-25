@@ -76,7 +76,7 @@ export default function TermsAndConditions() {
         </ThemedText>
         <ThemedText>
           For questions about these Terms and Conditions:{"\n"}
-          Email: support@connecthq.app
+          Email: synergysphere@gryphonacademy.co.in
         </ThemedText>
 
         <ThemedText
