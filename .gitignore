@@ -8,21 +8,46 @@ expo-env.d.ts
 # macOS system files
 .DS_Store
 
+# IDEs and Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.iml
+
 # Local environment files
-.env*.local
+.env*
 
 # Debug logs
 npm-debug.*
 yarn-debug.*
 yarn-error.*
 
-# Native keystore files (keep these secret)
+# Native keystore and credentials files (keep these secret)
 *.jks
 *.p8
 *.p12
 *.key
 *.mobileprovision
 config/event-mobile-app.json
+*.pem
+
+# Firebase / Google Services Configurations
+google-services.json
+GoogleService-Info.plist
+android/app/google-services.json
+
+# Java and Archive executables
+*.zip
+*.jar
+
+# Build outputs
+dist/
+web-build/
+.eas/
+out/
+build/
 
 # Metro bundler health check
-.metro-health-check*
+.metro-health-check*
