@@ -104,7 +104,7 @@ export default function AttendeeLayout() {
         name="gallery"
         options={{
           title: 'Gallery',
-          headerShown: true,
+          headerShown: false,
           tabBarIcon: GalleryTabIcon,
         }}
       />

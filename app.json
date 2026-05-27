@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "ConnectHQ",
-    "slug": "EventPass",
+    "slug": "connect-hq",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/connecthq-square.png",
@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "googleServicesFile": "./GoogleService-Info.plist",
-      "bundleIdentifier": "com.connecthq.app",
+      "bundleIdentifier": "com.connecthq.eventpass",
       "buildNumber": "1",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -20,7 +20,7 @@
     },
 
     "android": {
-      "package": "com.connecthq.app",
+      "package": "com.connecthq.eventpass",
       "googleServicesFile": "./google-services.json",
       "predictiveBackGestureEnabled": false,
 
@@ -110,10 +110,10 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "9ae61a72-a51d-4ab6-b032-a67f1fa70e80"
+        "projectId": "c7b7012d-5946-45b9-9a26-b0dfde3548d2"
       }
     },
 
-    "owner": "techwolf78"
+    "owner": "connecthq"
   }
 }

@@ -1,7 +1,7 @@
 import {
-    DarkTheme,
-    DefaultTheme,
-    ThemeProvider,
+  DarkTheme,
+  DefaultTheme,
+  ThemeProvider,
 } from "@react-navigation/native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -11,7 +11,15 @@ import "../global.css";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useCheckInNotifications } from "@/hooks/useCheckInNotifications";
-import { ActivityIndicator, LogBox, View } from "react-native";
+import { useIsConnected } from "@/hooks/useIsConnected";
+import { Ionicons } from "@expo/vector-icons";
+import {
+  ActivityIndicator,
+  LogBox,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 import AnimatedSplash from "@/components/AnimatedSplash";
 import * as SplashScreen from "expo-splash-screen";
@@ -64,6 +72,14 @@ function RootLayoutInner() {
   const colorScheme = useColorScheme();
   const { loading, user, isAdmin, guestSession, isGuest } = useAuth();
   const [appIsReady, setAppIsReady] = useState(false);
+  const isConnected = useIsConnected();
+  const [showOfflinePass, setShowOfflinePass] = useState(false);
+
+  useEffect(() => {
+    if (isConnected) {
+      setShowOfflinePass(false);
+    }
+  }, [isConnected]);
 
   useCheckInNotifications();
   const [showAnimatedSplash, setShowAnimatedSplash] = useState(true);
@@ -222,6 +238,194 @@ function RootLayoutInner() {
         <Stack.Screen name="index" />
       </Stack>
       <StatusBar style="light" />
+
+      {/* Premium Full-Screen Offline Overlay Page */}
+      {!isConnected && !showOfflinePass && (
+        <View
+          style={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            left: 0,
+            right: 0,
+            backgroundColor: "#0f172a", // Solid deep slate background matching dark theme
+            justifyContent: "space-between",
+            alignItems: "center",
+            paddingVertical: 60,
+            paddingHorizontal: 24,
+            zIndex: 999999,
+          }}
+        >
+          {/* Top Logo / Brand */}
+          <View style={{ alignItems: "center", marginTop: 40 }}>
+            <Text
+              style={{
+                color: "#3b82f6",
+                fontWeight: "900",
+                fontSize: 14,
+                letterSpacing: 3,
+                textTransform: "uppercase",
+              }}
+            >
+              ConnectHQ
+            </Text>
+          </View>
+
+          {/* Center Content */}
+          <View
+            style={{
+              alignItems: "center",
+              width: "100%",
+              paddingHorizontal: 16,
+            }}
+          >
+            {/* Glowing Amber Icon Circle */}
+            <View
+              style={{
+                width: 108,
+                height: 108,
+                borderRadius: 54,
+                backgroundColor: "rgba(245, 158, 11, 0.1)",
+                borderWidth: 2,
+                borderColor: "rgba(245, 158, 11, 0.3)",
+                justifyContent: "center",
+                alignItems: "center",
+                marginBottom: 32,
+                shadowColor: "#f59e0b",
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 0.25,
+                shadowRadius: 15,
+                elevation: 4,
+              }}
+            >
+              <Ionicons name="cloud-offline" size={50} color="#f59e0b" />
+            </View>
+
+            <Text
+              style={{
+                color: "#ffffff",
+                fontWeight: "800",
+                fontSize: 26,
+                textAlign: "center",
+                marginBottom: 14,
+              }}
+            >
+              Connection Lost
+            </Text>
+
+            <Text
+              style={{
+                color: "#94a3b8",
+                fontSize: 16,
+                lineHeight: 24,
+                textAlign: "center",
+                marginBottom: 36,
+              }}
+            >
+              ConnectHQ needs an active internet connection to download and
+              synchronize the latest schedule, events, and announcements.
+            </Text>
+
+            {/* Reconnecting Status Box */}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: "rgba(245, 158, 11, 0.05)",
+                paddingVertical: 12,
+                paddingHorizontal: 24,
+                borderRadius: 30,
+                borderWidth: 1,
+                borderColor: "rgba(245, 158, 11, 0.2)",
+              }}
+            >
+              <ActivityIndicator
+                size="small"
+                color="#f59e0b"
+                style={{ marginRight: 12 }}
+              />
+              <Text
+                style={{
+                  color: "#f59e0b",
+                  fontSize: 14,
+                  fontWeight: "600",
+                }}
+              >
+                Waiting for network connection...
+              </Text>
+            </View>
+          </View>
+
+          {/* Bottom Actions */}
+          <View style={{ width: "100%", paddingHorizontal: 8 }}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setShowOfflinePass(true)}
+              style={{
+                backgroundColor: "rgba(255, 255, 255, 0.06)",
+                paddingVertical: 16,
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: "rgba(255, 255, 255, 0.12)",
+                alignItems: "center",
+              }}
+            >
+              <Text
+                style={{
+                  color: "#ffffff",
+                  fontWeight: "700",
+                  fontSize: 15,
+                }}
+              >
+                Access Offline Event Pass
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* Minimized Floating Offline Banner (Allows using offline pass) */}
+      {!isConnected && showOfflinePass && (
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={() => setShowOfflinePass(false)}
+          style={{
+            position: "absolute",
+            bottom: 90,
+            left: 20,
+            right: 20,
+            backgroundColor: "#d97706",
+            borderRadius: 16,
+            paddingVertical: 14,
+            paddingHorizontal: 20,
+            flexDirection: "row",
+            alignItems: "center",
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.2,
+            shadowRadius: 10,
+            elevation: 8,
+            zIndex: 99999,
+          }}
+        >
+          <Ionicons
+            name="cloud-offline"
+            size={20}
+            color="#ffffff"
+            style={{ marginRight: 12 }}
+          />
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: "#ffffff", fontWeight: "700", fontSize: 14 }}>
+              Offline Mode Active
+            </Text>
+            <Text style={{ color: "#fef3c7", fontSize: 12, marginTop: 2 }}>
+              Tap here to return to connection status.
+            </Text>
+          </View>
+          <Ionicons name="chevron-up" size={18} color="#ffffff" />
+        </TouchableOpacity>
+      )}
 
       {/* Animated splash overlay — renders on top of everything */}
       {showAnimatedSplash && (

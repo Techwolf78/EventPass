@@ -89,7 +89,7 @@ android {
 
     namespace 'Event.Pass'
     defaultConfig {
-        applicationId 'com.connecthq.app'
+        applicationId 'com.connecthq.eventpass'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

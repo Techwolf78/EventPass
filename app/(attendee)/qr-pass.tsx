@@ -172,7 +172,7 @@ export default function QRPassScreen() {
   // ── Derived values ──────────────────────────────────────────────────────────
   const isMasterclass =
     candidate?.enrollmentType?.toLowerCase() === "masterclass";
-  const eventName = isMasterclass ? "MASTERCLASS 3.0" : "SYNERGY SPHERE 3.0";
+  const eventName = isMasterclass ? "MASTERCLASS 3.0" : "SYNERGY SPHERE 2.0";
   const eventDate = "June 27, 2026";
   const eventLocation = "Ritz-Carlton, Pune";
 
