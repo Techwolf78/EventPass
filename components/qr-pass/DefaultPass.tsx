@@ -48,10 +48,10 @@ export default function DefaultPass({
   setQrRef,
   isMasterclass = true,
 }: DefaultPassProps) {
-  // Teal/Cyan gradient for Masterclass, Fire/Water gradient for Synergy Sphere
+  // Teal/Cyan gradient for Masterclass, Premium Dark Ruby gradient for Synergy Sphere
   const gradientColors = isMasterclass
     ? (["#0f172a", "#0d9488", "#14b8a6", "#06b6d4"] as const)
-    : (["#06b6d4", "#0369a1", "#dc2626", "#ea580c", "#f97316"] as const);
+    : (["#090514", "#1a0826", "#4c0519", "#881337", "#dc2626"] as const);
 
   const bannerContent = (
     <View className="flex-row justify-between items-center px-6">

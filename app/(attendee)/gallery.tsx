@@ -1,6 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as FileSystem from "expo-file-system/legacy";
-import { Image } from "expo-image";
 import * as MediaLibrary from "expo-media-library";
 import { useRouter } from "expo-router";
 import React from "react";
@@ -10,7 +9,7 @@ import {
   Modal,
   Platform,
   RefreshControl,
-  Image as RNImage,
+  Image,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -33,13 +32,13 @@ const MASTERCLASS_IMAGES = [
 ];
 
 const EVENT_IMAGES = [
-  require("@/assets/images/sns/banner-1.jpg"),
-  require("@/assets/images/sns/pratapsir.jpg"),
-  require("@/assets/images/sns/banner-3.jpg"),
-  require("@/assets/images/sns/banner-4.jpg"),
-  require("@/assets/images/sns/guest.jpg"),
-  require("@/assets/images/sns/ummimam.jpg"),
-  require("@/assets/images/sns/ummimamstage.jpg"),
+  require("../../assets/images/sns/banner-1.jpg"),
+  require("../../assets/images/sns/pratapsir.jpg"),
+  require("../../assets/images/sns/banner-3.jpg"),
+  require("../../assets/images/sns/banner-4.jpg"),
+  require("../../assets/images/sns/guest.jpg"),
+  require("../../assets/images/sns/ummimam.jpg"),
+  require("../../assets/images/sns/ummimamstage.jpg"),
 ];
 
 export default function GalleryScreen() {
@@ -102,7 +101,7 @@ export default function GalleryScreen() {
       ) {
         uri = selectedImage.uri;
       } else {
-        const resolved = RNImage.resolveAssetSource(selectedImage);
+        const resolved = Image.resolveAssetSource(selectedImage);
         if (resolved && resolved.uri) {
           uri = resolved.uri;
         }
@@ -250,7 +249,7 @@ export default function GalleryScreen() {
                 typeof images[0] === "string" ? { uri: images[0] } : images[0]
               }
               className="w-full h-full"
-              contentFit="cover"
+              resizeMode="cover"
               style={{ backgroundColor: "#000" }}
             />
             <View className="absolute bottom-4 left-4 right-4">
@@ -273,7 +272,7 @@ export default function GalleryScreen() {
                 typeof images[2] === "string" ? { uri: images[2] } : images[2]
               }
               className="w-full h-full"
-              contentFit="cover"
+              resizeMode="cover"
               style={{ backgroundColor: "#000" }}
             />
           </TouchableOpacity>
@@ -287,7 +286,7 @@ export default function GalleryScreen() {
                 typeof images[3] === "string" ? { uri: images[3] } : images[3]
               }
               className="w-full h-full"
-              contentFit="cover"
+              resizeMode="cover"
               style={{ backgroundColor: "#000" }}
             />
           </TouchableOpacity>
@@ -303,7 +302,7 @@ export default function GalleryScreen() {
                 typeof images[1] === "string" ? { uri: images[1] } : images[1]
               }
               className="w-full h-full"
-              contentFit="cover"
+              resizeMode="cover"
               style={{ backgroundColor: "#000" }}
             />
           </TouchableOpacity>
@@ -319,7 +318,7 @@ export default function GalleryScreen() {
                 typeof images[4] === "string" ? { uri: images[4] } : images[4]
               }
               className="w-full h-full"
-              contentFit="cover"
+              resizeMode="cover"
               style={{ backgroundColor: "#000" }}
             />
           </TouchableOpacity>
@@ -333,7 +332,7 @@ export default function GalleryScreen() {
                 typeof images[5] === "string" ? { uri: images[5] } : images[5]
               }
               className="w-full h-full"
-              contentFit="cover"
+              resizeMode="cover"
               style={{ backgroundColor: "#000" }}
             />
           </TouchableOpacity>
@@ -349,7 +348,7 @@ export default function GalleryScreen() {
                 typeof images[6] === "string" ? { uri: images[6] } : images[6]
               }
               className="w-full h-full"
-              contentFit="cover"
+              resizeMode="cover"
               style={{ backgroundColor: "#000" }}
             />
           </TouchableOpacity>
@@ -412,7 +411,7 @@ export default function GalleryScreen() {
                     : selectedImage
                 }
                 className="w-full h-[70%]"
-                contentFit="contain"
+                resizeMode="contain"
               />
             </View>
           )}

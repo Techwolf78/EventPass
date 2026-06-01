@@ -127,7 +127,7 @@ export default function AnimatedSplash({ onFinish }: AnimatedSplashProps) {
         ]}
       >
         <Image
-          source={require("@/assets/images/connecthq.png")}
+          source={require("../assets/images/connecthq.png")}
           style={styles.logo}
           resizeMode="contain"
         />
