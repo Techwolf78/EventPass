@@ -15,6 +15,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  StatusBar,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -110,11 +111,10 @@ export default function AgendaScreen() {
 
   if (loading || themeLoading) {
     return (
-      <View className="flex-1 bg-slate-50 justify-center items-center">
+      <View style={{ flex: 1, backgroundColor: "#ffffff", justifyContent: "center", alignItems: "center" }}>
         <ActivityIndicator size="large" color={palette.primary} />
         <Text
-          style={{ color: palette.primary }}
-          className="font-semibold mt-4 text-sm uppercase tracking-wider"
+          style={{ color: palette.primary, fontWeight: "700", marginTop: 16, fontSize: 12, letterSpacing: 2, textTransform: "uppercase" }}
         >
           Loading Agenda...
         </Text>
@@ -129,32 +129,35 @@ export default function AgendaScreen() {
 
   const agendaItems = agenda?.agenda || [];
 
+  const liveSession = agendaItems.find(
+    (item) => getSessionStatus(item.time) === "live"
+  );
+
   if (!agenda || agendaItems.length === 0) {
     return (
-      <View className="flex-1 bg-slate-50">
+      <View style={{ flex: 1, backgroundColor: "#ffffff" }}>
         <View
-          style={{ paddingTop: insets.top + 60 }}
-          className="flex-1 items-center px-10"
+          style={{ paddingTop: insets.top + 60, flex: 1, alignItems: "center", paddingHorizontal: 40 }}
         >
-          <View className="w-24 h-24 rounded-full bg-white shadow-sm items-center justify-center mb-6 border border-slate-100">
+          <View style={{ width: 96, height: 96, borderRadius: 48, backgroundColor: "#f8fafc", alignItems: "center", justifyContent: "center", marginBottom: 24, borderWidth: 1, borderColor: "#e2e8f0" }}>
             <Ionicons
               name="calendar-outline"
               size={40}
               color={palette.primary}
             />
           </View>
-          <Text className="text-2xl font-bold text-slate-900 mb-2">
+          <Text style={{ fontSize: 22, fontWeight: "bold", color: "#0f172a", marginBottom: 8 }}>
             No Agenda Scheduled
           </Text>
-          <Text className="text-sm text-slate-500 text-center font-medium leading-relaxed mb-6">
+          <Text style={{ fontSize: 14, color: "#64748b", textAlign: "center", lineHeight: 22, marginBottom: 24 }}>
             There is no schedule available for {displayTitle} yet. Please check
             back later or contact support.
           </Text>
           <TouchableOpacity
             onPress={() => loadAgenda()}
-            className="px-6 py-3 bg-white border border-slate-200 rounded-xl shadow-sm"
+            style={{ paddingHorizontal: 24, paddingVertical: 12, backgroundColor: "#ffffff", borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 14 }}
           >
-            <Text className="text-slate-700 font-semibold text-sm">
+            <Text style={{ color: "#334155", fontWeight: "700", fontSize: 14 }}>
               Refresh Schedule
             </Text>
           </TouchableOpacity>
@@ -163,18 +166,17 @@ export default function AgendaScreen() {
     );
   }
 
-  const liveSession = agendaItems.find(
-    (item) => getSessionStatus(item.time) === "live",
-  );
-
   return (
-    <View className="flex-1 bg-slate-50">
+    <View style={{ flex: 1, backgroundColor: "#ffffff" }}>
+      <StatusBar barStyle="dark-content" />
+      
       <ScrollView
         contentContainerStyle={{
           paddingTop: insets.top + 20,
           paddingBottom: insets.bottom + 120,
+          backgroundColor: "#ffffff",
         }}
-        className="flex-1"
+        style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -184,71 +186,145 @@ export default function AgendaScreen() {
           />
         }
       >
-        {/* Hero Header */}
-        <View className="px-6 mb-8">
-          <View className="flex-row justify-between items-start mb-2">
-            <Text
-              style={{ color: palette.primary }}
-              className="text-xs font-bold uppercase tracking-[2px]"
-            >
-              {displayDate}
-            </Text>
-            {liveSession && (
-              <View className="flex-row items-center bg-red-50 px-2.5 py-1 rounded-full border border-red-100">
-                <View className="w-1.5 h-1.5 bg-red-500 rounded-full mr-1.5" />
-                <Text className="text-red-600 text-[10px] font-bold uppercase">
-                  Live Now
+        {/* Premium Calendar Hero Header */}
+        <View style={{ paddingHorizontal: 24, marginBottom: 32, marginTop: 10 }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+            <View style={{ flex: 1, marginRight: 16 }}>
+              <Text 
+                style={{ 
+                  fontSize: 22, 
+                  fontWeight: "900", 
+                  color: "#0f172a", 
+                  letterSpacing: -0.5, 
+                  lineHeight: 28 
+                }}
+              >
+                {displayTitle}
+              </Text>
+              
+              <View style={{ flexDirection: "row", alignItems: "center", marginTop: 6, gap: 4 }}>
+                <Ionicons name="location" size={14} color="#64748b" />
+                <Text style={{ fontSize: 13, fontWeight: "600", color: "#64748b" }}>
+                  {displayLocation}
                 </Text>
               </View>
-            )}
-          </View>
-          <Text className="text-3xl font-bold text-slate-900 leading-tight mb-2">
-            {displayTitle}
-          </Text>
-          <View className="flex-row items-center gap-2">
-            <Ionicons name="location" size={14} color="#64748B" />
-            <Text className="text-sm font-medium text-slate-500">
-              {displayLocation}
-            </Text>
+            </View>
+            
+            {/* Elegant Calendar Badge */}
+            <View 
+              style={{
+                backgroundColor: palette.primarySoft,
+                borderColor: palette.primaryBorder,
+                borderWidth: 1,
+                borderRadius: 14,
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                alignItems: "center",
+                justifyContent: "center",
+                shadowColor: palette.primary,
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.05,
+                shadowRadius: 4,
+                elevation: 2,
+              }}
+            >
+              <Text style={{ fontSize: 8, fontWeight: "800", color: palette.primaryText, letterSpacing: 1, textTransform: "uppercase" }}>
+                June
+              </Text>
+              <Text style={{ fontSize: 16, fontWeight: "900", color: palette.primaryText, marginTop: -2, lineHeight: 18 }}>
+                27
+              </Text>
+            </View>
           </View>
         </View>
 
         {/* Happening Now Section */}
         {liveSession && (
-          <View className="px-6 mb-8">
-            <Text className="text-sm font-bold text-slate-900 mb-3">
-              Happening Now
-            </Text>
-            <View className="bg-white rounded-2xl p-5 border-2 border-indigo-500 shadow-sm">
-              <View className="flex-row justify-between items-start mb-2">
-                <Text className="text-xs font-bold text-indigo-600">
+          <View style={{ paddingHorizontal: 24, marginBottom: 32 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
+              <Text style={{ fontSize: 13, fontWeight: "800", color: palette.primary, letterSpacing: 1.2, textTransform: "uppercase" }}>
+                Happening Now
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: "#fee2e2", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, marginLeft: 8 }}>
+                <View style={{ width: 6, height: 6, backgroundColor: "#ef4444", borderRadius: 3, marginRight: 4 }} />
+                <Text style={{ color: "#ef4444", fontSize: 9, fontWeight: "800", textTransform: "uppercase" }}>
+                  Live
+                </Text>
+              </View>
+            </View>
+
+            <View
+              style={{
+                backgroundColor: palette.primarySoft,
+                borderRadius: 24,
+                borderWidth: 2,
+                borderColor: palette.primary,
+                padding: 20,
+                shadowColor: palette.primary,
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: 0.08,
+                shadowRadius: 16,
+                elevation: 6,
+              }}
+            >
+              {/* Top Header of the live card */}
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                <Text style={{ fontSize: 12, fontWeight: "800", color: palette.primaryText }}>
                   {liveSession.time}
                 </Text>
-                <View className="bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
-                  <Text className="text-indigo-700 text-[10px] font-bold uppercase">
+                <View 
+                  style={{
+                    paddingHorizontal: 10,
+                    paddingVertical: 4,
+                    borderRadius: 8,
+                    backgroundColor: "#ffffff",
+                    borderWidth: 1,
+                    borderColor: palette.primaryBorder,
+                  }}
+                >
+                  <Text style={{ fontSize: 9, fontWeight: "800", textTransform: "uppercase", color: palette.primaryText }}>
                     {liveSession.tag || "Session"}
                   </Text>
                 </View>
               </View>
-              <Text className="text-lg font-bold text-slate-900 mb-2">
+
+              {/* Title */}
+              <Text style={{ fontSize: 18, fontWeight: "900", color: "#0f172a", lineHeight: 24, marginBottom: 14 }}>
                 {liveSession.title}
               </Text>
-              <View className="flex-row items-center">
-                <Ionicons name="person-circle" size={16} color="#64748B" />
-                <Text className="text-sm font-medium text-slate-600 ml-1.5">
-                  {liveSession.speaker}
-                </Text>
+
+              {/* Footer info (Speaker) */}
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <View 
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 14,
+                    backgroundColor: "#ffffff",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginRight: 8,
+                    borderWidth: 1,
+                    borderColor: palette.primaryBorder,
+                  }}
+                >
+                  <Ionicons name="mic" size={14} color={palette.primary} />
+                </View>
+                <View>
+                  <Text style={{ fontSize: 10, fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                    Speaker
+                  </Text>
+                  <Text style={{ fontSize: 14, fontWeight: "800", color: palette.primaryText, marginTop: 1 }}>
+                    {liveSession.speaker}
+                  </Text>
+                </View>
               </View>
             </View>
           </View>
         )}
 
         {/* Timeline Section */}
-        <View className="px-6">
-          <Text className="text-sm font-bold text-slate-900 mb-6">
-            Full Schedule
-          </Text>
-
+        <View style={{ paddingHorizontal: 20 }}>
           {agendaItems.map((item, index) => {
             const status = getSessionStatus(item.time);
             const isLive = status === "live";
@@ -256,83 +332,172 @@ export default function AgendaScreen() {
             const isLast = index === agendaItems.length - 1;
 
             return (
-              <View key={index} className="flex-row min-h-[100px]">
-                {/* Time & Indicator Column */}
-                <View className="w-16 items-center">
-                  <Text
-                    className={`text-xs font-bold ${isLive ? "text-indigo-600" : isCompleted ? "text-slate-400" : "text-slate-900"} mb-2`}
-                  >
-                    {item.time}
-                  </Text>
-                  <View
-                    className={`w-[2px] ${isCompleted ? "bg-indigo-100" : "bg-slate-100"} flex-1 mb-2`}
-                  />
-                  <View
-                    className={`w-3 h-3 rounded-full absolute top-5 ${
-                      isLive
-                        ? "bg-indigo-600 border-2 border-white shadow-sm"
-                        : isCompleted
-                          ? "bg-slate-300"
-                          : "bg-white border-2 border-slate-300"
-                    }`}
-                  />
+              <View key={index} style={{ flexDirection: "row", minHeight: 110 }}>
+                
+                {/* Left Timeline Rails Column */}
+                <View style={{ width: 36, alignItems: "center" }}>
+                  {/* Vertical Rail Line */}
+                  {!isLast && (
+                    <View 
+                      style={{ 
+                        position: "absolute", 
+                        left: 17, 
+                        top: 24, 
+                        bottom: -24, 
+                        width: 2, 
+                        backgroundColor: isCompleted ? palette.primarySoft : "#f1f5f9" 
+                      }} 
+                    />
+                  )}
+
+                  {/* Dynamic Status Indicator Dots */}
+                  <View style={{ marginTop: 6, zIndex: 10 }}>
+                    {isLive ? (
+                      /* Glowing Live Indicator */
+                      <View 
+                        style={{ 
+                          width: 20, 
+                          height: 20, 
+                          borderRadius: 10, 
+                          backgroundColor: palette.primarySoft, 
+                          alignItems: "center", 
+                          justifyContent: "center" 
+                        }}
+                      >
+                        <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: palette.primary }} />
+                      </View>
+                    ) : isCompleted ? (
+                      /* Satisfying Completed Green Checkmark Badge */
+                      <Ionicons name="checkmark-circle" size={20} color="#10b981" />
+                    ) : (
+                      /* Simple Clean Upcoming Ring */
+                      <View 
+                        style={{ 
+                          width: 14, 
+                          height: 14, 
+                          borderRadius: 7, 
+                          backgroundColor: "#ffffff", 
+                          borderWidth: 2, 
+                          borderColor: "#cbd5e1",
+                          marginTop: 3,
+                        }} 
+                      />
+                    )}
+                  </View>
                 </View>
 
                 {/* Content Card Column */}
-                <View className="flex-1 pb-6 ml-2">
+                <View style={{ flex: 1, paddingBottom: 24, paddingLeft: 8 }}>
                   <View
-                    className={`bg-white rounded-2xl p-5 border ${isLive ? "border-indigo-200 shadow-sm" : "border-slate-100"} ${isCompleted ? "opacity-60" : ""}`}
+                    style={{
+                      backgroundColor: "#ffffff",
+                      borderRadius: 20,
+                      borderWidth: isLive ? 1.5 : 1,
+                      borderColor: isLive ? palette.primary : "#f1f5f9",
+                      overflow: "hidden",
+                      flexDirection: "row",
+                      shadowColor: isLive ? palette.primary : "#0f172a",
+                      shadowOffset: { width: 0, height: isLive ? 6 : 2 },
+                      shadowOpacity: isLive ? 0.08 : 0.02,
+                      shadowRadius: isLive ? 12 : 6,
+                      elevation: isLive ? 4 : 1,
+                      opacity: isCompleted ? 0.75 : 1,
+                    }}
                   >
-                    <View className="flex-row justify-between items-start mb-2">
-                      <Text
-                        className={`flex-1 text-base font-bold text-slate-900 mr-2 leading-tight ${isCompleted ? "text-slate-500" : ""}`}
+                    {/* Left Accent Color Band Strip */}
+                    <View 
+                      style={{ 
+                        width: 4, 
+                        backgroundColor: isLive ? palette.primary : isCompleted ? "#10b981" : "#cbd5e1" 
+                      }} 
+                    />
+
+                    {/* Card Inner Contents */}
+                    <View style={{ flex: 1, padding: 16 }}>
+                      {/* Top Time and Tag bar */}
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                        <Text 
+                          style={{ 
+                            fontSize: 12, 
+                            fontWeight: "800", 
+                            color: isLive ? palette.primary : "#64748b",
+                          }}
+                        >
+                          {item.time}
+                        </Text>
+                        
+                        {/* Event Category Tag */}
+                        <View 
+                          style={{
+                            paddingHorizontal: 8,
+                            paddingVertical: 3,
+                            borderRadius: 8,
+                            backgroundColor: isLive ? palette.primarySoft : "#f1f5f9",
+                            borderWidth: 1,
+                            borderColor: isLive ? palette.primaryBorder : "#e2e8f0",
+                          }}
+                        >
+                          <Text 
+                            style={{ 
+                              fontSize: 9, 
+                              fontWeight: "800", 
+                              textTransform: "uppercase",
+                              color: isLive ? palette.primaryText : "#475569" 
+                            }}
+                          >
+                            {item.tag || "Regular"}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* Session Title */}
+                      <Text 
+                        style={{ 
+                          fontSize: 16, 
+                          fontWeight: "800", 
+                          color: isCompleted ? "#64748b" : "#0f172a",
+                          lineHeight: 22,
+                          marginBottom: 10,
+                        }}
                       >
                         {item.title}
                       </Text>
-                      <View
-                        className={`px-2 py-0.5 rounded-md border ${
-                          isLive
-                            ? "bg-indigo-50 border-indigo-100"
-                            : "bg-slate-50 border-slate-100"
-                        }`}
-                      >
-                        <Text
-                          className={`text-[10px] font-bold uppercase tracking-wide ${
-                            isLive ? "text-indigo-700" : "text-slate-600"
-                          }`}
-                        >
-                          {item.tag || "Regular"}
-                        </Text>
-                      </View>
-                    </View>
 
-                    <View className="flex-row items-center justify-between">
-                      <View className="flex-row items-center">
-                        <Ionicons
-                          name="person-circle"
-                          size={14}
-                          color={isLive ? palette.primary : "#64748B"}
-                        />
-                        <Text
-                          className={`text-xs font-medium ml-1.5 ${
-                            isLive ? "text-indigo-700" : "text-slate-600"
-                          }`}
-                        >
-                          {item.speaker}
-                        </Text>
-                      </View>
-
-                      {isLive && (
-                        <View className="flex-row items-center">
-                          <View className="w-1.5 h-1.5 bg-red-500 rounded-full mr-1" />
-                          <Text className="text-red-600 text-[10px] font-bold uppercase">
-                            Happening
+                      {/* Footer Details: Speaker and Live indicators */}
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                        <View style={{ flexDirection: "row", alignItems: "center" }}>
+                          <Ionicons
+                            name="mic-outline"
+                            size={14}
+                            color={isLive ? palette.primary : "#64748b"}
+                          />
+                          <Text 
+                            style={{ 
+                              fontSize: 12, 
+                              fontWeight: "600", 
+                              marginLeft: 4,
+                              color: isLive ? palette.primary : "#475569" 
+                            }}
+                          >
+                            {item.speaker}
                           </Text>
                         </View>
-                      )}
+
+                        {/* Pulse Live Badge */}
+                        {isLive && (
+                          <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: "#fee2e2", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                            <View style={{ width: 6, height: 6, backgroundColor: "#ef4444", borderRadius: 3, marginRight: 4 }} />
+                            <Text style={{ color: "#ef4444", fontSize: 9, fontWeight: "800", textTransform: "uppercase" }}>
+                              Live
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+
                     </View>
                   </View>
                 </View>
+                
               </View>
             );
           })}

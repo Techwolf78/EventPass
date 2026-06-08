@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   ScrollView,
+  StatusBar,
   Text,
   TouchableOpacity,
   useWindowDimensions,
@@ -26,12 +27,6 @@ import {
   subscribeToCheckInStatus,
 } from "../../utils/firestore";
 
-// ─── Design Tokens ────────────────────────────────────────────────────────────
-const NAVY = "#0F172A";
-const GOLD = "#D4AF37";
-const GOLD_L = "#FAF8F5";
-const WHITE = "#ffffff";
-
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function QRPassScreen() {
   const router = useRouter();
@@ -39,7 +34,7 @@ export default function QRPassScreen() {
   const { user } = useAuth();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const [qrRef, setQrRef] = useState<any>(null);
+  const [, setQrRef] = useState<any>(null);
   const [checkInStatus, setCheckInStatus] =
     useState<CheckInStatusResult | null>(null);
   const [candidate, setCandidate] = useState<Candidate | null>(null);
@@ -47,7 +42,7 @@ export default function QRPassScreen() {
   const [resolvedToken, setResolvedToken] = useState<string | null>(
     (qrToken as string) || null,
   );
-  const [showPassAnyway, setShowPassAnyway] = useState(false);
+  const [showPassAnyway] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -103,7 +98,7 @@ export default function QRPassScreen() {
               companyName = guest.companyName || "";
               console.log("Found company name from guestList:", companyName);
             }
-          } catch (err) {
+          } catch {
             console.log("Could not fetch guest data for company name");
           }
         }
@@ -149,7 +144,7 @@ export default function QRPassScreen() {
             if (guest) {
               companyName = guest.companyName || "";
             }
-          } catch (err) {
+          } catch {
             console.log("Could not fetch guest data for company name");
           }
         }
@@ -177,11 +172,10 @@ export default function QRPassScreen() {
   const eventLocation = "Ritz-Carlton, Pune";
 
   const brandColor = isMasterclass ? "#06b6d4" : "#ef4444";
-  const brandBg = isMasterclass ? "bg-teal-600" : "bg-red-500";
-  const brandShadow = isMasterclass ? "shadow-teal-200" : "shadow-red-200";
-  const brandText = isMasterclass ? "text-teal-600" : "text-red-500";
-  const brandAccentBg = isMasterclass ? "bg-teal-50" : "bg-red-50";
-  const brandAccentText = isMasterclass ? "text-teal-700" : "text-red-700";
+  const brandBg = isMasterclass ? "#06b6d4" : "#ef4444"; // Use Hex directly for simplicity and robustness
+  const brandTextColor = isMasterclass ? "#0891b2" : "#b91c1c";
+  const brandAccentBg = isMasterclass ? "#ecfeff" : "#fee2e2";
+  const brandBorderColor = isMasterclass ? "#c5f6fa" : "#fecaca";
 
   const uniqueId = candidate?.qrToken
     ? `EVNT-2025-${candidate.qrToken.substring(0, 4).toUpperCase()}`
@@ -234,29 +228,83 @@ export default function QRPassScreen() {
     }
   };
 
+  const handleViewAgenda = () => {
+    router.push({
+      pathname: "/(attendee)/agenda",
+      params: { qrToken: activeToken },
+    });
+  };
+
   // ── No token ────────────────────────────────────────────────────────────────
   if (!activeToken) {
     return (
-      <View className="flex-1 bg-rose-500">
+      <View style={{ flex: 1, backgroundColor: "#ffffff" }}>
+        <StatusBar barStyle="dark-content" />
         <View
-          style={{ paddingTop: insets.top }}
-          className="flex-1 justify-center items-center px-5"
+          style={{
+            paddingTop: insets.top,
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            paddingHorizontal: 24,
+          }}
         >
-          <View className="w-24 h-24 rounded-full bg-white/20 items-center justify-center mb-6">
-            <Ionicons name="alert-circle" size={50} color="#fff" />
+          <View
+            style={{
+              width: 80,
+              height: 80,
+              borderRadius: 40,
+              backgroundColor: "#fee2e2",
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: 24,
+            }}
+          >
+            <Ionicons name="alert-circle" size={40} color="#ef4444" />
           </View>
-          <Text className="text-3xl font-extrabold text-white mb-2">Oops!</Text>
-          <Text className="text-base text-white/90 mb-8 font-medium text-center">
-            No QR token found
+          <Text
+            style={{
+              fontSize: 24,
+              fontWeight: "900",
+              color: "#0f172a",
+              marginBottom: 8,
+              textAlign: "center",
+            }}
+          >
+            Oops!
+          </Text>
+          <Text
+            style={{
+              fontSize: 14,
+              color: "#64748b",
+              textAlign: "center",
+              marginBottom: 28,
+            }}
+          >
+            No QR token found. Please log in to view your attendee pass.
           </Text>
           <TouchableOpacity
-            className="bg-white rounded-xl py-3.5 px-8 flex-row items-center"
+            style={{
+              backgroundColor: "#ef4444",
+              borderRadius: 14,
+              paddingVertical: 12,
+              paddingHorizontal: 24,
+              flexDirection: "row",
+              alignItems: "center",
+            }}
             onPress={() => router.replace("/(auth)/login")}
           >
-            <Text className="text-rose-600 text-base font-bold mr-2">
+            <Text
+              style={{
+                color: "#ffffff",
+                fontSize: 15,
+                fontWeight: "700",
+                marginRight: 8,
+              }}
+            >
               Back to Login
             </Text>
-            <Ionicons name="arrow-back" size={18} color="#e11d48" />
+            <Ionicons name="arrow-back" size={18} color="#ffffff" />
           </TouchableOpacity>
         </View>
       </View>
@@ -266,13 +314,28 @@ export default function QRPassScreen() {
   // ── Loading ─────────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <View className="flex-1 bg-slate-50">
+      <View style={{ flex: 1, backgroundColor: "#ffffff" }}>
+        <StatusBar barStyle="dark-content" />
         <View
-          style={{ paddingTop: insets.top }}
-          className="flex-1 justify-center items-center px-5"
+          style={{
+            paddingTop: insets.top,
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            paddingHorizontal: 24,
+          }}
         >
-          <ActivityIndicator size="large" color="#6366f1" />
-          <Text className="text-slate-600 text-base font-semibold mt-4">
+          <ActivityIndicator size="large" color="#64748b" />
+          <Text
+            style={{
+              color: "#64748b",
+              fontSize: 14,
+              fontWeight: "700",
+              marginTop: 16,
+              textTransform: "uppercase",
+              letterSpacing: 1,
+            }}
+          >
             Loading your pass...
           </Text>
         </View>
@@ -283,40 +346,76 @@ export default function QRPassScreen() {
   // ── Post-Event Screen ───────────────────────────────────────────────────────
   if (isPostEvent) {
     return (
-      <View className="flex-1 bg-slate-50" style={{ paddingTop: insets.top }}>
+      <View style={{ flex: 1, backgroundColor: "#ffffff" }}>
+        <StatusBar barStyle="dark-content" />
         <ScrollView
           contentContainerStyle={{
+            paddingTop: insets.top + 20,
             paddingBottom: insets.bottom + 48,
-            paddingTop: 20,
+            backgroundColor: "#ffffff",
           }}
-          className="flex-1 px-5"
+          style={{ flex: 1 }}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={brandColor}
+            />
           }
         >
-          {/* ── Hero ── */}
-          <View className="items-center mb-8 mt-4">
+          {/* Hero Section */}
+          <View
+            style={{
+              alignItems: "center",
+              marginBottom: 28,
+              paddingHorizontal: 24,
+            }}
+          >
             <View
-              className={`w-20 h-20 rounded-full ${brandAccentBg} items-center justify-center mb-4`}
+              style={{
+                width: 72,
+                height: 72,
+                borderRadius: 36,
+                backgroundColor: brandAccentBg,
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 16,
+                borderWidth: 1,
+                borderColor: brandBorderColor,
+              }}
             >
-              <Ionicons name="ribbon" size={38} color={brandColor} />
+              <Ionicons name="ribbon" size={34} color={brandColor} />
             </View>
             <Text
-              className="text-2xl font-black text-slate-900 text-center leading-tight"
-              style={{ letterSpacing: -0.3 }}
+              style={{
+                fontSize: 24,
+                fontWeight: "900",
+                color: "#0f172a",
+                textAlign: "center",
+                lineHeight: 30,
+              }}
             >
               Thank You for Being Part of{"\n"}
               {eventName}
             </Text>
-            <Text className="text-sm text-slate-400 font-medium text-center mt-3 px-6 leading-6">
+            <Text
+              style={{
+                fontSize: 13,
+                color: "#64748b",
+                textAlign: "center",
+                marginTop: 12,
+                paddingHorizontal: 16,
+                lineHeight: 20,
+              }}
+            >
               The event may be over, but the memories and connections live on.
               Here is your official attendance certificate.
             </Text>
           </View>
 
-          {/* ── Premium Certificate ── */}
-          <View style={{ marginHorizontal: -4, marginBottom: 28 }}>
+          {/* Certificate View Container */}
+          <View style={{ marginHorizontal: 20, marginBottom: 24 }}>
             <CertificateCard
               candidateName={candidate?.name || "Valued Attendee"}
               eventName={eventName}
@@ -327,123 +426,257 @@ export default function QRPassScreen() {
             />
           </View>
 
-          {/* ── Download Button ── */}
-          <TouchableOpacity
-            style={{
-              backgroundColor: NAVY,
-              borderRadius: 14,
-              paddingVertical: 16,
-              alignItems: "center",
-              justifyContent: "center",
-              flexDirection: "row",
-              marginBottom: 12,
-              shadowColor: NAVY,
-              shadowOffset: { width: 0, height: 6 },
-              shadowOpacity: 0.25,
-              shadowRadius: 12,
-              elevation: 6,
-              opacity: isDownloading || isSaved ? 0.75 : 1,
-            }}
-            onPress={handleDownloadCertificate}
-            disabled={isDownloading || isSaved}
-          >
-            {isDownloading ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : isSaved ? (
-              <Ionicons name="checkmark-circle" size={20} color={GOLD} />
-            ) : (
-              <Ionicons name="download-outline" size={20} color={GOLD} />
-            )}
-            <Text
+          {/* Buttons Area */}
+          <View style={{ paddingHorizontal: 24 }}>
+            {/* Download Button */}
+            <TouchableOpacity
               style={{
-                color: isDownloading ? "#fff" : isSaved ? GOLD : "#fff",
-                fontSize: 16,
-                fontWeight: "700",
-                marginLeft: 8,
-                letterSpacing: 0.2,
+                backgroundColor: brandColor,
+                borderRadius: 16,
+                paddingVertical: 14,
+                alignItems: "center",
+                justifyContent: "center",
+                flexDirection: "row",
+                marginBottom: 16,
+                shadowColor: brandColor,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.15,
+                shadowRadius: 8,
+                elevation: 4,
+                opacity: isDownloading || isSaved ? 0.75 : 1,
+              }}
+              onPress={handleDownloadCertificate}
+              disabled={isDownloading || isSaved}
+            >
+              {isDownloading ? (
+                <ActivityIndicator color="#ffffff" size="small" />
+              ) : isSaved ? (
+                <Ionicons
+                  name="checkmark-circle"
+                  size={20}
+                  color="#ffffff"
+                  style={{ marginRight: 6 }}
+                />
+              ) : (
+                <Ionicons
+                  name="download-outline"
+                  size={20}
+                  color="#ffffff"
+                  style={{ marginRight: 6 }}
+                />
+              )}
+              <Text
+                style={{ color: "#ffffff", fontSize: 15, fontWeight: "bold" }}
+              >
+                {isDownloading
+                  ? "Downloading..."
+                  : isSaved
+                    ? "Saved to Gallery!"
+                    : "Download Certificate"}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Quick Link Row Buttons */}
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                marginBottom: 16,
               }}
             >
-              {isDownloading
-                ? "Downloading..."
-                : isSaved
-                  ? "Saved to Gallery!"
-                  : "Download Certificate"}
-            </Text>
-          </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  width: "48%",
+                  backgroundColor: "#ffffff",
+                  borderRadius: 16,
+                  paddingVertical: 14,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexDirection: "row",
+                  borderWidth: 1,
+                  borderColor: "#f1f5f9",
+                  shadowColor: "#0f172a",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.02,
+                  shadowRadius: 4,
+                  elevation: 1,
+                }}
+                onPress={() => router.push("/(attendee)/gallery")}
+              >
+                <Ionicons
+                  name="images-outline"
+                  size={16}
+                  color="#64748b"
+                  style={{ marginRight: 6 }}
+                />
+                <Text
+                  style={{ fontSize: 13, fontWeight: "700", color: "#334155" }}
+                >
+                  Event Gallery
+                </Text>
+              </TouchableOpacity>
 
-          {/* ── Secondary Actions ── */}
-          <View className="flex-row justify-between mb-4">
-            <TouchableOpacity
-              className="w-[48%] bg-white border border-slate-100 rounded-2xl py-4 items-center justify-center flex-row shadow-sm"
-              onPress={() => router.push("/(attendee)/gallery")}
+              <TouchableOpacity
+                style={{
+                  width: "48%",
+                  backgroundColor: "#ffffff",
+                  borderRadius: 16,
+                  paddingVertical: 14,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexDirection: "row",
+                  borderWidth: 1,
+                  borderColor: "#f1f5f9",
+                  shadowColor: "#0f172a",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.02,
+                  shadowRadius: 4,
+                  elevation: 1,
+                }}
+                onPress={() => router.push("/(attendee)/attendees")}
+              >
+                <Ionicons
+                  name="people-outline"
+                  size={16}
+                  color="#64748b"
+                  style={{ marginRight: 6 }}
+                />
+                <Text
+                  style={{ fontSize: 13, fontWeight: "700", color: "#334155" }}
+                >
+                  Connect
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Event Highlights Flat Card */}
+            <View
+              style={{
+                backgroundColor: "#ffffff",
+                borderRadius: 20,
+                padding: 20,
+                borderWidth: 1,
+                borderColor: "#f1f5f9",
+                marginBottom: 24,
+                shadowColor: "#0f172a",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.02,
+                shadowRadius: 6,
+                elevation: 1,
+              }}
             >
-              <Ionicons name="images-outline" size={18} color="#475569" />
-              <Text className="text-slate-700 text-sm font-bold ml-2">
-                Event Gallery
+              <Text
+                style={{
+                  fontSize: 10,
+                  fontWeight: "900",
+                  color: "#94a3b8",
+                  textTransform: "uppercase",
+                  letterSpacing: 1.5,
+                  marginBottom: 16,
+                }}
+              >
+                Event Highlights
               </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              className="w-[48%] bg-white border border-slate-100 rounded-2xl py-4 items-center justify-center flex-row shadow-sm"
-              onPress={() => router.push("/(attendee)/attendees")}
-            >
-              <Ionicons name="people-outline" size={18} color="#475569" />
-              <Text className="text-slate-700 text-sm font-bold ml-2">
-                Connect
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity
-            className="bg-white border border-slate-100 rounded-2xl py-4 items-center justify-center flex-row shadow-sm mb-8"
-            onPress={() => {
-              /* Handle Share */
-            }}
-          >
-            <Ionicons name="share-social-outline" size={20} color="#475569" />
-            <Text className="text-slate-700 text-base font-bold ml-2">
-              Share Achievement
-            </Text>
-          </TouchableOpacity>
-
-          {/* ── Highlights ── */}
-          <View className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 mb-8">
-            <Text className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-5">
-              Event Highlights
-            </Text>
-            <View className="flex-row flex-wrap justify-between">
-              <View className="w-[48%] mb-4">
-                <Text className="text-2xl font-black text-slate-800">500+</Text>
-                <Text className="text-xs text-slate-400 font-semibold mt-0.5">
-                  Attendees
-                </Text>
-              </View>
-              <View className="w-[48%] mb-4">
-                <Text className="text-2xl font-black text-slate-800">12</Text>
-                <Text className="text-xs text-slate-400 font-semibold mt-0.5">
-                  Speakers
-                </Text>
-              </View>
-              <View className="w-[48%]">
-                <Text className="text-sm font-bold text-slate-800">
-                  AI & Leadership
-                </Text>
-                <Text className="text-xs text-slate-400 font-semibold mt-0.5">
-                  Sessions
-                </Text>
-              </View>
-              <View className="w-[48%]">
-                <Text className="text-sm font-bold text-slate-800">
-                  Networking
-                </Text>
-                <Text className="text-xs text-slate-400 font-semibold mt-0.5">
-                  Experience
-                </Text>
+              <View
+                style={{
+                  flexDirection: "row",
+                  flexWrap: "wrap",
+                  justifyContent: "space-between",
+                }}
+              >
+                <View style={{ width: "48%", marginBottom: 12 }}>
+                  <Text
+                    style={{
+                      fontSize: 20,
+                      fontWeight: "900",
+                      color: "#0f172a",
+                    }}
+                  >
+                    500+
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      color: "#94a3b8",
+                      fontWeight: "600",
+                    }}
+                  >
+                    Attendees
+                  </Text>
+                </View>
+                <View style={{ width: "48%", marginBottom: 12 }}>
+                  <Text
+                    style={{
+                      fontSize: 20,
+                      fontWeight: "900",
+                      color: "#0f172a",
+                    }}
+                  >
+                    12
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      color: "#94a3b8",
+                      fontWeight: "600",
+                    }}
+                  >
+                    Speakers
+                  </Text>
+                </View>
+                <View style={{ width: "48%" }}>
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: "800",
+                      color: "#334155",
+                    }}
+                  >
+                    AI & Leadership
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      color: "#94a3b8",
+                      fontWeight: "600",
+                    }}
+                  >
+                    Sessions
+                  </Text>
+                </View>
+                <View style={{ width: "48%" }}>
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: "800",
+                      color: "#334155",
+                    }}
+                  >
+                    Networking
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      color: "#94a3b8",
+                      fontWeight: "600",
+                    }}
+                  >
+                    Experience
+                  </Text>
+                </View>
               </View>
             </View>
           </View>
 
-          <Text className="text-center text-[11px] text-slate-400 font-semibold px-10 leading-relaxed">
+          <Text
+            style={{
+              textAlign: "center",
+              fontSize: 11,
+              color: "#94a3b8",
+              paddingHorizontal: 40,
+              lineHeight: 18,
+            }}
+          >
             Thank you for being part of the Gryphon Academy community.
           </Text>
         </ScrollView>
@@ -470,97 +703,259 @@ export default function QRPassScreen() {
     // ── Celebration (0–2 min) ──
     if (scenario === "celebration" && !showPassAnyway) {
       return (
-        <View className="flex-1 bg-white" style={{ paddingTop: insets.top }}>
+        <View style={{ flex: 1, backgroundColor: "#ffffff" }}>
+          <StatusBar barStyle="dark-content" />
           <ScrollView
             contentContainerStyle={{
+              paddingTop: insets.top + 40,
               paddingBottom: insets.bottom + 40,
-              paddingTop: 60,
+              backgroundColor: "#ffffff",
             }}
-            className="flex-1 px-6"
+            style={{ flex: 1 }}
             showsVerticalScrollIndicator={false}
             refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={brandColor}
+              />
             }
           >
-            <View className="items-center mb-12">
+            {/* Checked In Celebration Header */}
+            <View
+              style={{
+                alignItems: "center",
+                marginBottom: 32,
+                paddingHorizontal: 24,
+              }}
+            >
               <View
-                className={`${checkInStatus.isFirstTimeCheckIn ? "w-16 h-16" : "w-24 h-24"} rounded-full ${brandAccentBg} items-center justify-center mb-6`}
+                style={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: 40,
+                  backgroundColor: brandAccentBg,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: 20,
+                  borderWidth: 1,
+                  borderColor: brandBorderColor,
+                }}
               >
                 <Ionicons
                   name="checkmark-circle"
-                  size={checkInStatus.isFirstTimeCheckIn ? 48 : 80}
+                  size={52}
                   color={brandColor}
                 />
               </View>
               <Text
-                className={`${checkInStatus.isFirstTimeCheckIn ? "text-3xl" : "text-4xl"} font-bold text-slate-900 text-center mb-2 tracking-tight`}
+                style={{
+                  fontSize: 26,
+                  fontWeight: "900",
+                  color: "#0f172a",
+                  textAlign: "center",
+                  marginBottom: 6,
+                }}
               >
                 {checkInStatus.isFirstTimeCheckIn ? "Welcome" : "Welcome back"}{" "}
                 {checkInStatus.candidateName}!
               </Text>
-              <Text className="text-xl text-slate-500 font-semibold text-center">
+              <Text
+                style={{
+                  fontSize: 16,
+                  color: "#64748b",
+                  fontWeight: "700",
+                  textAlign: "center",
+                }}
+              >
                 {"You're"} all checked in!
               </Text>
-              <Text className="text-base text-slate-400 text-center mt-3 px-4 leading-6">
+              <Text
+                style={{
+                  fontSize: 13,
+                  color: "#94a3b8",
+                  textAlign: "center",
+                  marginTop: 8,
+                  paddingHorizontal: 24,
+                  lineHeight: 18,
+                }}
+              >
                 Get ready for an amazing experience at the event. {"We're"} glad
                 to have you here.
               </Text>
             </View>
 
-            <View className="mb-10">
-              <Text className="text-[11px] font-black text-slate-400 uppercase tracking-[2px] mb-6 text-center">
+            {/* Quick Actions List Grid */}
+            <View style={{ paddingHorizontal: 24, marginBottom: 24 }}>
+              <Text
+                style={{
+                  fontSize: 10,
+                  fontWeight: "900",
+                  color: "#94a3b8",
+                  textTransform: "uppercase",
+                  letterSpacing: 1.5,
+                  marginBottom: 16,
+                  textAlign: "center",
+                }}
+              >
                 Quick Actions
               </Text>
-              <View className="flex-row flex-wrap justify-between">
+
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  marginBottom: 16,
+                }}
+              >
+                {/* Action: Attendees */}
                 <TouchableOpacity
-                  className="w-[48%] bg-white rounded-3xl p-6 items-center justify-center border border-slate-100 shadow-sm mb-4"
+                  style={{
+                    width: "48%",
+                    backgroundColor: "#ffffff",
+                    borderRadius: 20,
+                    padding: 20,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderWidth: 1,
+                    borderColor: "#f1f5f9",
+                    shadowColor: "#0f172a",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.02,
+                    shadowRadius: 8,
+                    elevation: 2,
+                  }}
                   onPress={() => router.push("/(attendee)/attendees")}
                 >
-                  <View className="w-14 h-14 rounded-2xl bg-blue-50 items-center justify-center mb-3">
-                    <Ionicons name="people" size={28} color="#3b82f6" />
+                  <View
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 22,
+                      backgroundColor: brandAccentBg,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginBottom: 12,
+                    }}
+                  >
+                    <Ionicons name="people" size={20} color={brandColor} />
                   </View>
-                  <Text className="text-slate-800 font-bold text-sm">
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: "bold",
+                      color: "#334155",
+                    }}
+                  >
                     Attendees
                   </Text>
                 </TouchableOpacity>
 
+                {/* Action: Agenda */}
                 <TouchableOpacity
-                  className="w-[48%] bg-white rounded-3xl p-6 items-center justify-center border border-slate-100 shadow-sm mb-4"
-                  onPress={() =>
-                    router.push({
-                      pathname: "/(attendee)/agenda",
-                      params: { qrToken: activeToken },
-                    })
-                  }
+                  style={{
+                    width: "48%",
+                    backgroundColor: "#ffffff",
+                    borderRadius: 20,
+                    padding: 20,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderWidth: 1,
+                    borderColor: "#f1f5f9",
+                    shadowColor: "#0f172a",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.02,
+                    shadowRadius: 8,
+                    elevation: 2,
+                  }}
+                  onPress={handleViewAgenda}
                 >
                   <View
-                    className={`w-14 h-14 rounded-2xl ${brandAccentBg} items-center justify-center mb-3`}
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 22,
+                      backgroundColor: brandAccentBg,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginBottom: 12,
+                    }}
                   >
-                    <Ionicons name="calendar" size={28} color={brandColor} />
+                    <Ionicons name="calendar" size={20} color={brandColor} />
                   </View>
-                  <Text className="text-slate-800 font-bold text-sm">
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: "bold",
+                      color: "#334155",
+                    }}
+                  >
                     Agenda
                   </Text>
                 </TouchableOpacity>
-
-                <TouchableOpacity
-                  className="w-full bg-white rounded-3xl p-6 items-center justify-center border border-slate-100 shadow-sm mb-4 flex-row"
-                  onPress={() => router.push("/(attendee)/gallery")}
-                >
-                  <View className="w-12 h-12 rounded-2xl bg-rose-50 items-center justify-center mr-4">
-                    <Ionicons name="images" size={24} color="#f43f5e" />
-                  </View>
-                  <Text className="text-slate-800 font-bold text-base">
-                    Event Gallery
-                  </Text>
-                </TouchableOpacity>
               </View>
+
+              {/* Action: Gallery */}
+              <TouchableOpacity
+                style={{
+                  width: "100%",
+                  backgroundColor: "#ffffff",
+                  borderRadius: 20,
+                  padding: 16,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderWidth: 1,
+                  borderColor: "#f1f5f9",
+                  shadowColor: "#0f172a",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.02,
+                  shadowRadius: 8,
+                  elevation: 2,
+                }}
+                onPress={() => router.push("/(attendee)/gallery")}
+              >
+                <View
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    backgroundColor: brandAccentBg,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginRight: 12,
+                  }}
+                >
+                  <Ionicons name="images" size={18} color={brandColor} />
+                </View>
+                <Text
+                  style={{ fontSize: 14, fontWeight: "bold", color: "#334155" }}
+                >
+                  Event Gallery
+                </Text>
+              </TouchableOpacity>
             </View>
 
-            <View className="items-center mt-2">
-              <View className={`${brandAccentBg} px-4 py-2 rounded-full`}>
+            {/* Bottom Celebration Badge */}
+            <View style={{ alignItems: "center", marginTop: 12 }}>
+              <View
+                style={{
+                  backgroundColor: brandAccentBg,
+                  paddingHorizontal: 14,
+                  paddingVertical: 6,
+                  borderRadius: 20,
+                  borderWidth: 1,
+                  borderColor: brandBorderColor,
+                }}
+              >
                 <Text
-                  className={`${brandAccentText} font-black text-[10px] uppercase tracking-[1px]`}
+                  style={{
+                    color: brandTextColor,
+                    fontWeight: "900",
+                    fontSize: 10,
+                    textTransform: "uppercase",
+                    letterSpacing: 1,
+                  }}
                 >
                   Let the celebration begin!
                 </Text>
@@ -574,107 +969,246 @@ export default function QRPassScreen() {
     // ── Info (Today, 2+ min) ──
     if (scenario === "info") {
       return (
-        <View className="flex-1 bg-slate-50" style={{ paddingTop: insets.top }}>
+        <View style={{ flex: 1, backgroundColor: "#ffffff" }}>
+          <StatusBar barStyle="dark-content" />
           <ScrollView
             contentContainerStyle={{
+              paddingTop: insets.top + 20,
               paddingBottom: insets.bottom + 80,
-              paddingTop: 40,
+              backgroundColor: "#ffffff",
             }}
-            className="flex-1 px-2"
+            style={{ flex: 1 }}
             showsVerticalScrollIndicator={false}
             refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={brandColor}
+              />
             }
           >
-            <View className="items-center mb-8">
+            {/* Header Details */}
+            <View
+              style={{
+                alignItems: "center",
+                marginBottom: 28,
+                paddingHorizontal: 24,
+              }}
+            >
               <View
-                className={`w-20 h-20 rounded-full ${brandAccentBg} items-center justify-center mb-4`}
+                style={{
+                  width: 72,
+                  height: 72,
+                  borderRadius: 36,
+                  backgroundColor: brandAccentBg,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: 16,
+                  borderWidth: 1,
+                  borderColor: brandBorderColor,
+                }}
               >
                 <Ionicons
                   name="checkmark-circle"
-                  size={48}
+                  size={44}
                   color={brandColor}
                 />
               </View>
-              <Text className="text-3xl font-black text-slate-900 text-center">
+              <Text
+                style={{ fontSize: 26, fontWeight: "900", color: "#0f172a" }}
+              >
                 {"You're"} Checked In!
               </Text>
-              <Text className="text-base text-slate-500 font-bold text-center mt-1">
+              <Text
+                style={{
+                  fontSize: 14,
+                  color: "#64748b",
+                  fontWeight: "700",
+                  marginTop: 4,
+                }}
+              >
                 {checkInStatus.isFirstTimeCheckIn ? "Welcome" : "Welcome back"},{" "}
                 {checkInStatus.candidateName}!
               </Text>
             </View>
 
-            {/* Check-in Details - Only Email and Time side by side */}
-            <View className="bg-white rounded-3xl p-4 shadow-xl shadow-slate-200 border border-slate-100 mb-8">
-              <Text className="text-xs text-blue-500 uppercase tracking-widest mb-4 text-center">
-                Check-in Details
-              </Text>
+            <View style={{ paddingHorizontal: 24 }}>
+              {/* Check-in Details Flat Card */}
+              <View
+                style={{
+                  backgroundColor: "#ffffff",
+                  borderRadius: 20,
+                  padding: 20,
+                  borderWidth: 1,
+                  borderColor: "#f1f5f9",
+                  marginBottom: 24,
+                  shadowColor: "#0f172a",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.02,
+                  shadowRadius: 8,
+                  elevation: 1,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 10,
+                    fontWeight: "900",
+                    color: brandColor,
+                    textTransform: "uppercase",
+                    letterSpacing: 1.5,
+                    marginBottom: 16,
+                    textAlign: "center",
+                  }}
+                >
+                  Check-in Details
+                </Text>
 
-              {/* Horizontal 2-column layout */}
-              <View className="flex-row justify-between items-center gap-4">
-                {/* Email Column */}
-                <View className="flex-1 items-center">
-                  <Text className="text-[9px] font-bold text-slate-400 uppercase text-center">
-                    Email
-                  </Text>
-                  <Text
-                    className="text-[11px] font-bold text-slate-800 text-center mt-1"
-                    numberOfLines={1} // ← Single line only
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.7} // ← Smaller min scale to fit long emails
-                  >
-                    {checkInStatus.candidateEmail || ""}
-                  </Text>
-                </View>
+                {/* Grid */}
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <View style={{ flex: 1, alignItems: "center" }}>
+                    <Text
+                      style={{
+                        fontSize: 9,
+                        fontWeight: "800",
+                        color: "#94a3b8",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Email
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        fontWeight: "700",
+                        color: "#334155",
+                        marginTop: 4,
+                        textAlign: "center",
+                      }}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.7}
+                    >
+                      {checkInStatus.candidateEmail || ""}
+                    </Text>
+                  </View>
 
-                {/* Time Column */}
-                <View className="flex-1 items-center">
-                  <Text className="text-[9px] font-bold text-slate-400 uppercase text-center">
-                    Time
-                  </Text>
-                  <Text className="text-xs font-bold text-slate-800 text-center mt-1">
-                    {checkInDate.toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      hour12: true,
-                    })}
-                  </Text>
+                  <View
+                    style={{ width: 1, height: 32, backgroundColor: "#f1f5f9" }}
+                  />
+
+                  <View style={{ flex: 1, alignItems: "center" }}>
+                    <Text
+                      style={{
+                        fontSize: 9,
+                        fontWeight: "800",
+                        color: "#94a3b8",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Time
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        fontWeight: "700",
+                        color: "#334155",
+                        marginTop: 4,
+                      }}
+                    >
+                      {checkInDate.toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: true,
+                      })}
+                    </Text>
+                  </View>
                 </View>
               </View>
-            </View>
 
-            {/* About Event Section */}
-            <View className="bg-white rounded-3xl px-4 py-5 shadow-xl shadow-slate-200 border border-slate-100 mb-8">
-              <Text
-                className={`text-[11px] font-black ${brandText} uppercase tracking-[1px] mb-2`}
+              {/* About Event Card */}
+              <View
+                style={{
+                  backgroundColor: "#ffffff",
+                  borderRadius: 20,
+                  padding: 20,
+                  borderWidth: 1,
+                  borderColor: "#f1f5f9",
+                  marginBottom: 24,
+                  shadowColor: "#0f172a",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.02,
+                  shadowRadius: 8,
+                  elevation: 1,
+                }}
               >
-                About Event
-              </Text>
-              <Text className="text-lg font-bold text-slate-900 mb-1">
-                {eventName}
-              </Text>
-              <Text className="text-sm text-slate-600 leading-relaxed">
-                {isMasterclass
-                  ? " Unlock Your Leadership Potential! An intensive, high-impact session crafted for visionaries. Learn AI strategies that drive results and connect with the best in the industry."
-                  : " The Ultimate Networking Experience! Connect with 500+ industry leaders, discover game-changing insights, and create lasting partnerships. Your next big opportunity awaits!"}
-              </Text>
-            </View>
+                <Text
+                  style={{
+                    fontSize: 10,
+                    fontWeight: "900",
+                    color: brandColor,
+                    textTransform: "uppercase",
+                    letterSpacing: 1.5,
+                    marginBottom: 8,
+                  }}
+                >
+                  About Event
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 18,
+                    fontWeight: "900",
+                    color: "#0f172a",
+                    marginBottom: 6,
+                  }}
+                >
+                  {eventName}
+                </Text>
+                <Text
+                  style={{ fontSize: 13, color: "#64748b", lineHeight: 20 }}
+                >
+                  {isMasterclass
+                    ? "Unlock Your Leadership Potential! An intensive, high-impact session crafted for visionaries. Learn AI strategies that drive results and connect with the best in the industry."
+                    : "The Ultimate Networking Experience! Connect with 500+ industry leaders, discover game-changing insights, and create lasting partnerships. Your next big opportunity awaits!"}
+                </Text>
+              </View>
 
-            <TouchableOpacity
-              className={`${brandBg} rounded-2xl py-4 items-center justify-center flex-row shadow-lg ${brandShadow} mb-6`}
-              onPress={() =>
-                router.push({
-                  pathname: "/(attendee)/agenda",
-                  params: { qrToken: activeToken },
-                })
-              }
-            >
-              <Ionicons name="calendar" size={20} color="#fff" />
-              <Text className="text-white text-lg font-bold ml-2">
-                View Agenda
-              </Text>
-            </TouchableOpacity>
+              {/* View Agenda CTA */}
+              <TouchableOpacity
+                style={{
+                  backgroundColor: brandColor,
+                  borderRadius: 16,
+                  paddingVertical: 14,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexDirection: "row",
+                  shadowColor: brandColor,
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.15,
+                  shadowRadius: 8,
+                  elevation: 4,
+                  marginBottom: 24,
+                }}
+                onPress={handleViewAgenda}
+              >
+                <Ionicons
+                  name="calendar"
+                  size={20}
+                  color="#ffffff"
+                  style={{ marginRight: 6 }}
+                />
+                <Text
+                  style={{ color: "#ffffff", fontSize: 15, fontWeight: "bold" }}
+                >
+                  View Agenda
+                </Text>
+              </TouchableOpacity>
+            </View>
           </ScrollView>
         </View>
       );
@@ -682,105 +1216,307 @@ export default function QRPassScreen() {
 
     // ── Warning (previous day / old check-in) ──
     return (
-      <View className="flex-1 bg-slate-50" style={{ paddingTop: insets.top }}>
+      <View style={{ flex: 1, backgroundColor: "#ffffff" }}>
+        <StatusBar barStyle="dark-content" />
         <ScrollView
           contentContainerStyle={{
+            paddingTop: insets.top + 20,
             paddingBottom: insets.bottom + 40,
-            paddingTop: 40,
+            backgroundColor: "#ffffff",
           }}
-          className="flex-1 px-5"
+          style={{ flex: 1 }}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={brandColor}
+            />
           }
         >
-          <View className="items-center mb-8">
-            <View className="w-20 h-20 rounded-full bg-indigo-100 items-center justify-center mb-4">
-              <Ionicons name="ribbon" size={40} color="#4f46e5" />
+          {/* Header */}
+          <View
+            style={{
+              alignItems: "center",
+              marginBottom: 28,
+              paddingHorizontal: 24,
+            }}
+          >
+            <View
+              style={{
+                width: 72,
+                height: 72,
+                borderRadius: 36,
+                backgroundColor: brandAccentBg,
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 16,
+                borderWidth: 1,
+                borderColor: brandBorderColor,
+              }}
+            >
+              <Ionicons name="ribbon" size={34} color={brandColor} />
             </View>
-            <Text className="text-3xl font-black text-slate-900 text-center">
+            <Text
+              style={{
+                fontSize: 24,
+                fontWeight: "900",
+                color: "#0f172a",
+                textAlign: "center",
+              }}
+            >
               Thank You for Attending!
             </Text>
-            <Text className="text-base text-slate-500 font-bold text-center mt-2 px-4 leading-6">
+            <Text
+              style={{
+                fontSize: 13,
+                color: "#64748b",
+                textAlign: "center",
+                marginTop: 8,
+                paddingHorizontal: 24,
+                lineHeight: 18,
+              }}
+            >
               We hope you had a rewarding experience at {eventName}.
             </Text>
           </View>
 
-          <View className="bg-white rounded-3xl p-6 shadow-xl shadow-slate-200 border border-slate-100 mb-8">
-            <View className="flex-row justify-between items-center mb-6">
-              <Text className="text-xs font-black text-slate-400 uppercase tracking-widest">
-                Digital Attendance Badge
-              </Text>
-              <View className="bg-indigo-50 px-3 py-1 rounded-full">
-                <Text className="text-indigo-600 text-[10px] font-black uppercase">
-                  Verified
-                </Text>
-              </View>
-            </View>
-
-            <View className="items-center mb-6">
-              <View className="w-16 h-16 rounded-full bg-slate-100 items-center justify-center mb-3">
-                <Ionicons name="person" size={32} color="#64748b" />
-              </View>
-              <Text className="text-xl font-bold text-slate-800">
-                {checkInStatus.candidateName}
-              </Text>
-              <Text className="text-sm text-slate-500">
-                {checkInStatus.candidateEmail}
-              </Text>
-            </View>
-
-            <View className="h-[1px] bg-slate-100 mb-6" />
-
-            <View className="gap-4">
-              <View className="flex-row justify-between">
-                <Text className="text-xs font-bold text-slate-400 uppercase">
-                  Event
-                </Text>
-                <Text className="text-sm font-bold text-slate-800">
-                  {eventName}
-                </Text>
-              </View>
-              <View className="flex-row justify-between">
-                <Text className="text-xs font-bold text-slate-400 uppercase">
-                  Date
-                </Text>
-                <Text className="text-sm font-bold text-slate-800">
-                  {eventDate}
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          <View className="gap-4">
-            <TouchableOpacity
-              className="bg-indigo-600 rounded-2xl py-4 items-center justify-center flex-row shadow-lg shadow-indigo-200"
-              onPress={() => {
-                /* Handle Certificate */
+          <View style={{ paddingHorizontal: 24 }}>
+            {/* Badge Details Card */}
+            <View
+              style={{
+                backgroundColor: "#ffffff",
+                borderRadius: 20,
+                padding: 20,
+                borderWidth: 1,
+                borderColor: "#f1f5f9",
+                marginBottom: 24,
+                shadowColor: "#0f172a",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.02,
+                shadowRadius: 8,
+                elevation: 1,
               }}
             >
-              <Ionicons name="document-text" size={20} color="#fff" />
-              <Text className="text-white text-lg font-bold ml-2">
-                Download Certificate
-              </Text>
-            </TouchableOpacity>
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 16,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 9,
+                    fontWeight: "900",
+                    color: "#94a3b8",
+                    textTransform: "uppercase",
+                    letterSpacing: 1.5,
+                  }}
+                >
+                  Digital Attendance Badge
+                </Text>
+                <View
+                  style={{
+                    backgroundColor: brandAccentBg,
+                    paddingHorizontal: 10,
+                    paddingVertical: 4,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: brandBorderColor,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: brandColor,
+                      fontSize: 9,
+                      fontWeight: "900",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Verified
+                  </Text>
+                </View>
+              </View>
 
-            <TouchableOpacity
-              className="bg-white border border-slate-200 rounded-2xl py-4 items-center justify-center flex-row"
-              onPress={() => router.push("/(attendee)/gallery")}
-            >
-              <Ionicons name="images" size={20} color="#475569" />
-              <Text className="text-slate-700 text-lg font-bold ml-2">
-                View Event Gallery
-              </Text>
-            </TouchableOpacity>
+              <View style={{ alignItems: "center", marginBottom: 20 }}>
+                <View
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 24,
+                    backgroundColor: "#f8fafc",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: 10,
+                    borderWidth: 1,
+                    borderColor: "#e2e8f0",
+                  }}
+                >
+                  <Ionicons name="person" size={22} color="#64748b" />
+                </View>
+                <Text
+                  style={{ fontSize: 17, fontWeight: "800", color: "#0f172a" }}
+                >
+                  {checkInStatus.candidateName}
+                </Text>
+                <Text style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                  {checkInStatus.candidateEmail}
+                </Text>
+              </View>
+
+              <View
+                style={{
+                  height: 1,
+                  backgroundColor: "#f1f5f9",
+                  marginBottom: 20,
+                }}
+              />
+
+              <View
+                style={{
+                  borderRadius: 12,
+                  borderStyle: "solid",
+                  borderWidth: 1,
+                  borderColor: "#f1f5f9",
+                  overflow: "hidden",
+                }}
+              >
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    paddingVertical: 10,
+                    paddingHorizontal: 14,
+                    backgroundColor: "#fafbfc",
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "600",
+                      color: "#64748b",
+                    }}
+                  >
+                    Event
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "bold",
+                      color: "#334155",
+                    }}
+                  >
+                    {eventName}
+                  </Text>
+                </View>
+                <View style={{ height: 1, backgroundColor: "#f1f5f9" }} />
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    paddingVertical: 10,
+                    paddingHorizontal: 14,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "600",
+                      color: "#64748b",
+                    }}
+                  >
+                    Date
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "bold",
+                      color: "#334155",
+                    }}
+                  >
+                    {eventDate}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* CTA Buttons */}
+            <View style={{ gap: 12 }}>
+              <TouchableOpacity
+                style={{
+                  backgroundColor: brandColor,
+                  borderRadius: 16,
+                  paddingVertical: 14,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexDirection: "row",
+                  shadowColor: brandColor,
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.15,
+                  shadowRadius: 8,
+                  elevation: 4,
+                }}
+                onPress={() => {
+                  /* Handle Certificate */
+                }}
+              >
+                <Ionicons
+                  name="document-text"
+                  size={20}
+                  color="#ffffff"
+                  style={{ marginRight: 6 }}
+                />
+                <Text
+                  style={{ color: "#ffffff", fontSize: 15, fontWeight: "bold" }}
+                >
+                  Download Certificate
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{
+                  backgroundColor: "#ffffff",
+                  borderRadius: 16,
+                  paddingVertical: 14,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexDirection: "row",
+                  borderWidth: 1,
+                  borderColor: "#f1f5f9",
+                  shadowColor: "#0f172a",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.02,
+                  shadowRadius: 4,
+                  elevation: 1,
+                }}
+                onPress={() => router.push("/(attendee)/gallery")}
+              >
+                <Ionicons
+                  name="images"
+                  size={20}
+                  color="#64748b"
+                  style={{ marginRight: 6 }}
+                />
+                <Text
+                  style={{ color: "#334155", fontSize: 15, fontWeight: "bold" }}
+                >
+                  View Event Gallery
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <TouchableOpacity
-            className="mt-6 items-center"
+            style={{ marginTop: 24, alignItems: "center" }}
             onPress={() => router.replace("/(attendee)/agenda")}
           >
-            <Text className="text-slate-500 font-bold">Back to Home</Text>
+            <Text
+              style={{ color: "#94a3b8", fontWeight: "bold", fontSize: 14 }}
+            >
+              Back to Home
+            </Text>
           </TouchableOpacity>
         </ScrollView>
       </View>
@@ -788,21 +1524,14 @@ export default function QRPassScreen() {
   }
 
   // ── Default: QR Pass ────────────────────────────────────────────────────────
-  const handleViewAgenda = () => {
-    router.push({
-      pathname: "/(attendee)/agenda",
-      params: { qrToken: activeToken },
-    });
-  };
-
   return (
     <DefaultPass
       eventName={eventName}
       eventDate={eventDate}
       eventLocation={eventLocation}
       brandBg={brandBg}
-      brandText={brandText}
-      brandShadow={brandShadow}
+      brandText={brandTextColor}
+      brandShadow=""
       insets={insets}
       activeToken={activeToken}
       qrSize={qrSize}

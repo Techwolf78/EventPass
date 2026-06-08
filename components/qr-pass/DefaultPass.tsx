@@ -1,6 +1,5 @@
 import { getEnrollmentDisplayName } from "@/hooks/use-attendee-theme";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import {
   RefreshControl,
@@ -34,9 +33,6 @@ export default function DefaultPass({
   eventName,
   eventDate,
   eventLocation,
-  brandBg,
-  brandText,
-  brandShadow,
   insets,
   activeToken,
   qrSize,
@@ -48,177 +44,230 @@ export default function DefaultPass({
   setQrRef,
   isMasterclass = true,
 }: DefaultPassProps) {
-  // Teal/Cyan gradient for Masterclass, Premium Dark Ruby gradient for Synergy Sphere
-  const gradientColors = isMasterclass
-    ? (["#0f172a", "#0d9488", "#14b8a6", "#06b6d4"] as const)
-    : (["#090514", "#1a0826", "#4c0519", "#881337", "#dc2626"] as const);
-
-  const bannerContent = (
-    <View className="flex-row justify-between items-center px-6">
-      <View className="flex-1">
-        <Text className="text-3xl font-bold text-white mb-2 leading-tight tracking-tight">
-          {eventName}
-        </Text>
-        <View className="flex-row items-center mb-1 gap-2">
-          <Ionicons
-            name="calendar-outline"
-            size={14}
-            color="rgba(255,255,255,0.85)"
-          />
-          <Text className="text-sm text-white/85 font-medium">{eventDate}</Text>
-        </View>
-        <View className="flex-row items-center gap-2">
-          <Ionicons
-            name="location-outline"
-            size={14}
-            color="rgba(255,255,255,0.85)"
-          />
-          <Text className="text-sm text-white/85 font-medium" numberOfLines={1}>
-            {eventLocation}
-          </Text>
-        </View>
-      </View>
-      <View className="w-12 h-12 rounded-full bg-white/20 items-center justify-center">
-        <Ionicons name="ticket-outline" size={24} color="#fff" />
-      </View>
-    </View>
-  );
+  // Determine dynamic brand color scheme directly
+  const themeColor = isMasterclass ? "#06b6d4" : "#ef4444";
+  const themeSoftBg = isMasterclass ? "#ecfeff" : "#fee2e2";
+  const themeBorderColor = isMasterclass ? "#c5f6fa" : "#fecaca";
+  const themeTextColor = isMasterclass ? "#0891b2" : "#b91c1c";
 
   return (
-    <View className="flex-1 bg-slate-50">
+    <View style={{ flex: 1, backgroundColor: "#ffffff" }}>
       <ScrollView
-        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
-        className="flex-1"
+        contentContainerStyle={{ 
+          paddingTop: insets.top + 20,
+          paddingBottom: insets.bottom + 100, 
+          backgroundColor: "#ffffff" 
+        }}
+        style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh} 
+            tintColor={themeColor} 
+          />
         }
       >
-        {/* Event Banner */}
-        <LinearGradient
-          colors={gradientColors}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+        {/* Header Block (Light Themed) */}
+        <View style={{ paddingHorizontal: 24, marginBottom: 24 }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+            <View style={{ flex: 1, marginRight: 16 }}>
+              <Text 
+                style={{ 
+                  fontSize: 22, 
+                  fontWeight: "900", 
+                  color: "#0f172a", 
+                  letterSpacing: -0.5, 
+                  lineHeight: 28 
+                }}
+              >
+                {eventName}
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", marginTop: 8, gap: 4 }}>
+                <Ionicons name="location" size={14} color="#64748b" />
+                <Text style={{ fontSize: 13, fontWeight: "600", color: "#64748b" }}>
+                  {eventLocation}
+                </Text>
+              </View>
+            </View>
+
+            {/* Event Icon/Badge */}
+            <View 
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 22,
+                backgroundColor: themeSoftBg,
+                alignItems: "center",
+                justifyContent: "center",
+                borderWidth: 1,
+                borderColor: themeBorderColor,
+              }}
+            >
+              <Ionicons name="ticket" size={22} color={themeColor} />
+            </View>
+          </View>
+        </View>
+
+        {/* Pass Container Card */}
+        <View
           style={{
-            paddingTop: insets.top + 24,
-            paddingBottom: 60,
-            borderBottomLeftRadius: 32,
-            borderBottomRightRadius: 32,
+            backgroundColor: "#ffffff",
+            borderRadius: 24,
+            marginHorizontal: 24,
+            padding: 24,
+            borderWidth: 1,
+            borderColor: "#f1f5f9",
+            shadowColor: "#0f172a",
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.04,
+            shadowRadius: 16,
+            elevation: 4,
           }}
         >
-          {bannerContent}
-        </LinearGradient>
-
-        {/* Main Floating Card */}
-        <View
-          className="bg-white rounded-3xl mx-5 -mt-10 p-6 shadow-xl shadow-slate-200 border border-slate-100"
-          style={{ borderRadius: 24 }}
-        >
-          {/* QR Section */}
-          <View className="items-center mb-6">
+          {/* QR Code Container */}
+          <View style={{ alignItems: "center", marginBottom: 24 }}>
             <View
-              className="bg-white border border-slate-100 rounded-2xl p-4 mb-3 shadow-inner"
-              style={{ borderRadius: 20 }}
+              style={{
+                backgroundColor: "#ffffff",
+                borderWidth: 1,
+                borderColor: "#e2e8f0",
+                borderRadius: 20,
+                padding: 16,
+                marginBottom: 12,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.02,
+                shadowRadius: 4,
+                elevation: 1,
+              }}
             >
               <QRCode
                 getRef={setQrRef}
                 value={activeToken}
                 size={qrSize}
-                color="#0F172A" // Obsidian
-                backgroundColor="#fff"
+                color="#0f172a"
+                backgroundColor="#ffffff"
               />
             </View>
-            <Text className="text-xs text-slate-400 font-bold tracking-widest uppercase">
+            <Text style={{ fontSize: 10, fontWeight: "800", color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1.5 }}>
               Scan at Entrance
             </Text>
           </View>
 
-          <View className="h-[1px] bg-slate-100 mb-6" />
+          <View style={{ height: 1, backgroundColor: "#f1f5f9", marginBottom: 24 }} />
 
-          {/* Attendee Details */}
-          <View className="mb-6">
+          {/* Ticket Info Section */}
+          <View style={{ marginBottom: 24 }}>
             <Text
-              className={`text-xs font-bold ${brandText} uppercase tracking-wider mb-4`}
+              style={{
+                fontSize: 11,
+                fontWeight: "900",
+                color: themeTextColor,
+                textTransform: "uppercase",
+                letterSpacing: 1.5,
+                marginBottom: 16,
+              }}
             >
               Attendee Pass
             </Text>
 
             {/* Profile Row */}
-            <View className="flex-row items-center mb-5">
-              <View className="w-12 h-12 rounded-full bg-slate-100 items-center justify-center mr-4">
-                <Ionicons name="person" size={24} color="#64748B" />
+            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}>
+              <View 
+                style={{ 
+                  width: 44, 
+                  height: 44, 
+                  borderRadius: 22, 
+                  backgroundColor: "#f8fafc", 
+                  alignItems: "center", 
+                  justifyContent: "center", 
+                  marginRight: 12,
+                  borderWidth: 1,
+                  borderColor: "#e2e8f0",
+                }}
+              >
+                <Ionicons name="person" size={20} color="#64748b" />
               </View>
-              <View className="flex-1">
+              <View style={{ flex: 1 }}>
                 <Text
-                  className="text-lg font-bold text-slate-900"
+                  style={{ fontSize: 17, fontWeight: "800", color: "#0f172a" }}
                   numberOfLines={1}
                 >
                   {candidate?.name || "—"}
                 </Text>
-                <Text className="text-sm text-slate-500" numberOfLines={1}>
+                <Text style={{ fontSize: 13, color: "#64748b", marginTop: 1 }} numberOfLines={1}>
                   {candidate?.email || "—"}
                 </Text>
               </View>
             </View>
 
-            <View className="flex-row mb-4 gap-4">
-              <View className="flex-1">
-                <Text className="text-xs font-bold text-slate-400 uppercase mb-1 tracking-tight">
-                  Role
-                </Text>
-                <Text className="text-sm font-semibold text-slate-800">
+            {/* Attributes Grid (List structure with dividers, like Profile page) */}
+            <View style={{ borderRadius: 16, borderStyle: "solid", borderWidth: 1, borderColor: "#f1f5f9", overflow: "hidden" }}>
+              {/* Row 1: Role */}
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 12, paddingHorizontal: 16, backgroundColor: "#fafbfc" }}>
+                <Text style={{ fontSize: 13, fontWeight: "600", color: "#64748b" }}>Role</Text>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: "#334155" }}>
                   {candidate?.role || "Attendee"}
                 </Text>
               </View>
-              <View className="flex-1">
-                <Text className="text-xs font-bold text-slate-400 uppercase mb-1 tracking-tight">
-                  Enrollment
-                </Text>
-                <Text className="text-sm font-semibold text-slate-800 capitalize">
+              <View style={{ height: 1, backgroundColor: "#f1f5f9" }} />
+
+              {/* Row 2: Enrollment */}
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 12, paddingHorizontal: 16 }}>
+                <Text style={{ fontSize: 13, fontWeight: "600", color: "#64748b" }}>Enrollment</Text>
+                <Text style={{ fontSize: 13, fontWeight: "bold", color: themeTextColor, textTransform: "capitalize" }}>
                   {getEnrollmentDisplayName(candidate?.enrollmentType) || "—"}
                 </Text>
               </View>
-            </View>
+              <View style={{ height: 1, backgroundColor: "#f1f5f9" }} />
 
-            <View className="flex-row gap-4">
-              <View className="flex-1">
-                <Text className="text-xs font-bold text-slate-400 uppercase mb-1 tracking-tight">
-                  Company
-                </Text>
-                <Text className="text-sm font-semibold text-slate-800 capitalize">
+              {/* Row 3: Company */}
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 12, paddingHorizontal: 16, backgroundColor: "#fafbfc" }}>
+                <Text style={{ fontSize: 13, fontWeight: "600", color: "#64748b" }}>Company</Text>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: "#334155" }}>
                   {candidate?.companyName || "—"}
                 </Text>
               </View>
-              <View className="flex-1">
-                <Text className="text-xs font-bold text-slate-400 uppercase mb-1 tracking-tight">
-                  Pass ID
-                </Text>
-                <Text
-                  className={`text-sm font-bold ${brandText} font-mono`}
-                  numberOfLines={1}
-                >
+              <View style={{ height: 1, backgroundColor: "#f1f5f9" }} />
+
+              {/* Row 4: Pass ID */}
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 12, paddingHorizontal: 16 }}>
+                <Text style={{ fontSize: 13, fontWeight: "600", color: "#64748b" }}>Pass ID</Text>
+                <Text style={{ fontSize: 13, fontWeight: "800", color: themeTextColor, fontFamily: "monospace" }}>
                   {uniqueId}
                 </Text>
               </View>
             </View>
           </View>
 
-          {/* CTA */}
+          {/* View Agenda CTA Button */}
           <TouchableOpacity
-            className={`${brandBg} rounded-xl py-4 items-center justify-center flex-row shadow-lg ${brandShadow}`}
+            style={{
+              backgroundColor: themeColor,
+              borderRadius: 16,
+              paddingVertical: 14,
+              alignItems: "center",
+              justifyContent: "center",
+              flexDirection: "row",
+              shadowColor: themeColor,
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.15,
+              shadowRadius: 8,
+              elevation: 4,
+            }}
             onPress={handleViewAgenda}
-            style={{ borderRadius: 14 }}
           >
-            <Ionicons name="calendar-outline" size={20} color="#fff" />
-            <Text className="text-white text-base font-bold ml-2">
+            <Ionicons name="calendar-outline" size={20} color="#ffffff" style={{ marginRight: 6 }} />
+            <Text style={{ color: "#ffffff", fontSize: 15, fontWeight: "bold" }}>
               View Agenda
             </Text>
           </TouchableOpacity>
         </View>
 
-        <Text className="text-center text-xs text-slate-400 mt-6 font-medium px-10 leading-relaxed">
-          Present this QR code at the entrance for check-in. This pass is valid
-          for {eventName}.
+        {/* Footer info text */}
+        <Text style={{ textAlign: "center", fontSize: 12, color: "#94a3b8", marginTop: 24, paddingHorizontal: 40, lineHeight: 18 }}>
+          Present this QR code at the entrance for check-in. This pass is valid for {eventName} on {eventDate}.
         </Text>
       </ScrollView>
     </View>

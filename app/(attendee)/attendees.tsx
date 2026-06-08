@@ -1,22 +1,23 @@
 import { useAuth } from "@/context/AuthContext";
+import { useAttendeeTheme } from "@/hooks/use-attendee-theme";
 import {
-    Candidate,
-    getAttendeeListWithCheckIn,
-    getCheckedInCandidateIds,
+  Candidate,
+  getAttendeeListWithCheckIn,
+  getCheckedInCandidateIds,
 } from "@/utils/firestore";
 import { formatTimeAgo } from "@/utils/time";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    FlatList,
-    Linking,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Linking,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -58,15 +59,12 @@ export default function AttendeesScreen() {
     "all" | "checked_in" | "pending" | "vip"
   >("all");
 
-  // Determine event type from user's enrollment
-  const isMasterclass = useMemo(() => {
-    return user?.enrollmentType?.toLowerCase() === "masterclass" ?? false;
-  }, [user?.enrollmentType]);
+  const { palette, loading: themeLoading } = useAttendeeTheme();
 
   // Theme colors based on event type
-  const themeColor = isMasterclass ? "#06b6d4" : "#3B82F6"; // Cyan for Masterclass, blue for others
-  const accentColor = isMasterclass ? "#0d9488" : "#3B82F6";
-  const statusColor = isMasterclass ? "#06b6d4" : "#10B981"; // Cyan for Masterclass
+  const themeColor = palette.primary;
+  const accentColor = palette.primaryDark;
+  const statusColor = palette.primary;
 
   useEffect(() => {
     loadAttendees();
@@ -127,10 +125,10 @@ export default function AttendeesScreen() {
     });
   }, [attendees, checkedInIds, searchQuery, activeFilter]);
 
-  if (loading) {
+  if (loading || themeLoading) {
     return (
       <View style={[styles.loadingContainer, { paddingTop: insets.top }]}>
-        <ActivityIndicator size="large" color="#4F46E5" />
+        <ActivityIndicator size="large" color={themeColor} />
         <Text style={styles.loadingText}>Loading operations dashboard...</Text>
       </View>
     );
@@ -144,7 +142,7 @@ export default function AttendeesScreen() {
         </View>
         <Text style={styles.errorTitle}>Connection Error</Text>
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={loadAttendees}>
+        <TouchableOpacity style={[styles.retryButton, { backgroundColor: themeColor }]} onPress={loadAttendees}>
           <Text style={styles.retryButtonText}>Retry Connection</Text>
         </TouchableOpacity>
       </View>

@@ -7,7 +7,6 @@
     "icon": "./assets/images/connecthq-square.png",
     "scheme": "connecthq",
     "userInterfaceStyle": "automatic",
-
     "ios": {
       "supportsTablet": true,
       "googleServicesFile": "./GoogleService-Info.plist",
@@ -15,35 +14,33 @@
       "buildNumber": "1",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "UIBackgroundModes": ["fetch", "remote-notification"]
+        "UIBackgroundModes": [
+          "fetch",
+          "remote-notification"
+        ]
       }
     },
-
     "android": {
       "package": "com.connecthq.eventpass",
       "googleServicesFile": "./google-services.json",
       "predictiveBackGestureEnabled": false,
-
       "adaptiveIcon": {
         "backgroundColor": "#0f172a",
         "foregroundImage": "./assets/images/connecthq-square.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.VIBRATE"
       ]
     },
-
     "web": {
       "bundler": "metro",
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
-
     "plugins": [
       [
         "expo-build-properties",
@@ -51,13 +48,16 @@
           "ios": {
             "useFrameworks": "static",
             "deploymentTarget": "15.1",
-            "forceStaticLinking": ["RNFBApp", "RNFBFirestore", "RNFBAuth"]
+            "forceStaticLinking": [
+              "RNFBApp",
+              "RNFBFirestore",
+              "RNFBAuth"
+            ]
           }
         }
       ],
       "@react-native-firebase/app",
       "expo-router",
-
       [
         "expo-splash-screen",
         {
@@ -65,7 +65,6 @@
           "imageWidth": 400,
           "resizeMode": "contain",
           "backgroundColor": "#0f172a",
-
           "dark": {
             "image": "./assets/images/connecthq.png",
             "imageWidth": 400,
@@ -74,14 +73,12 @@
           }
         }
       ],
-
       [
         "expo-camera",
         {
           "cameraPermission": "ConnectHQ requires camera access to scan event QR codes for attendee check-in and attendance tracking."
         }
       ],
-
       [
         "expo-media-library",
         {
@@ -89,7 +86,6 @@
           "savePhotosPermission": "Allow ConnectHQ to save certificates."
         }
       ],
-
       [
         "expo-notifications",
         {
@@ -99,21 +95,19 @@
           "mode": "production"
         }
       ],
-
-      "expo-task-manager"
+      "expo-task-manager",
+      "@react-native-community/datetimepicker",
+      "expo-font"
     ],
-
     "experiments": {
       "typedRoutes": true
     },
-
     "extra": {
       "router": {},
       "eas": {
         "projectId": "c7b7012d-5946-45b9-9a26-b0dfde3548d2"
       }
     },
-
     "owner": "connecthq"
   }
 }

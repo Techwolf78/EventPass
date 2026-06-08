@@ -1,7 +1,6 @@
-import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
 import { auth, db } from "@/config/firebase";
 import { useAuth } from "@/context/AuthContext";
+import { useAttendeeTheme } from "@/hooks/use-attendee-theme";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { deleteUser } from "firebase/auth";
@@ -21,24 +20,27 @@ import {
   Alert,
   Platform,
   ScrollView,
+  StatusBar,
   StyleSheet,
+  Text,
   TextInput,
   TouchableOpacity,
-  useColorScheme,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function DeleteAccount() {
   const router = useRouter();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
-
+  const insets = useSafeAreaInsets();
   const { user, guestSession, logout } = useAuth();
+  const { palette, loading: themeLoading } = useAttendeeTheme();
+  
   const [confirmEmail, setConfirmEmail] = useState("");
   const [deleting, setDeleting] = useState(false);
 
   const targetEmail = user?.email || guestSession?.email || "";
   const isLoggedIn = !!targetEmail;
+  const themeColor = palette.primary;
 
   const performDeletion = async () => {
     console.log("[DeleteAccount] performDeletion started!");
@@ -242,104 +244,142 @@ export default function DeleteAccount() {
     }
   };
 
+  const isEmailMatch = confirmEmail.trim().toLowerCase() === targetEmail.toLowerCase();
+
+  if (themeLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: "#ffffff", justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#ef4444" />
+      </View>
+    );
+  }
+
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: isDark ? "#0f172a" : "#f9fafb" }}
-    >
+    <View style={{ flex: 1, backgroundColor: "#f8fafc" }}>
+      <StatusBar barStyle="dark-content" />
+
       {/* Header */}
-      <View
-        style={[
-          styles.header,
-          { borderBottomColor: isDark ? "#1e293b" : "#e2e8f0" },
-        ]}
+      <View 
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          borderBottomWidth: 1,
+          borderBottomColor: "#f1f5f9",
+          paddingHorizontal: 16,
+          paddingBottom: 14,
+          paddingTop: insets.top > 0 ? insets.top + 8 : 20,
+          backgroundColor: "#ffffff",
+        }}
       >
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backButton}
+        <TouchableOpacity 
+          onPress={() => router.back()} 
+          style={{ padding: 8 }}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Ionicons
-            name="arrow-back"
-            size={24}
-            color={isDark ? "#f8fafc" : "#0f172a"}
-          />
+          <Ionicons name="chevron-back" size={24} color={themeColor} />
         </TouchableOpacity>
-        <ThemedText style={styles.headerTitle}>Delete Account</ThemedText>
+        
+        <View style={{ marginLeft: 8, flex: 1 }}>
+          <Text 
+            style={{
+              fontSize: 18,
+              fontWeight: "900",
+              color: "#0f172a",
+              letterSpacing: -0.25,
+            }}
+          >
+            Delete Account
+          </Text>
+          <Text 
+            style={{
+              fontSize: 12,
+              fontWeight: "600",
+              color: "#64748b",
+              marginTop: 1,
+            }}
+          >
+            {targetEmail || "Not logged in"}
+          </Text>
+        </View>
         <View style={{ width: 40 }} />
       </View>
 
-      <ThemedView
-        style={{ padding: 20, backgroundColor: isDark ? "#0f172a" : "#f9fafb" }}
+      <ScrollView
+        contentContainerStyle={{
+          paddingHorizontal: 24,
+          paddingTop: 24,
+          paddingBottom: insets.bottom + 40,
+        }}
+        showsVerticalScrollIndicator={false}
       >
-        <ThemedText
-          type="title"
-          style={{ fontSize: 28, marginBottom: 10, color: "#dc2626" }}
-        >
-          Delete Your Account
-        </ThemedText>
-
-        <ThemedView
+        {/* Warning Callout */}
+        <View
           style={{
-            backgroundColor: "#fee2e2",
-            borderLeftWidth: 4,
-            borderLeftColor: "#dc2626",
-            padding: 15,
-            marginVertical: 20,
-            borderRadius: 4,
+            backgroundColor: "#fef2f2",
+            borderWidth: 1,
+            borderColor: "#fee2e2",
+            borderRadius: 20,
+            padding: 16,
+            flexDirection: "row",
+            alignItems: "flex-start",
+            marginBottom: 24,
           }}
         >
-          <ThemedText style={{ color: "#991b1b" }}>
-            <ThemedText style={{ fontWeight: "bold" }}>⚠️ Warning:</ThemedText>{" "}
-            Deleting your account is permanent and cannot be undone. All your
-            event data, certificates, and account information will be deleted.
-          </ThemedText>
-        </ThemedView>
+          <Ionicons name="warning" size={20} color="#ef4444" style={{ marginRight: 12, marginTop: 2 }} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontWeight: "800", color: "#991b1b", fontSize: 14, textTransform: "uppercase", letterSpacing: 0.5 }}>
+              Warning
+            </Text>
+            <Text style={{ color: "#b91c1c", fontSize: 13, fontWeight: "600", marginTop: 4, lineHeight: 18 }}>
+              Deleting your account is permanent and cannot be undone. All your event data, certificates, and check-in history will be deleted.
+            </Text>
+          </View>
+        </View>
 
+        {/* In-App Account Deletion Box */}
         {isLoggedIn ? (
-          <View
-            style={[
-              styles.interactiveBox,
-              {
-                backgroundColor: isDark ? "#1e293b" : "#ffffff",
-                borderColor: isDark ? "#334155" : "#e2e8f0",
-              },
-            ]}
+          <View 
+            style={{
+              backgroundColor: "#ffffff",
+              borderRadius: 20,
+              padding: 20,
+              borderWidth: 1,
+              borderColor: "#f1f5f9",
+              marginBottom: 24,
+              shadowColor: "#0f172a",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.01,
+              shadowRadius: 8,
+              elevation: 1,
+            }}
           >
-            <ThemedText
-              style={{
-                fontWeight: "bold",
-                fontSize: 16,
-                marginBottom: 8,
-                color: isDark ? "#f8fafc" : "#0f172a",
-              }}
-            >
+            <Text style={{ fontSize: 10, fontWeight: "900", color: themeColor, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 12 }}>
               In-App Account Deletion
-            </ThemedText>
-            <ThemedText
-              style={{
-                fontSize: 14,
-                marginBottom: 15,
-                color: isDark ? "#94a3b8" : "#475569",
-              }}
-            >
+            </Text>
+            
+            <Text style={{ fontSize: 13, color: "#64748b", fontWeight: "600", lineHeight: 20, marginBottom: 16 }}>
               You are currently logged in as{" "}
-              <ThemedText style={{ fontWeight: "bold", color: "#4f46e5" }}>
+              <Text style={{ fontWeight: "800", color: "#0f172a" }}>
                 {targetEmail}
-              </ThemedText>
-              . To delete your account immediately, please enter your email
-              address below to confirm.
-            </ThemedText>
+              </Text>
+              . To confirm and execute deletion immediately, please type your email below.
+            </Text>
 
             <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: isDark ? "#0f172a" : "#f8fafc",
-                  color: isDark ? "#ffffff" : "#0f172a",
-                  borderColor: isDark ? "#475569" : "#cbd5e1",
-                },
-              ]}
-              placeholder={targetEmail}
-              placeholderTextColor={isDark ? "#475569" : "#94a3b8"}
+              style={{
+                height: 48,
+                backgroundColor: "#f8fafc",
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: "#e2e8f0",
+                paddingHorizontal: 16,
+                fontSize: 14,
+                fontWeight: "600",
+                color: "#0f172a",
+                marginBottom: 16,
+              }}
+              placeholder="Enter your email address"
+              placeholderTextColor="#94a3b8"
               value={confirmEmail}
               onChangeText={setConfirmEmail}
               autoCapitalize="none"
@@ -348,210 +388,230 @@ export default function DeleteAccount() {
             />
 
             <TouchableOpacity
-              style={[
-                styles.deleteBtn,
-                confirmEmail.trim().toLowerCase() !==
-                  targetEmail.toLowerCase() && styles.deleteBtnDisabled,
-              ]}
+              style={{
+                backgroundColor: isEmailMatch ? "#dc2626" : "#fca5a5",
+                height: 48,
+                borderRadius: 12,
+                alignItems: "center",
+                justifyContent: "center",
+                flexDirection: "row",
+                opacity: deleting ? 0.7 : 1,
+              }}
               onPress={handleDeleteAccount}
-              disabled={
-                deleting ||
-                confirmEmail.trim().toLowerCase() !== targetEmail.toLowerCase()
-              }
+              disabled={deleting || !isEmailMatch}
             >
               {deleting ? (
                 <ActivityIndicator size="small" color="#ffffff" />
               ) : (
-                <ThemedText style={styles.deleteBtnText}>
-                  Permanently Delete My Account
-                </ThemedText>
+                <>
+                  <Ionicons name="trash-outline" size={18} color="#ffffff" style={{ marginRight: 8 }} />
+                  <Text style={{ color: "#ffffff", fontWeight: "800", fontSize: 14 }}>
+                    Permanently Delete My Account
+                  </Text>
+                </>
               )}
             </TouchableOpacity>
           </View>
         ) : (
-          <View
-            style={[
-              styles.interactiveBox,
-              {
-                backgroundColor: isDark ? "#1e293b" : "#ffffff",
-                borderColor: isDark ? "#334155" : "#e2e8f0",
-              },
-            ]}
+          <View 
+            style={{
+              backgroundColor: "#ffffff",
+              borderRadius: 20,
+              padding: 20,
+              borderWidth: 1,
+              borderColor: "#f1f5f9",
+              marginBottom: 24,
+            }}
           >
-            <ThemedText
-              style={{
-                fontWeight: "bold",
-                fontSize: 16,
-                marginBottom: 8,
-                color: isDark ? "#f8fafc" : "#0f172a",
-              }}
-            >
+            <Text style={{ fontSize: 10, fontWeight: "900", color: "#64748b", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 12 }}>
               Not Logged In
-            </ThemedText>
-            <ThemedText
-              style={{ fontSize: 14, color: isDark ? "#94a3b8" : "#475569" }}
-            >
-              Please log in to your account inside the app to delete it
-              instantly. If you cannot access your account, you can submit a
-              manual deletion request by contacting support at{" "}
-              <ThemedText style={{ fontWeight: "bold", color: "#4f46e5" }}>
+            </Text>
+            <Text style={{ fontSize: 13, color: "#64748b", fontWeight: "600", lineHeight: 20 }}>
+              Please log in to your account inside the app to delete it instantly. If you cannot access your account, you can submit a manual deletion request by contacting support at{" "}
+              <Text style={{ fontWeight: "800", color: "#4f46e5" }}>
                 synergysphere@gryphonacademy.co.in
-              </ThemedText>
+              </Text>
               .
-            </ThemedText>
+            </Text>
           </View>
         )}
 
-        <ThemedText type="subtitle" style={{ marginTop: 20, marginBottom: 10 }}>
-          Before You Delete
-        </ThemedText>
-        <ThemedText style={{ marginLeft: 15, marginVertical: 8 }}>
-          • All your event attendance records will be deleted{"\n"}• You won't
-          be able to access your certificates{"\n"}• Event organizers may no
-          longer see your check-in history{"\n"}• This action cannot be reversed
-        </ThemedText>
-
-        <ThemedText type="subtitle" style={{ marginTop: 20, marginBottom: 10 }}>
-          Data Deletion Timeline
-        </ThemedText>
-        <ThemedText style={{ marginLeft: 15, marginVertical: 8 }}>
-          1.{" "}
-          <ThemedText style={{ fontWeight: "bold" }}>Immediately:</ThemedText>{" "}
-          Your account access is terminated
-          {"\n"}
-          2.{" "}
-          <ThemedText style={{ fontWeight: "bold" }}>
-            Within 30 days:
-          </ThemedText>{" "}
-          All personal data is permanently deleted{"\n"}
-          3.{" "}
-          <ThemedText style={{ fontWeight: "bold" }}>
-            Within 90 days:
-          </ThemedText>{" "}
-          Data is purged from all backups
-        </ThemedText>
-
-        <ThemedText type="subtitle" style={{ marginTop: 20, marginBottom: 10 }}>
-          Your Rights
-        </ThemedText>
-        <ThemedText>
-          Under data protection regulations (GDPR, CCPA, etc.), you have the
-          right to request deletion of your personal data, receive a copy of
-          your data before deletion, and have your deletion confirmed in
-          writing.
-        </ThemedText>
-
-        <ThemedText type="subtitle" style={{ marginTop: 20, marginBottom: 10 }}>
-          FAQ
-        </ThemedText>
-
-        <ThemedText style={{ fontWeight: "bold", marginVertical: 10 }}>
-          Q: Can I recover my account after deletion?
-        </ThemedText>
-        <ThemedText>
-          A: No, account deletion is permanent. Contact support before
-          confirming deletion if you're reconsidering.
-        </ThemedText>
-
-        <ThemedText style={{ fontWeight: "bold", marginVertical: 10 }}>
-          Q: What happens to my event attendance records?
-        </ThemedText>
-        <ThemedText>
-          A: Your personal data will be deleted. Event organizers may retain
-          anonymized statistics, but won't be able to link them to you.
-        </ThemedText>
-
-        <ThemedText type="subtitle" style={{ marginTop: 25, marginBottom: 10 }}>
-          Contact Support
-        </ThemedText>
-        <ThemedView
+        {/* Before You Delete Section */}
+        <View 
           style={{
-            backgroundColor: isDark ? "#1e293b" : "#f1f5f9",
-            borderRadius: 8,
-            padding: 15,
-            marginVertical: 15,
+            backgroundColor: "#ffffff",
+            borderRadius: 20,
+            padding: 20,
             borderWidth: 1,
-            borderColor: isDark ? "#334155" : "#e2e8f0",
+            borderColor: "#f1f5f9",
+            marginBottom: 24,
           }}
         >
-          <ThemedText style={{ fontSize: 14, marginBottom: 8 }}>
-            📧{" "}
-            <ThemedText style={{ fontWeight: "bold" }}>
-              Send Inquiries To:
-            </ThemedText>
-          </ThemedText>
-          <ThemedText
-            style={{
-              fontSize: 16,
-              fontWeight: "bold",
-              color: "#4f46e5",
-              marginVertical: 5,
-            }}
-          >
-            synergysphere@gryphonacademy.co.in
-          </ThemedText>
-        </ThemedView>
+          <Text style={{ fontSize: 10, fontWeight: "900", color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 16 }}>
+            Before You Delete
+          </Text>
 
-        <ThemedText
+          <View style={{ gap: 12 }}>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Ionicons name="close-circle-outline" size={18} color="#ef4444" style={{ marginRight: 10 }} />
+              <Text style={{ fontSize: 13, fontWeight: "600", color: "#475569" }}>
+                All event attendance records will be deleted
+              </Text>
+            </View>
+
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Ionicons name="close-circle-outline" size={18} color="#ef4444" style={{ marginRight: 10 }} />
+              <Text style={{ fontSize: 13, fontWeight: "600", color: "#475569" }}>
+                You won't be able to access your certificates
+              </Text>
+            </View>
+
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Ionicons name="close-circle-outline" size={18} color="#ef4444" style={{ marginRight: 10 }} />
+              <Text style={{ fontSize: 13, fontWeight: "600", color: "#475569" }}>
+                Event organizers won't see your check-in history
+              </Text>
+            </View>
+
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Ionicons name="alert-circle-outline" size={18} color="#ef4444" style={{ marginRight: 10 }} />
+              <Text style={{ fontSize: 13, fontWeight: "700", color: "#b91c1c" }}>
+                This action is permanent and cannot be reversed
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Data Deletion Timeline */}
+        <View 
           style={{
-            fontSize: 12,
-            color: "#666",
-            marginTop: 40,
-            marginBottom: 20,
+            backgroundColor: "#ffffff",
+            borderRadius: 20,
+            padding: 20,
+            borderWidth: 1,
+            borderColor: "#f1f5f9",
+            marginBottom: 24,
           }}
         >
+          <Text style={{ fontSize: 10, fontWeight: "900", color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 16 }}>
+            Data Deletion Timeline
+          </Text>
+
+          <View style={{ gap: 16 }}>
+            <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+              <View style={{ backgroundColor: "#f1f5f9", width: 22, height: 22, borderRadius: 11, alignItems: "center", justifyContent: "center", marginRight: 10, marginTop: 1 }}>
+                <Text style={{ fontSize: 11, fontWeight: "800", color: "#64748b" }}>1</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, fontWeight: "800", color: "#334155" }}>Immediately</Text>
+                <Text style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>Your account access is terminated.</Text>
+              </View>
+            </View>
+
+            <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+              <View style={{ backgroundColor: "#f1f5f9", width: 22, height: 22, borderRadius: 11, alignItems: "center", justifyContent: "center", marginRight: 10, marginTop: 1 }}>
+                <Text style={{ fontSize: 11, fontWeight: "800", color: "#64748b" }}>2</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, fontWeight: "800", color: "#334155" }}>Within 30 Days</Text>
+                <Text style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>All personal data is permanently deleted from servers.</Text>
+              </View>
+            </View>
+
+            <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+              <View style={{ backgroundColor: "#f1f5f9", width: 22, height: 22, borderRadius: 11, alignItems: "center", justifyContent: "center", marginRight: 10, marginTop: 1 }}>
+                <Text style={{ fontSize: 11, fontWeight: "800", color: "#64748b" }}>3</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, fontWeight: "800", color: "#334155" }}>Within 90 Days</Text>
+                <Text style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>Data is completely purged from all system backups.</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Your Rights */}
+        <View 
+          style={{
+            backgroundColor: "#ffffff",
+            borderRadius: 20,
+            padding: 20,
+            borderWidth: 1,
+            borderColor: "#f1f5f9",
+            marginBottom: 24,
+          }}
+        >
+          <Text style={{ fontSize: 10, fontWeight: "900", color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 12 }}>
+            Your Rights
+          </Text>
+          <Text style={{ fontSize: 13, color: "#64748b", fontWeight: "600", lineHeight: 20 }}>
+            Under data protection regulations (GDPR, CCPA, etc.), you have the right to request deletion of your personal data, receive a copy of your data before deletion, and have your deletion confirmed in writing.
+          </Text>
+        </View>
+
+        {/* FAQ Section */}
+        <View 
+          style={{
+            backgroundColor: "#ffffff",
+            borderRadius: 20,
+            padding: 20,
+            borderWidth: 1,
+            borderColor: "#f1f5f9",
+            marginBottom: 24,
+          }}
+        >
+          <Text style={{ fontSize: 10, fontWeight: "900", color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 16 }}>
+            FAQ
+          </Text>
+
+          <View style={{ gap: 16 }}>
+            <View>
+              <Text style={{ fontSize: 13, fontWeight: "800", color: "#334155" }}>
+                Can I recover my account after deletion?
+              </Text>
+              <Text style={{ fontSize: 13, color: "#64748b", marginTop: 4, lineHeight: 18 }}>
+                No, account deletion is permanent. Contact support before confirming deletion if you're reconsidering.
+              </Text>
+            </View>
+
+            <View>
+              <Text style={{ fontSize: 13, fontWeight: "800", color: "#334155" }}>
+                What happens to my event attendance records?
+              </Text>
+              <Text style={{ fontSize: 13, color: "#64748b", marginTop: 4, lineHeight: 18 }}>
+                Your personal data will be deleted. Event organizers may retain anonymized statistics, but won't be able to link them to you.
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Contact Support */}
+        <View 
+          style={{
+            backgroundColor: "#ffffff",
+            borderRadius: 20,
+            padding: 20,
+            borderWidth: 1,
+            borderColor: "#f1f5f9",
+            marginBottom: 32,
+            alignItems: "center",
+          }}
+        >
+          <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: "#f8fafc", borderWidth: 1, borderColor: "#e2e8f0", alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
+            <Ionicons name="mail" size={20} color={themeColor} />
+          </View>
+          <Text style={{ fontSize: 10, fontWeight: "900", color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 6 }}>
+            Send Inquiries To
+          </Text>
+          <Text style={{ fontSize: 15, fontWeight: "800", color: themeColor }}>
+            synergysphere@gryphonacademy.co.in
+          </Text>
+        </View>
+
+        <Text style={{ textAlign: "center", fontSize: 11, color: "#94a3b8", marginBottom: 10 }}>
           © 2026 ConnectHQ. All rights reserved.
-        </ThemedText>
-      </ThemedView>
-    </ScrollView>
+        </Text>
+      </ScrollView>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingTop: 50,
-    paddingBottom: 15,
-    paddingHorizontal: 15,
-    borderBottomWidth: 1,
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  interactiveBox: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 20,
-    marginVertical: 15,
-  },
-  input: {
-    height: 50,
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: 15,
-    marginBottom: 15,
-    fontSize: 15,
-  },
-  deleteBtn: {
-    backgroundColor: "#dc2626",
-    height: 50,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  deleteBtnDisabled: {
-    backgroundColor: "#ef4444",
-    opacity: 0.5,
-  },
-  deleteBtnText: {
-    color: "#ffffff",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-});

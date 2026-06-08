@@ -43,13 +43,13 @@ const ATTENDEE_PALETTES: Record<EnrollmentType, AttendeePalette> = {
     backgroundGradient: ["#fef2f2", "#fff"],
   },
   masterclass: {
-    primary: "#3b82f6", // Blue for Masterclass
-    primaryDark: "#2563eb",
-    primarySoft: "#dbeafe",
-    primaryBorder: "#bfdbfe",
-    primaryText: "#1d4ed8",
-    gradient: ["#3b82f6", "#2563eb"],
-    backgroundGradient: ["#eff6ff", "#fff"],
+    primary: "#06b6d4", // Teal for Masterclass (matching qr-pass.tsx)
+    primaryDark: "#0891b2",
+    primarySoft: "#ecfeff",
+    primaryBorder: "#c5f6fa",
+    primaryText: "#0891b2",
+    gradient: ["#06b6d4", "#0891b2"],
+    backgroundGradient: ["#ecfeff", "#fff"],
   },
 };
 
