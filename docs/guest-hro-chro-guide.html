@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ConnectHQ Guest App Guide</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 15mm;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #f6f8fb;
+      color: #172033;
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.42;
+    }
+
+    .page {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 28px;
+      background: #ffffff;
+      min-height: 100vh;
+    }
+
+    .topline {
+      color: #4f46e5;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 8px 0 8px;
+      color: #0f172a;
+      font-size: 30px;
+      line-height: 1.12;
+    }
+
+    .subtitle {
+      margin: 0 0 16px;
+      color: #536179;
+      font-size: 14px;
+    }
+
+    h2 {
+      margin: 18px 0 10px;
+      color: #0f172a;
+      font-size: 17px;
+    }
+
+    ol {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      counter-reset: steps;
+    }
+
+    li {
+      display: grid;
+      grid-template-columns: 34px 1fr minmax(110px, 150px);
+      gap: 10px;
+      margin: 0 0 11px;
+      padding: 12px;
+      border: 1px solid #e6ebf3;
+      border-radius: 8px;
+      counter-increment: steps;
+      page-break-inside: avoid;
+    }
+
+    li::before {
+      content: counter(steps);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: #4f46e5;
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .step-title {
+      display: block;
+      margin-bottom: 3px;
+      color: #111827;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .step-text {
+      color: #536179;
+      font-size: 13px;
+    }
+
+    .step-shot {
+      width: 100%;
+      max-height: 215px;
+      border: 1px solid #e6ebf3;
+      border-radius: 8px;
+      object-fit: cover;
+      object-position: top;
+      background: #f8fafc;
+    }
+
+    .step-shot.empty {
+      display: none;
+    }
+
+    .screens {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .screen {
+      padding: 10px 8px;
+      border-radius: 8px;
+      background: #f8fafc;
+      border: 1px solid #edf1f7;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: #334155;
+    }
+
+    .screen span {
+      display: block;
+      margin-top: 3px;
+      color: #64748b;
+      font-size: 10px;
+      font-weight: 500;
+    }
+
+    .footer {
+      margin-top: 18px;
+      padding-top: 12px;
+      border-top: 1px solid #e6ebf3;
+      color: #64748b;
+      font-size: 12px;
+    }
+
+    @media print {
+      body {
+        background: #ffffff;
+      }
+
+      .page {
+        max-width: none;
+        padding: 0;
+        min-height: auto;
+      }
+    }
+
+    @media (max-width: 680px) {
+      li {
+        grid-template-columns: 34px 1fr;
+      }
+
+      .step-shot {
+        grid-column: 2;
+        max-width: 160px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="topline">ConnectHQ Event Pass</div>
+    <h1>Quick Guide for Guests</h1>
+    <p class="subtitle">Use this short guide after receiving the event app link by email.</p>
+
+    <h2>Event App Quick Start</h2>
+    <ol>
+      <li>
+        <div>
+          <span class="step-title">Open the app link</span>
+          <span class="step-text">Tap the link from the email on your phone. If asked, choose to open it in your browser or app store.</span>
+        </div>
+        <img class="step-shot empty" alt="">
+      </li>
+      <li>
+        <div>
+          <span class="step-title">Install and open the app</span>
+          <span class="step-text">Tap Install or Get, wait for the download, then open ConnectHQ Event Pass.</span>
+        </div>
+        <img class="step-shot empty" alt="">
+      </li>
+      <li>
+        <div>
+          <span class="step-title">Continue as Guest and view My Pass</span>
+          <span class="step-text">On the Welcome screen, keep Guest selected, enter your full name and registered email, then tap Continue to Event. Your QR pass opens first.</span>
+        </div>
+        <img class="step-shot" src="../assets/images/Media-qrcode.jpg" alt="My Pass QR screen">
+      </li>
+      <li>
+        <div>
+          <span class="step-title">View the Attendees tab</span>
+          <span class="step-text">Tap Attendees from the bottom menu to see the attendee list and search by name, email, or company.</span>
+        </div>
+        <img class="step-shot" src="../assets/images/Media-attendee.jpg" alt="Attendees screen">
+      </li>
+      <li>
+        <div>
+          <span class="step-title">Open the Gallery tab</span>
+          <span class="step-text">Tap Gallery to view event highlights and photos. Tap any photo to open it larger.</span>
+        </div>
+        <img class="step-shot" src="../assets/images/Media-gallery.jpg" alt="Gallery screen">
+      </li>
+      <li>
+        <div>
+          <span class="step-title">Check your profile details</span>
+          <span class="step-text">Open Profile to confirm your name, email, role, enrollment, company, and pass ID.</span>
+        </div>
+        <img class="step-shot" src="../assets/images/Media-profile.jpg" alt="Profile screen">
+      </li>
+    </ol>
+
+    <h2>App Screens</h2>
+    <div class="screens">
+      <div class="screen">My Pass<span>QR entry pass</span></div>
+      <div class="screen">Agenda<span>event schedule</span></div>
+      <div class="screen">Attendees<span>guest list</span></div>
+      <div class="screen">Gallery<span>event photos</span></div>
+      <div class="screen">Profile<span>your details</span></div>
+    </div>
+
+    <p class="footer">
+      Tip: Please use the same email address used for event registration. Keep the app installed until the event is complete.
+    </p>
+  </main>
+</body>
+</html>

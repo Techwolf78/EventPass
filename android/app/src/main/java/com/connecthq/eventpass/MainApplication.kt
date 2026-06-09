@@ -1,4 +1,4 @@
-package Event.Pass
+package com.connecthq.eventpass
 
 import android.app.Application
 import android.content.res.Configuration

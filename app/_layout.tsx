@@ -121,6 +121,8 @@ function RootLayoutInner() {
       "terms-and-conditions",
       "delete-account",
       "about",
+      "support",
+      "marketing",
     ]);
     const isLegalPage = legalPages.has(segments[0]);
 

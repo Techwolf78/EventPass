@@ -87,7 +87,7 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'Event.Pass'
+    namespace 'com.connecthq.eventpass'
     defaultConfig {
         applicationId 'com.connecthq.eventpass'
         minSdkVersion rootProject.ext.minSdkVersion
