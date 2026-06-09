@@ -24,7 +24,7 @@ export default function MarketingPage() {
       <View className="mx-auto w-full max-w-[900px] px-5 py-6 md:px-8 md:py-8">
         <View className="flex-row items-center justify-between border-b border-slate-200 pb-4">
           <Text className="text-lg font-black text-slate-900">
-            ConnectHQ EventPass
+            ConnectHQ
           </Text>
           <View className="flex-row items-center gap-4">
             <Link href="/privacy-policy" asChild>
@@ -45,8 +45,8 @@ export default function MarketingPage() {
             Simple event passes and check-ins for ConnectHQ events.
           </Text>
           <Text className="mt-5 max-w-[620px] text-center text-base font-medium leading-7 text-slate-600 md:text-lg">
-            ConnectHQ EventPass helps attendees access event details, view QR
-            passes, follow agendas, and support smoother event entry.
+            ConnectHQ helps attendees access event details, view QR passes,
+            follow agendas, and support smoother event entry.
           </Text>
 
           <Link href={supportHref} asChild>
