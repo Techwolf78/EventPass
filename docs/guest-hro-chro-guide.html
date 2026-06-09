@@ -117,6 +117,18 @@
       display: none;
     }
 
+    .step-shot.login-shot {
+      max-height: 260px;
+      object-fit: contain;
+      background: #ffffff;
+    }
+
+    .step-shot.store-shot {
+      max-height: 260px;
+      object-fit: contain;
+      background: #111111;
+    }
+
     .screens {
       display: grid;
       grid-template-columns: repeat(5, 1fr);
@@ -193,14 +205,21 @@
       <li>
         <div>
           <span class="step-title">Install and open the app</span>
-          <span class="step-text">Tap Install or Get, wait for the download, then open ConnectHQ Event Pass.</span>
+          <span class="step-text">On the app store page, tap Install or Get. Wait for the download to finish, then open ConnectHQ.</span>
         </div>
-        <img class="step-shot empty" alt="">
+        <img class="step-shot store-shot" src="../assets/images/Media-store.jpg" alt="ConnectHQ app store install screen">
       </li>
       <li>
         <div>
-          <span class="step-title">Continue as Guest and view My Pass</span>
-          <span class="step-text">On the Welcome screen, keep Guest selected, enter your full name and registered email, then tap Continue to Event. Your QR pass opens first.</span>
+          <span class="step-title">Enter guest details</span>
+          <span class="step-text">On the Welcome screen, keep Guest selected. Enter your full name and the same email address used for event registration, accept the Terms and Conditions, then tap Continue to Event.</span>
+        </div>
+        <img class="step-shot login-shot" src="../assets/images/Media-login.jpeg" alt="Guest welcome screen with full name and email fields">
+      </li>
+      <li>
+        <div>
+          <span class="step-title">View your QR pass</span>
+          <span class="step-text">After submitting your guest details, the app generates your event pass and opens the QR pass screen. Show this QR code at event entry.</span>
         </div>
         <img class="step-shot" src="../assets/images/Media-qrcode.jpg" alt="My Pass QR screen">
       </li>

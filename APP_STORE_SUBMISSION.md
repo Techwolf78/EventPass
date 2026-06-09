@@ -22,8 +22,8 @@ TEST ACCOUNT 1: Organizer (Admin Role)
 ------------------------------------------------------------
 Use these credentials under the "Organizer" tab on the login screen.
 * Role: Organizer/Admin (Requires Camera access for scanning)
-* Email/Username: admin@test.com
-* Password: testpassword123
+* Email/Username: superadmin@test.com
+* Password: 12345678
 
 Testing steps for Organizer:
 1. Open the app and navigate to the "Organizer" tab on the Login Screen.
@@ -35,8 +35,8 @@ TEST ACCOUNT 2: Guest / Attendee
 ------------------------------------------------------------
 Use these credentials under the "Guest" tab on the login screen.
 * Role: Attendee (Pass holder)
-* Name: Test Attendee
-* Email: attendee@test.com
+* Name: Ajay
+* Email: ajay@gmail.com
 
 Testing steps for Attendee:
 1. Open the app and navigate to the "Guest" tab on the Login Screen.
@@ -78,9 +78,9 @@ Add a document in the `guestList` collection to allow the guest to sign in:
 * **Collection:** `guestList`
 * **Document ID:** `test_guest_doc` (or auto-ID)
 * **Fields:**
-  - `name`: `Test Attendee` (String)
-  - `nameLower`: `test attendee` (String)
-  - `email`: `attendee@test.com` (String)
+  - `name`: `Ajay` (String)
+  - `nameLower`: `ajay` (String)
+  - `email`: `ajay@gmail.com` (String)
   - `status`: `pending` (String)
   - `registeredAt`: `null` (Null)
   - `qrToken`: `TEST-QR-TOKEN-12345` (String)
@@ -89,15 +89,15 @@ Add a document in the `guestList` collection to allow the guest to sign in:
 ### C. Admin User (For Firebase Authentication)
 Ensure the organizer login exists in Firebase Authentication and Firestore:
 1. In **Firebase Auth Console**, click **Add User**:
-   - **Email:** `admin@test.com`
-   - **Password:** `testpassword123`
+   - **Email:** `superadmin@test.com`
+   - **Password:** `12345678`
 2. Note the generated User ID (`UID`) from Firebase Auth.
 3. In **Firestore Database**, create a document in the `users` collection:
    - **Collection:** `users`
    - **Document ID:** `[Use the Auth UID generated above]`
    - **Fields:**
      - `name`: `System Administrator` (String)
-     - `email`: `admin@test.com` (String)
+     - `email`: `superadmin@test.com` (String)
      - `role`: `admin` (String)
 
 ---
@@ -109,7 +109,7 @@ When Apple performs the review, they will follow these exact actions. Perform th
 1. **Guest Access:**
    - Launch ConnectHQ.
    - Select the **Guest** tab.
-   - Enter `Test Attendee` and `attendee@test.com`.
+   - Enter `Ajay` and `ajay@gmail.com`.
    - Accept the Terms and Conditions and press **Continue to Event**.
    - **Verify:** The app successfully fetches the `TEST-QR-TOKEN-12345` and renders a clean, scannable QR Code pass on the `QR Pass` screen.
    - Navigate to the `Agenda` screen.
@@ -119,12 +119,12 @@ When Apple performs the review, they will follow these exact actions. Perform th
    - On the Attendee dashboard, navigate to the **Profile** screen.
    - Click **Delete Account** at the bottom.
    - **Verify:** The app navigates to the internal `Delete Account` screen instead of opening an external browser link.
-   - Type `attendee@test.com` to confirm and click **Permanently Delete My Account**.
+   - Type `ajay@gmail.com` to confirm and click **Permanently Delete My Account**.
    - **Verify:** Confirming the deletion clears the local AsyncStorage, triggers Firestore cleanup, and returns you to the login screen.
 
 3. **Organizer / Admin Scanning:**
    - Re-open the app and select the **Organizer** tab.
-   - Enter `admin@test.com` and `testpassword123` and log in.
+   - Enter `superadmin@test.com` and `12345678` and log in.
    - Navigate to the **Scan** tab.
    - Accept the camera permission request.
    - **Verify:** The camera view opens. Scan a generated QR code containing `TEST-QR-TOKEN-12345`.

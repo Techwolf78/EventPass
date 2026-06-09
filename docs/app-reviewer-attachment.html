@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ConnectHQ App Review Access Guide</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 14mm;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #f8fafc;
+      color: #172033;
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.45;
+    }
+
+    .page {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 28px;
+      background: #ffffff;
+    }
+
+    .eyebrow {
+      color: #4f46e5;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 8px 0 8px;
+      color: #0f172a;
+      font-size: 29px;
+      line-height: 1.15;
+    }
+
+    h2 {
+      margin: 22px 0 10px;
+      color: #0f172a;
+      font-size: 17px;
+    }
+
+    p {
+      margin: 0 0 10px;
+      color: #526176;
+      font-size: 13px;
+    }
+
+    .summary {
+      margin-top: 16px;
+      padding: 14px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #f8fafc;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .box {
+      padding: 14px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #ffffff;
+      page-break-inside: avoid;
+    }
+
+    .label {
+      display: block;
+      margin-bottom: 6px;
+      color: #0f172a;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .value {
+      display: block;
+      color: #334155;
+      font-size: 13px;
+      font-weight: 600;
+      word-break: break-word;
+    }
+
+    ol {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    li {
+      margin: 0 0 7px;
+      color: #526176;
+      font-size: 13px;
+    }
+
+    .screens {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .screen-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #ffffff;
+      page-break-inside: avoid;
+    }
+
+    .screen-card img {
+      display: block;
+      width: 100%;
+      height: 230px;
+      object-fit: contain;
+      background: #ffffff;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .screen-card .caption {
+      padding: 8px;
+      color: #334155;
+      font-size: 11px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .note {
+      margin-top: 14px;
+      padding: 12px;
+      border-left: 4px solid #4f46e5;
+      background: #f8fafc;
+      color: #475569;
+      font-size: 12px;
+    }
+
+    .footer {
+      margin-top: 22px;
+      padding-top: 12px;
+      border-top: 1px solid #e2e8f0;
+      color: #64748b;
+      font-size: 11px;
+    }
+
+    @media print {
+      body {
+        background: #ffffff;
+      }
+
+      .page {
+        max-width: none;
+        padding: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="eyebrow">ConnectHQ App Review</div>
+    <h1>Reviewer Access Guide</h1>
+    <p>
+      This document provides test access instructions for ConnectHQ. The app is
+      an event utility for attendee QR passes, event schedules, attendee lists,
+      organizer check-in scanning, and profile/account management.
+    </p>
+
+    <div class="summary">
+      <span class="label">App Name</span>
+      <span class="value">ConnectHQ EventPass</span>
+      <span class="label" style="margin-top: 10px;">Bundle Identifier</span>
+      <span class="value">com.connecthq.eventpass</span>
+      <span class="label" style="margin-top: 10px;">Support URL</span>
+      <span class="value">https://event-pass-eta.vercel.app/support</span>
+      <span class="label" style="margin-top: 10px;">Marketing URL</span>
+      <span class="value">https://event-pass-eta.vercel.app/marketing</span>
+    </div>
+
+    <h2>Test Access</h2>
+    <div class="grid">
+      <div class="box">
+        <span class="label">Guest / Attendee Access</span>
+        <span class="value">Tab: Guest</span>
+        <span class="value">Full Name: Ajay</span>
+        <span class="value">Email: ajay@gmail.com</span>
+        <p class="note">
+          Guest access does not require a password. The reviewer should enter
+          the full name and registered email address, accept Terms and
+          Conditions, then tap Continue to Event.
+        </p>
+      </div>
+
+      <div class="box">
+        <span class="label">Organizer / Admin Access</span>
+        <span class="value">Tab: Organizer</span>
+        <span class="value">Email: superadmin@test.com</span>
+        <span class="value">Password: 12345678</span>
+        <p class="note">
+          Organizer access is used to review the admin screens and QR scanner.
+          Please allow camera permission when testing the scanner.
+        </p>
+      </div>
+    </div>
+
+    <h2>Guest Review Steps</h2>
+    <ol>
+      <li>Open the app and keep the Guest tab selected on the Welcome screen.</li>
+      <li>Enter Full Name: Ajay.</li>
+      <li>Enter Email Address: ajay@gmail.com.</li>
+      <li>Accept the Terms and Conditions.</li>
+      <li>Tap Continue to Event.</li>
+      <li>Review the QR pass, agenda, attendees, gallery, profile, and delete account flow.</li>
+    </ol>
+
+    <h2>Organizer Review Steps</h2>
+    <ol>
+      <li>Open the app and switch to the Organizer tab.</li>
+      <li>Sign in with superadmin@test.com and 12345678.</li>
+      <li>Open the scanner screen and allow camera access.</li>
+      <li>Review guest management, agenda, attendee status, and check-in features.</li>
+    </ol>
+
+    <h2>Reference Screens</h2>
+    <div class="screens">
+      <div class="screen-card">
+        <img src="../assets/images/Media-login.jpeg" alt="Guest login screen">
+        <div class="caption">Guest details screen</div>
+      </div>
+      <div class="screen-card">
+        <img src="../assets/images/Media-qrcode.jpg" alt="QR pass screen">
+        <div class="caption">QR pass after guest entry</div>
+      </div>
+      <div class="screen-card">
+        <img src="../assets/images/Media-profile.jpg" alt="Profile screen">
+        <div class="caption">Profile and account details</div>
+      </div>
+    </div>
+
+    <h2>Review Notes</h2>
+    <p>
+      The app uses Firebase services for authentication and event data. It uses
+      standard HTTPS/Firebase encryption only and does not use custom
+      cryptography or non-exempt encryption.
+    </p>
+    <p>
+      If any test account cannot be accessed during review, please contact
+      synergysphere@gryphonacademy.co.in.
+    </p>
+
+    <div class="footer">
+      Prepared for Apple App Review. Copyright 2026 ConnectHQ.
+    </div>
+  </main>
+</body>
+</html>
