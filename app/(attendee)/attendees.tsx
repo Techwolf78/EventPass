@@ -1,5 +1,5 @@
 import { useAuth } from "@/context/AuthContext";
-import { useAttendeeTheme } from "@/hooks/use-attendee-theme";
+
 import {
   Candidate,
   getAttendeeListWithCheckIn,
