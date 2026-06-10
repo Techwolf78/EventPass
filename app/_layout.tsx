@@ -19,6 +19,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from "react-native";
 
 import AnimatedSplash from "@/components/AnimatedSplash";
@@ -70,6 +71,7 @@ SplashScreen.preventAutoHideAsync();
 
 function RootLayoutInner() {
   const colorScheme = useColorScheme();
+  const { width } = useWindowDimensions();
   const { loading, user, isAdmin, guestSession, isGuest } = useAuth();
   const [appIsReady, setAppIsReady] = useState(false);
   const isConnected = useIsConnected();
@@ -215,6 +217,26 @@ function RootLayoutInner() {
 
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+      <View style={{ flex: 1, backgroundColor: "#0f172a" }}>
+        <View
+          style={
+            width >= 768
+              ? {
+                  maxWidth: 600,
+                  width: "100%",
+                  alignSelf: "center",
+                  flex: 1,
+                  backgroundColor: colorScheme === "dark" ? "#0f172a" : "#ffffff",
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 10 },
+                  shadowOpacity: 0.15,
+                  shadowRadius: 20,
+                  elevation: 10,
+                  overflow: "hidden",
+                }
+              : { flex: 1 }
+          }
+        >
       <Stack
         screenOptions={{
           headerShown: false,
@@ -240,6 +262,8 @@ function RootLayoutInner() {
         />
         <Stack.Screen name="index" />
       </Stack>
+        </View>
+      </View>
       <StatusBar style="light" />
 
       {/* Premium Full-Screen Offline Overlay Page */}

@@ -59,12 +59,10 @@ export default function AttendeesScreen() {
     "all" | "checked_in" | "pending" | "vip"
   >("all");
 
-  const { palette, loading: themeLoading } = useAttendeeTheme();
-
-  // Theme colors based on event type
-  const themeColor = palette.primary;
-  const accentColor = palette.primaryDark;
-  const statusColor = palette.primary;
+  // Simple, unified color palette for both events
+  const themeColor = "#6366f1"; // Indigo-500
+  const accentColor = "#4f46e5"; // Indigo-600
+  const statusColor = "#10b981"; // Green for check-in status / live indicators
 
   useEffect(() => {
     loadAttendees();
@@ -125,7 +123,7 @@ export default function AttendeesScreen() {
     });
   }, [attendees, checkedInIds, searchQuery, activeFilter]);
 
-  if (loading || themeLoading) {
+  if (loading) {
     return (
       <View style={[styles.loadingContainer, { paddingTop: insets.top }]}>
         <ActivityIndicator size="large" color={themeColor} />
