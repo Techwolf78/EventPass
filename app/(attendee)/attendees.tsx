@@ -1,5 +1,3 @@
-import { useAuth } from "@/context/AuthContext";
-
 import {
   Candidate,
   getAttendeeListWithCheckIn,
@@ -7,7 +5,7 @@ import {
 } from "@/utils/firestore";
 import { formatTimeAgo } from "@/utils/time";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -46,7 +44,6 @@ const getAvatarColor = (name: string) => {
 
 export default function AttendeesScreen() {
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
   const [attendees, setAttendees] = useState<
     (Candidate & { checkInTime?: any })[]
   >([]);
@@ -58,18 +55,19 @@ export default function AttendeesScreen() {
   const [activeFilter, setActiveFilter] = useState<
     "all" | "checked_in" | "pending" | "vip"
   >("all");
+  const [toastMessage, setToastMessage] = useState("");
+  const [cooldown, setCooldown] = useState(false);
 
   // Simple, unified color palette for both events
   const themeColor = "#6366f1"; // Indigo-500
-  const accentColor = "#4f46e5"; // Indigo-600
   const statusColor = "#10b981"; // Green for check-in status / live indicators
 
   useEffect(() => {
-    loadAttendees();
+    loadAttendees(false);
   }, []);
 
-  const loadAttendees = async () => {
-    setLoading(true);
+  const loadAttendees = async (isRefresh = false) => {
+    if (!isRefresh) setLoading(true);
     setError(null);
     try {
       const [list, checkIns] = await Promise.all([
@@ -83,15 +81,24 @@ export default function AttendeesScreen() {
       console.error("Error loading attendees:", err);
       setError("Failed to load attendees. Please try again.");
     } finally {
-      setLoading(false);
+      if (!isRefresh) setLoading(false);
     }
   };
 
-  const onRefresh = useCallback(async () => {
+  const handleSync = async () => {
+    if (cooldown) return;
     setRefreshing(true);
-    await loadAttendees();
-    setRefreshing(false);
-  }, []);
+    try {
+      await loadAttendees(true);
+    } finally {
+      setRefreshing(false);
+      setToastMessage("Attendance data refreshed");
+      setTimeout(() => setToastMessage(""), 3000);
+
+      setCooldown(true);
+      setTimeout(() => setCooldown(false), 5000);
+    }
+  };
 
   const stats = useMemo(() => {
     const total = attendees.length;
@@ -140,7 +147,10 @@ export default function AttendeesScreen() {
         </View>
         <Text style={styles.errorTitle}>Connection Error</Text>
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={[styles.retryButton, { backgroundColor: themeColor }]} onPress={loadAttendees}>
+        <TouchableOpacity
+          style={[styles.retryButton, { backgroundColor: themeColor }]}
+          onPress={() => loadAttendees()}
+        >
           <Text style={styles.retryButtonText}>Retry Connection</Text>
         </TouchableOpacity>
       </View>
@@ -160,8 +170,28 @@ export default function AttendeesScreen() {
             <Text style={styles.headerSubtitle}>Live Check-In Monitoring</Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.refreshButton} onPress={loadAttendees}>
-          <Ionicons name="refresh" size={18} color="#475569" />
+        <TouchableOpacity
+          style={[
+            styles.syncButton,
+            (refreshing || cooldown) && { opacity: 0.7 },
+          ]}
+          onPress={handleSync}
+          disabled={refreshing || cooldown}
+          activeOpacity={0.6}
+        >
+          {refreshing ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <>
+              <Ionicons
+                name={cooldown ? "checkmark" : "sync"}
+                size={16}
+                color="#000000"
+                style={{ marginRight: 4 }}
+              />
+              <Text style={styles.syncButtonText}>{cooldown ? "" : ""}</Text>
+            </>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -319,7 +349,7 @@ export default function AttendeesScreen() {
         ]}
         showsVerticalScrollIndicator={false}
         refreshing={refreshing}
-        onRefresh={onRefresh}
+        onRefresh={handleSync}
         renderItem={({ item, index }) => {
           const isCheckedIn = checkedInIds.has(item.id);
           const isVIP = item.isVIP || false;
@@ -430,6 +460,14 @@ export default function AttendeesScreen() {
           </View>
         }
       />
+
+      {/* Toast Message */}
+      {toastMessage ? (
+        <View style={styles.toastContainer}>
+          <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+          <Text style={styles.toastText}>{toastMessage}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -523,15 +561,24 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: "#64748B",
   },
-  refreshButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    backgroundColor: "#FFFFFF",
+  syncButton: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: "#ffffff",
+    paddingHorizontal: 6,
+    paddingVertical: 6,
+    borderRadius: 20,
+    shadowColor: "#4F46E5",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
+    zIndex: 100,
+  },
+  syncButtonText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "600",
   },
   statsContainer: {
     backgroundColor: "#FFFFFF",
@@ -784,5 +831,28 @@ const styles = StyleSheet.create({
     backgroundColor: "#F1F5F9",
     alignItems: "center",
     justifyContent: "center",
+  },
+  toastContainer: {
+    position: "absolute",
+    bottom: 40,
+    alignSelf: "center",
+    backgroundColor: "#1E293B",
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+    zIndex: 1000,
+  },
+  toastText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "500",
+    marginLeft: 8,
   },
 });

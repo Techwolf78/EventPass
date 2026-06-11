@@ -125,6 +125,7 @@ function RootLayoutInner() {
       "about",
       "support",
       "marketing",
+      "analytics",
     ]);
     const isLegalPage = legalPages.has(segments[0]);
 
@@ -220,7 +221,17 @@ function RootLayoutInner() {
       <View style={{ flex: 1, backgroundColor: "#0f172a" }}>
         <View
           style={
-            width >= 768
+            width >= 768 &&
+            segments[0] &&
+            ![
+              "marketing",
+              "analytics",
+              "privacy-policy",
+              "terms-and-conditions",
+              "about",
+              "support",
+              "delete-account",
+            ].includes(segments[0])
               ? {
                   maxWidth: 600,
                   width: "100%",
