@@ -88,6 +88,15 @@ function RootLayoutInner() {
 
   const router = useRouter();
   const segments = useSegments();
+  const isPublicPage = !!(segments[0] && [
+    "privacy-policy",
+    "terms-and-conditions",
+    "delete-account",
+    "about",
+    "support",
+    "marketing",
+    "analytics",
+  ].includes(segments[0]));
 
   useEffect(() => {
     async function prepare() {
@@ -107,7 +116,7 @@ function RootLayoutInner() {
   }, []);
 
   useEffect(() => {
-    if (appIsReady && !loading) {
+    if (appIsReady && (!loading || isPublicPage)) {
       // Hide the native splash screen — the animated splash takes over
       SplashScreen.hideAsync();
     }
@@ -115,7 +124,7 @@ function RootLayoutInner() {
 
   useEffect(() => {
     // Only navigate after both splashes are done
-    if (loading || !appIsReady || showAnimatedSplash) return;
+    if (!isPublicPage && (loading || !appIsReady || showAnimatedSplash)) return;
 
     const inAuthGroup = segments[0] === "(auth)";
     const legalPages = new Set([
@@ -201,7 +210,7 @@ function RootLayoutInner() {
     router,
   ]);
 
-  if (!appIsReady || loading) {
+  if (!appIsReady || (loading && !isPublicPage)) {
     return (
       <View
         style={{
@@ -466,7 +475,7 @@ function RootLayoutInner() {
       )}
 
       {/* Animated splash overlay — renders on top of everything */}
-      {showAnimatedSplash && (
+      {showAnimatedSplash && !isPublicPage && (
         <AnimatedSplash onFinish={() => setShowAnimatedSplash(false)} />
       )}
     </ThemeProvider>
