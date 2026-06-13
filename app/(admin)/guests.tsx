@@ -623,7 +623,7 @@ export default function GuestListScreen() {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Text style={styles.headerTitle}>Guest List</Text>
-          <Text style={styles.headerSubtitle}>ADMIN • INNOVATESUMMIT</Text>
+          <Text style={styles.headerSubtitle}>ADMIN • EVENTPASS</Text>
         </View>
         {canEdit && (
           <TouchableOpacity

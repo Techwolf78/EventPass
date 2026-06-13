@@ -420,7 +420,7 @@ export default function AgendaScreen() {
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={styles.headerTitle}>Agenda Builder</Text>
-            <Text style={styles.headerSubtitle}>ADMIN • INNOVATESUMMIT</Text>
+            <Text style={styles.headerSubtitle}>ADMIN • EVENTPASS</Text>
           </View>
         </View>
 

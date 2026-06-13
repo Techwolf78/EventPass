@@ -17,7 +17,7 @@ export type EnrollmentType = "masterclass" | "event";
 export const getEnrollmentDisplayName = (
   type?: EnrollmentType | string | null,
 ): string => {
-  if (type === "masterclass") return "Masterclass";
+  if (type === "masterclass") return "Event Pass";
   if (type === "event") return "Synergy Sphere";
   return "Synergy Sphere"; // default
 };

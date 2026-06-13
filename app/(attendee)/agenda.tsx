@@ -123,7 +123,7 @@ export default function AgendaScreen() {
   }
 
   const isMasterclass = resolvedEnrollmentType === "masterclass";
-  const displayTitle = isMasterclass ? "MASTERCLASS 3.0" : "SYNERGY SPHERE 2.0";
+  const displayTitle = isMasterclass ? "Event Pass" : "SYNERGY SPHERE 2.0";
   const displayDate = "June 27, 2026";
   const displayLocation = "Ritz-Carlton, Pune";
 

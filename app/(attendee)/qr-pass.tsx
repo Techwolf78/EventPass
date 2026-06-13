@@ -167,7 +167,7 @@ export default function QRPassScreen() {
   // ── Derived values ──────────────────────────────────────────────────────────
   const isMasterclass =
     candidate?.enrollmentType?.toLowerCase() === "masterclass";
-  const eventName = isMasterclass ? "MASTERCLASS 3.0" : "SYNERGY SPHERE 2.0";
+  const eventName = isMasterclass ? "Event Pass" : "SYNERGY SPHERE 2.0";
   const eventDate = "June 27, 2026";
   const eventLocation = "Ritz-Carlton, Pune";
 
@@ -677,7 +677,7 @@ export default function QRPassScreen() {
               lineHeight: 18,
             }}
           >
-            Thank you for being part of the Gryphon Academy community.
+            Thank you for being part of the ConnectHQ community.
           </Text>
         </ScrollView>
       </View>

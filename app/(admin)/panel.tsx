@@ -255,17 +255,6 @@ export default function AdminPanelScreen() {
             <Text style={styles.headerTitle}>Attendance</Text>
             <Text style={styles.headerSubtitle}>ADMIN • LIVE DASHBOARD</Text>
           </View>
-          <TouchableOpacity
-            style={styles.exportIconBtn}
-            onPress={handleExport}
-            disabled={exporting}
-          >
-            {exporting ? (
-              <ActivityIndicator size="small" color="#000000" />
-            ) : (
-              <Ionicons name="download" size={22} color="#000000" />
-            )}
-          </TouchableOpacity>
         </View>
 
         {/* Type Selector - Masterclass / Event */}

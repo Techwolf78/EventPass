@@ -153,19 +153,6 @@ export default function QRScannerScreen() {
             <Text style={styles.liveText}>Live</Text>
           </View>
         </View>
-        {events.length > 0 ? (
-          <View style={styles.eventBadge}>
-            <Ionicons name="calendar" size={14} color="#000000" />
-            <Text style={styles.eventBadgeText} numberOfLines={1}>
-              {events.find((e) => e.id === selectedEventId)?.title || 'Event'}
-            </Text>
-          </View>
-        ) : (
-          <View style={[styles.eventBadge, { borderColor: '#ef4444' }]}>
-            <Ionicons name="alert-circle" size={14} color="#ef4444" />
-            <Text style={[styles.eventBadgeText, { color: '#ef4444' }]}>No Events</Text>
-          </View>
-        )}
       </View>
 
       {/* Camera Section */}

@@ -183,9 +183,9 @@ export default function GalleryScreen() {
   const images =
     enrollmentType === "masterclass" ? MASTERCLASS_IMAGES : EVENT_IMAGES;
   const eventTitle =
-    enrollmentType === "masterclass" ? "Masterclass 3.0" : "Synergy Sphere 2.0";
+    enrollmentType === "masterclass" ? "Event Pass" : "Synergy Sphere 2.0";
   const pastEventTitle =
-    enrollmentType === "masterclass" ? "Masterclass 2.0" : "Synergy Sphere 1.0";
+    enrollmentType === "masterclass" ? "Event Pass 1.0" : "Synergy Sphere 1.0";
 
   if (loading) {
     return (
