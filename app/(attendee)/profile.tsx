@@ -220,7 +220,11 @@ export default function ProfileScreen() {
               <Ionicons name="ribbon-outline" size={20} color="#64748b" />
               <Text className="text-sm font-semibold text-slate-700">Enrollment</Text>
             </View>
-            <Text className="text-sm font-black text-indigo-600 capitalize">
+            <Text
+              className="text-sm font-black text-indigo-600 capitalize text-right"
+              style={{ maxWidth: "55%", flexShrink: 1 }}
+              numberOfLines={2}
+            >
               {getEnrollmentDisplayName(safeProfile.enrollmentType)}
             </Text>
           </View>

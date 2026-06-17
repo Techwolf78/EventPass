@@ -1,4 +1,3 @@
-import CertificateCard from "@/components/qr-pass/CertificateCard";
 import DefaultPass from "@/components/qr-pass/DefaultPass";
 import { useAuth } from "@/context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
@@ -9,6 +8,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   RefreshControl,
   ScrollView,
   StatusBar,
@@ -167,7 +167,9 @@ export default function QRPassScreen() {
   // ── Derived values ──────────────────────────────────────────────────────────
   const isMasterclass =
     candidate?.enrollmentType?.toLowerCase() === "masterclass";
-  const eventName = isMasterclass ? "Gryphon Academy's\nMasterclass 3.0" : "Gryphon Academy's\nSynergy Sphere 2.0";
+  const eventName = isMasterclass
+    ? "Gryphon Academy's\nMasterclass 3.0"
+    : "Gryphon Academy's\nSynergy Sphere 2.0";
   const eventDate = "June 27, 2026";
   const eventLocation = "Ritz-Carlton, Pune";
 
@@ -193,8 +195,15 @@ export default function QRPassScreen() {
     setIsSaved(false);
     let fileUri = "";
     try {
-      const { status } = await MediaLibrary.requestPermissionsAsync(true);
-      if (status !== "granted") {
+      let hasPermission = false;
+      if (Platform.OS === "android" && Number(Platform.Version) >= 29) {
+        hasPermission = true;
+      } else {
+        const { status } = await MediaLibrary.requestPermissionsAsync(true);
+        hasPermission = status === "granted";
+      }
+
+      if (!hasPermission) {
         alert(
           "Permission to access gallery is required to save the certificate.",
         );
@@ -343,16 +352,19 @@ export default function QRPassScreen() {
     );
   }
 
-  // ── Post-Event Screen ───────────────────────────────────────────────────────
   if (isPostEvent) {
     return (
       <View style={{ flex: 1, backgroundColor: "#ffffff" }}>
         <StatusBar barStyle="dark-content" />
         <ScrollView
           contentContainerStyle={{
-            paddingTop: insets.top + 20,
-            paddingBottom: insets.bottom + 48,
+            flexGrow: 1,
+            justifyContent: "center",
+            alignItems: "center",
             backgroundColor: "#ffffff",
+            paddingHorizontal: 28,
+            paddingTop: 48,
+            paddingBottom: insets.bottom + 100,
           }}
           style={{ flex: 1 }}
           showsVerticalScrollIndicator={false}
@@ -364,320 +376,142 @@ export default function QRPassScreen() {
             />
           }
         >
-          {/* Hero Section */}
+          {/* Ribbon Icon */}
           <View
             style={{
+              width: 90,
+              height: 90,
+              borderRadius: 45,
+              backgroundColor: brandAccentBg,
               alignItems: "center",
-              marginBottom: 28,
-              paddingHorizontal: 24,
+              justifyContent: "center",
+              marginBottom: 24,
+              borderWidth: 1.5,
+              borderColor: brandBorderColor,
+              shadowColor: brandColor,
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.12,
+              shadowRadius: 16,
+              elevation: 4,
             }}
           >
-            <View
-              style={{
-                width: 72,
-                height: 72,
-                borderRadius: 36,
-                backgroundColor: brandAccentBg,
-                alignItems: "center",
-                justifyContent: "center",
-                marginBottom: 16,
-                borderWidth: 1,
-                borderColor: brandBorderColor,
-              }}
-            >
-              <Ionicons name="ribbon" size={34} color={brandColor} />
-            </View>
-            <Text
-              style={{
-                fontSize: 24,
-                fontWeight: "900",
-                color: "#0f172a",
-                textAlign: "center",
-                lineHeight: 30,
-              }}
-            >
-              Thank You for Being Part of{"\n"}
-              {eventName}
-            </Text>
-            <Text
-              style={{
-                fontSize: 13,
-                color: "#64748b",
-                textAlign: "center",
-                marginTop: 12,
-                paddingHorizontal: 16,
-                lineHeight: 20,
-              }}
-            >
-              The event may be over, but the memories and connections live on.
-              Here is your official attendance certificate.
-            </Text>
+            <Ionicons name="ribbon" size={44} color={brandColor} />
           </View>
 
-          {/* Certificate View Container */}
-          <View style={{ marginHorizontal: 20, marginBottom: 24 }}>
-            <CertificateCard
-              candidateName={candidate?.name || "Valued Attendee"}
-              eventName={eventName}
-              eventLocation={eventLocation}
-              eventDate={eventDate}
-              uniqueId={uniqueId}
-              certRef={certificateRef}
-            />
-          </View>
+          {/* Title */}
+          <Text
+            style={{
+              fontSize: 26,
+              fontWeight: "900",
+              color: "#0f172a",
+              textAlign: "center",
+              lineHeight: 34,
+              marginBottom: 14,
+            }}
+          >
+            Thank You for Being{"\n"}Part of {eventName}
+          </Text>
 
-          {/* Buttons Area */}
-          <View style={{ paddingHorizontal: 24 }}>
-            {/* Download Button */}
+          {/* Subtitle */}
+          <Text
+            style={{
+              fontSize: 14,
+              color: "#64748b",
+              textAlign: "center",
+              lineHeight: 22,
+              marginBottom: 40,
+              paddingHorizontal: 8,
+            }}
+          >
+            The event may be over, but the memories and connections live on.
+            Check out the gallery or stay connected with other attendees.
+          </Text>
+
+          {/* Full-width stacked buttons */}
+          <View style={{ width: "100%", gap: 14 }}>
             <TouchableOpacity
               style={{
                 backgroundColor: brandColor,
-                borderRadius: 16,
-                paddingVertical: 14,
+                borderRadius: 14,
+                paddingVertical: 12,
                 alignItems: "center",
                 justifyContent: "center",
                 flexDirection: "row",
-                marginBottom: 16,
                 shadowColor: brandColor,
                 shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.15,
+                shadowOpacity: 0.2,
                 shadowRadius: 8,
                 elevation: 4,
-                opacity: isDownloading || isSaved ? 0.75 : 1,
               }}
-              onPress={handleDownloadCertificate}
-              disabled={isDownloading || isSaved}
+              onPress={() => router.push("/(attendee)/gallery")}
             >
-              {isDownloading ? (
-                <ActivityIndicator color="#ffffff" size="small" />
-              ) : isSaved ? (
-                <Ionicons
-                  name="checkmark-circle"
-                  size={20}
-                  color="#ffffff"
-                  style={{ marginRight: 6 }}
-                />
-              ) : (
-                <Ionicons
-                  name="download-outline"
-                  size={20}
-                  color="#ffffff"
-                  style={{ marginRight: 6 }}
-                />
-              )}
+              <Ionicons
+                name="images-outline"
+                size={20}
+                color="#ffffff"
+                style={{ marginRight: 10 }}
+              />
               <Text
-                style={{ color: "#ffffff", fontSize: 15, fontWeight: "bold" }}
+                style={{
+                  fontSize: 15,
+                  fontWeight: "700",
+                  color: "#ffffff",
+                  letterSpacing: 0.3,
+                }}
               >
-                {isDownloading
-                  ? "Downloading..."
-                  : isSaved
-                    ? "Saved to Gallery!"
-                    : "Download Certificate"}
+                View Event Gallery
               </Text>
             </TouchableOpacity>
 
-            {/* Quick Link Row Buttons */}
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                marginBottom: 16,
-              }}
-            >
-              <TouchableOpacity
-                style={{
-                  width: "48%",
-                  backgroundColor: "#ffffff",
-                  borderRadius: 16,
-                  paddingVertical: 14,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexDirection: "row",
-                  borderWidth: 1,
-                  borderColor: "#f1f5f9",
-                  shadowColor: "#0f172a",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.02,
-                  shadowRadius: 4,
-                  elevation: 1,
-                }}
-                onPress={() => router.push("/(attendee)/gallery")}
-              >
-                <Ionicons
-                  name="images-outline"
-                  size={16}
-                  color="#64748b"
-                  style={{ marginRight: 6 }}
-                />
-                <Text
-                  style={{ fontSize: 13, fontWeight: "700", color: "#334155" }}
-                >
-                  Event Gallery
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={{
-                  width: "48%",
-                  backgroundColor: "#ffffff",
-                  borderRadius: 16,
-                  paddingVertical: 14,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexDirection: "row",
-                  borderWidth: 1,
-                  borderColor: "#f1f5f9",
-                  shadowColor: "#0f172a",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.02,
-                  shadowRadius: 4,
-                  elevation: 1,
-                }}
-                onPress={() => router.push("/(attendee)/attendees")}
-              >
-                <Ionicons
-                  name="people-outline"
-                  size={16}
-                  color="#64748b"
-                  style={{ marginRight: 6 }}
-                />
-                <Text
-                  style={{ fontSize: 13, fontWeight: "700", color: "#334155" }}
-                >
-                  Connect
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Event Highlights Flat Card */}
-            <View
+            <TouchableOpacity
               style={{
                 backgroundColor: "#ffffff",
-                borderRadius: 20,
-                padding: 20,
-                borderWidth: 1,
-                borderColor: "#f1f5f9",
-                marginBottom: 24,
+                borderRadius: 14,
+                paddingVertical: 12,
+                alignItems: "center",
+                justifyContent: "center",
+                flexDirection: "row",
+                borderWidth: 1.5,
+                borderColor: brandBorderColor,
                 shadowColor: "#0f172a",
                 shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.02,
-                shadowRadius: 6,
-                elevation: 1,
+                shadowOpacity: 0.04,
+                shadowRadius: 4,
+                elevation: 2,
               }}
+              onPress={() => router.push("/(attendee)/attendees")}
             >
+              <Ionicons
+                name="people-outline"
+                size={20}
+                color={brandColor}
+                style={{ marginRight: 10 }}
+              />
               <Text
                 style={{
-                  fontSize: 10,
-                  fontWeight: "900",
-                  color: "#94a3b8",
-                  textTransform: "uppercase",
-                  letterSpacing: 1.5,
-                  marginBottom: 16,
+                  fontSize: 15,
+                  fontWeight: "700",
+                  color: brandColor,
+                  letterSpacing: 0.3,
                 }}
               >
-                Event Highlights
+                Connect with Attendees
               </Text>
-              <View
-                style={{
-                  flexDirection: "row",
-                  flexWrap: "wrap",
-                  justifyContent: "space-between",
-                }}
-              >
-                <View style={{ width: "48%", marginBottom: 12 }}>
-                  <Text
-                    style={{
-                      fontSize: 20,
-                      fontWeight: "900",
-                      color: "#0f172a",
-                    }}
-                  >
-                    500+
-                  </Text>
-                  <Text
-                    style={{
-                      fontSize: 11,
-                      color: "#94a3b8",
-                      fontWeight: "600",
-                    }}
-                  >
-                    Attendees
-                  </Text>
-                </View>
-                <View style={{ width: "48%", marginBottom: 12 }}>
-                  <Text
-                    style={{
-                      fontSize: 20,
-                      fontWeight: "900",
-                      color: "#0f172a",
-                    }}
-                  >
-                    12
-                  </Text>
-                  <Text
-                    style={{
-                      fontSize: 11,
-                      color: "#94a3b8",
-                      fontWeight: "600",
-                    }}
-                  >
-                    Speakers
-                  </Text>
-                </View>
-                <View style={{ width: "48%" }}>
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontWeight: "800",
-                      color: "#334155",
-                    }}
-                  >
-                    AI & Leadership
-                  </Text>
-                  <Text
-                    style={{
-                      fontSize: 11,
-                      color: "#94a3b8",
-                      fontWeight: "600",
-                    }}
-                  >
-                    Sessions
-                  </Text>
-                </View>
-                <View style={{ width: "48%" }}>
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontWeight: "800",
-                      color: "#334155",
-                    }}
-                  >
-                    Networking
-                  </Text>
-                  <Text
-                    style={{
-                      fontSize: 11,
-                      color: "#94a3b8",
-                      fontWeight: "600",
-                    }}
-                  >
-                    Experience
-                  </Text>
-                </View>
-              </View>
-            </View>
+            </TouchableOpacity>
           </View>
 
+          {/* Footer */}
           <Text
             style={{
               textAlign: "center",
-              fontSize: 11,
+              fontSize: 12,
               color: "#94a3b8",
-              paddingHorizontal: 40,
+              paddingHorizontal: 32,
               lineHeight: 18,
+              marginTop: 40,
             }}
           >
-            Thank you for being part of the Gryphon Academy community.
+            Thank you for being part of the Gryphon Academy community. 🎓
           </Text>
         </ScrollView>
       </View>
@@ -1173,8 +1007,8 @@ export default function QRPassScreen() {
                   style={{ fontSize: 13, color: "#64748b", lineHeight: 20 }}
                 >
                   {isMasterclass
-                    ? "Unlock Your Leadership Potential! An intensive, high-impact session crafted for visionaries. Learn AI strategies that drive results and connect with the best in the industry."
-                    : "The Ultimate Networking Experience! Connect with 500+ industry leaders, discover game-changing insights, and create lasting partnerships. Your next big opportunity awaits!"}
+                    ? "A flagship, invite-only gathering exclusively for academicians, trainers, educators, deans, principals, and institutional leaders from across India. With our theme centred on Adventurous Intelligence, this event creates meaningful dialogue among the minds shaping India's educational future — bridging the gap between industry and academia for the benefit of students."
+                    : "A flagship industry and academia confluence. An exclusive space where industry brilliance and policy leadership meet — deliberating on emerging technological trends and the evolving industry-academia blueprint. An evening of impactful discussions and high-level networking."}
                 </Text>
               </View>
 

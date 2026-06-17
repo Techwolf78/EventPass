@@ -135,11 +135,17 @@ export default function GalleryScreen() {
         return;
       }
 
-      // Native Device Download
-      const { status } = await MediaLibrary.requestPermissionsAsync(false, [
-        "photo",
-      ]);
-      if (status !== "granted") {
+      let hasPermission = false;
+      if (Platform.OS === 'android' && Number(Platform.Version) >= 29) {
+        hasPermission = true;
+      } else {
+        const { status } = await MediaLibrary.requestPermissionsAsync(false, [
+          "photo",
+        ]);
+        hasPermission = status === 'granted';
+      }
+
+      if (!hasPermission) {
         Alert.alert(
           "Permission Denied",
           "We need storage permissions to save images to your gallery.",

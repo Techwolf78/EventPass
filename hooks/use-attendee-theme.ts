@@ -17,9 +17,9 @@ export type EnrollmentType = "masterclass" | "event";
 export const getEnrollmentDisplayName = (
   type?: EnrollmentType | string | null,
 ): string => {
-  if (type === "masterclass") return "Gryphon Academy's Masterclass 3.0";
-  if (type === "event") return "Gryphon Academy's Synergy Sphere";
-  return "Gryphon Academy's Synergy Sphere"; // default
+  if (type === "masterclass") return "Masterclass 3.0";
+  if (type === "event") return "Synergy Sphere 2.0";
+  return "Synergy Sphere 2.0"; // default
 };
 
 export type AttendeePalette = {
