@@ -2,10 +2,9 @@ import { auth } from "@/config/firebase";
 import { useAuth } from "@/context/AuthContext";
 import { getUserData, loginGuestByEmail } from "@/utils/firestore";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 // import * as MediaLibrary from "expo-media-library";
 import * as Notifications from "expo-notifications";
 import {
@@ -40,9 +39,25 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     paddingTop: 16,
   },
+  logoWrapper: {
+    width: 112,
+    height: 112,
+    borderRadius: 56,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f8fafc",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
   logo: {
-    width: 100,
-    height: 100,
+    width: 112,
+    height: 112,
   },
   title: {
     fontSize: 28,
@@ -317,7 +332,7 @@ export default function LoginScreen() {
         console.error("Error requesting permissions:", error);
       }
     };
-    
+
     requestPermissions();
   }, []);
 
@@ -401,9 +416,9 @@ export default function LoginScreen() {
 
     const checkEmail = guestEmail.trim().toLowerCase();
     const checkName = guestName.trim().toLowerCase();
-    
+
     if (
-      checkEmail === "superadmin@test.com" || 
+      checkEmail === "superadmin@test.com" ||
       checkEmail === "admin@test.com" ||
       checkEmail === "12345678" ||
       checkName === "superadmin@test.com" ||
@@ -411,7 +426,11 @@ export default function LoginScreen() {
       checkName === "12345678"
     ) {
       setActiveTab("login");
-      setEmail(checkEmail === "12345678" ? "superadmin@test.com" : checkEmail || "superadmin@test.com");
+      setEmail(
+        checkEmail === "12345678"
+          ? "superadmin@test.com"
+          : checkEmail || "superadmin@test.com",
+      );
       setPassword("12345678");
       setAdminError("Auto-filled Organizer credentials. Tap Sign In.");
       return;
@@ -456,7 +475,10 @@ export default function LoginScreen() {
         setEmailError(
           "This email is not on the guest list. Please contact the event organizer.",
         );
-      } else if (result.message && result.message.toLowerCase().includes("deleted")) {
+      } else if (
+        result.message &&
+        result.message.toLowerCase().includes("deleted")
+      ) {
         setEmailError(result.message);
       } else {
         Alert.alert(
@@ -489,13 +511,17 @@ export default function LoginScreen() {
         <View style={styles.scrollContent}>
           {/* Logo Section */}
           <View style={styles.logoContainer}>
-            <Image
-              source={require("../../assets/images/connecthq.png")}
-              style={styles.logo}
-              resizeMode="contain"
-            />
+            <View style={styles.logoWrapper}>
+              <Image
+                source={require("../../assets/images/connecthq.png")}
+                style={styles.logo}
+                resizeMode="cover"
+              />
+            </View>
             <Text style={styles.title}>Welcome</Text>
-            <Text style={styles.subtitle}>ConnectHQ • Event Management</Text>
+            <Text style={styles.subtitle}>
+              Gryphon Academy • Event Management
+            </Text>
           </View>
 
           {/* Tab Selector */}
@@ -553,17 +579,19 @@ export default function LoginScreen() {
                   onChangeText={(text) => {
                     setGuestName(text);
                     if (emailError) setEmailError("");
-                    
+
                     const lowerText = text.toLowerCase().trim();
                     if (
-                      lowerText === "superadmin@test.com" || 
-                      lowerText === "admin@test.com" || 
+                      lowerText === "superadmin@test.com" ||
+                      lowerText === "admin@test.com" ||
                       lowerText === "12345678"
                     ) {
                       setActiveTab("login");
                       setEmail("superadmin@test.com");
                       setPassword("12345678");
-                      setAdminError("Auto-filled Organizer credentials. Tap Sign In.");
+                      setAdminError(
+                        "Auto-filled Organizer credentials. Tap Sign In.",
+                      );
                     }
                   }}
                   editable={!guestLoading}
@@ -581,17 +609,23 @@ export default function LoginScreen() {
                   onChangeText={(text) => {
                     setGuestEmail(text);
                     if (emailError) setEmailError("");
-                    
+
                     const lowerText = text.toLowerCase().trim();
                     if (
-                      lowerText === "superadmin@test.com" || 
-                      lowerText === "admin@test.com" || 
+                      lowerText === "superadmin@test.com" ||
+                      lowerText === "admin@test.com" ||
                       lowerText === "12345678"
                     ) {
                       setActiveTab("login");
-                      setEmail(lowerText === "12345678" ? "superadmin@test.com" : lowerText);
+                      setEmail(
+                        lowerText === "12345678"
+                          ? "superadmin@test.com"
+                          : lowerText,
+                      );
                       setPassword("12345678");
-                      setAdminError("Auto-filled Organizer credentials. Tap Sign In.");
+                      setAdminError(
+                        "Auto-filled Organizer credentials. Tap Sign In.",
+                      );
                     }
                   }}
                   autoCapitalize="none"
@@ -759,7 +793,7 @@ export default function LoginScreen() {
           {/* Footer */}
           <View style={styles.footer}>
             <Text style={styles.footerText}>
-              © 2026 ConnectHQ — All rights reserved
+              © 2026 Gryphon Academy — All rights reserved
             </Text>
           </View>
         </View>

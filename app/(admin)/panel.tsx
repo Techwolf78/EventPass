@@ -74,13 +74,13 @@ export default function AdminPanelScreen() {
       const agendasList: AgendaWithType[] = [
         {
           id: masterclassAgenda?.id || 'default-masterclass',
-          title: masterclassAgenda?.title || 'Masterclass',
+          title: masterclassAgenda?.title || "Gryphon Academy's Masterclass 3.0",
           date: masterclassAgenda?.date || null,
           type: 'masterclass',
         },
         {
           id: eventAgenda?.id || 'default-event',
-          title: eventAgenda?.title || 'Synergy Sphere',
+          title: eventAgenda?.title || "Gryphon Academy's Synergy Sphere",
           date: eventAgenda?.date || null,
           type: 'event',
         }
@@ -490,18 +490,19 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   eventSelectorContent: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     gap: 8,
   },
   eventTab: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     flexDirection: 'row',
     alignItems: 'center',
+    width: '100%',
   },
   eventTabActive: {
     backgroundColor: '#000000',

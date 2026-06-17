@@ -127,7 +127,7 @@ export default function AnimatedSplash({ onFinish }: AnimatedSplashProps) {
         ]}
       >
         <Image
-          source={require("../assets/images/connecthq.png")}
+          source={require("../assets/images/shortlogo.png")}
           style={styles.logo}
           resizeMode="contain"
         />
@@ -144,7 +144,7 @@ export default function AnimatedSplash({ onFinish }: AnimatedSplashProps) {
         ]}
       >
         <Text style={styles.appName}>
-          Connect<Text style={styles.appNameAccent}>HQ</Text>
+          Gryphon <Text style={styles.appNameAccent}>Academy</Text>
         </Text>
       </Animated.View>
 
@@ -213,41 +213,54 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(59, 130, 246, 0.12)",
   },
   logoContainer: {
-    marginBottom: 24,
+    width: 90,
+    height: 90,
+    borderRadius: 16,
+    backgroundColor: "#01224E",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 4,
   },
   logo: {
-    width: 220,
-    height: 120,
+    width: 72,
+    height: 72,
   },
   textContainer: {
-    marginBottom: 8,
+    marginBottom: 20,
   },
   appName: {
-    fontSize: 36,
+    fontSize: 24,
     fontWeight: "800",
     color: "#FFFFFF",
-    letterSpacing: 2,
+    letterSpacing: 1,
+    textAlign: "center",
   },
   appNameAccent: {
-    color: "#60A5FA",
+    color: "#FFFFFF",
     fontWeight: "900",
   },
   tagline: {
-    fontSize: 14,
-    color: "rgba(148, 163, 184, 0.8)",
-    letterSpacing: 2,
+    fontSize: 10,
+    color: "rgba(148, 163, 184, 0.6)",
+    letterSpacing: 1.5,
     textTransform: "uppercase",
     textAlign: "center",
-    marginTop: 4,
+    marginTop: 6,
+    fontWeight: "600",
   },
   subtagline: {
-    fontSize: 12,
+    fontSize: 9,
     color: "rgba(96, 165, 250, 0.7)",
-    letterSpacing: 4,
+    letterSpacing: 3,
     textTransform: "uppercase",
     textAlign: "center",
-    marginTop: 8,
-    fontWeight: "500",
+    marginTop: 6,
+    fontWeight: "700",
   },
   dotsContainer: {
     flexDirection: "row",

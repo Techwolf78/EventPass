@@ -1,18 +1,18 @@
-import React from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Image,
-  StatusBar,
-  ScrollView,
-} from "react-native";
-import { useRouter } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import React from "react";
+import {
+  Image,
+  ScrollView,
+  StatusBar,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-export default function AboutConnectHQ() {
+export default function AboutGryphonAcademy() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user, guestSession } = useAuth();
@@ -22,9 +22,9 @@ export default function AboutConnectHQ() {
   return (
     <View style={{ flex: 1, backgroundColor: "#ffffff" }}>
       <StatusBar barStyle="dark-content" />
-      
+
       {/* Fixed Light Theme Header */}
-      <View 
+      <View
         style={{
           flexDirection: "row",
           alignItems: "center",
@@ -36,25 +36,25 @@ export default function AboutConnectHQ() {
           backgroundColor: "#ffffff",
         }}
       >
-        <TouchableOpacity 
-          onPress={() => router.back()} 
+        <TouchableOpacity
+          onPress={() => router.back()}
           style={{ padding: 8 }}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Ionicons name="chevron-back" size={24} color="#4f46e5" />
         </TouchableOpacity>
-        
+
         <View style={{ marginLeft: 8, flex: 1 }}>
-          <Text 
+          <Text
             style={{
               fontSize: 18,
               fontWeight: "bold",
               color: "#0f172a",
             }}
           >
-            About ConnectHQ
+            About Gryphon Academy
           </Text>
-          <Text 
+          <Text
             style={{
               fontSize: 12,
               fontWeight: "600",
@@ -69,9 +69,9 @@ export default function AboutConnectHQ() {
       </View>
 
       {/* Main Content */}
-      <ScrollView 
-        contentContainerStyle={{ 
-          flexGrow: 1, 
+      <ScrollView
+        contentContainerStyle={{
+          flexGrow: 1,
           justifyContent: "space-between",
           paddingHorizontal: 24,
           paddingTop: 40,
@@ -83,7 +83,7 @@ export default function AboutConnectHQ() {
         {/* Brand Information Block */}
         <View style={{ alignItems: "center" }}>
           {/* Logo Badge */}
-          <View 
+          <View
             style={{
               width: 112,
               height: 112,
@@ -101,15 +101,15 @@ export default function AboutConnectHQ() {
               elevation: 3,
             }}
           >
-            <Image 
-              source={require("@/assets/images/connecthq-square.png")} 
+            <Image
+              source={require("@/assets/images/connecthq-square.png")}
               style={{ width: 112, height: 112 }}
               resizeMode="cover"
             />
           </View>
 
           {/* App Name */}
-          <Text 
+          <Text
             style={{
               fontSize: 28,
               fontWeight: "900",
@@ -118,11 +118,11 @@ export default function AboutConnectHQ() {
               letterSpacing: -0.5,
             }}
           >
-            ConnectHQ
+            Gryphon Academy
           </Text>
-          
+
           {/* Version */}
-          <Text 
+          <Text
             style={{
               fontSize: 13,
               fontWeight: "700",
@@ -130,19 +130,39 @@ export default function AboutConnectHQ() {
               marginTop: 4,
             }}
           >
-            V1.0.0
+            V1.0.1
           </Text>
 
           {/* Legal / Provider details */}
-          <View style={{ alignItems: "center", marginTop: 40, paddingHorizontal: 24 }}>
-            <Text style={{ fontSize: 12, fontWeight: "600", color: "#64748b", textAlign: "center", lineHeight: 18 }}>
-              Published by SynergySphere
+          <View
+            style={{
+              alignItems: "center",
+              marginTop: 40,
+              paddingHorizontal: 24,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 12,
+                fontWeight: "600",
+                color: "#64748b",
+                textAlign: "center",
+                lineHeight: 18,
+              }}
+            >
+              Published by Gryphon Academy Pvt. Ltd.
             </Text>
-            <Text style={{ fontSize: 12, fontWeight: "600", color: "#64748b", textAlign: "center", lineHeight: 18, marginTop: 4 }}>
-              Service provided by SynergySphere & Techwolf
-            </Text>
-            <Text style={{ fontSize: 12, fontWeight: "600", color: "#94a3b8", textAlign: "center", lineHeight: 18, marginTop: 4 }}>
-              © 2026 ConnectHQ. All rights reserved.
+            <Text
+              style={{
+                fontSize: 12,
+                fontWeight: "600",
+                color: "#94a3b8",
+                textAlign: "center",
+                lineHeight: 18,
+                marginTop: 4,
+              }}
+            >
+              © 2026 Gryphon Academy. All rights reserved.
             </Text>
           </View>
         </View>

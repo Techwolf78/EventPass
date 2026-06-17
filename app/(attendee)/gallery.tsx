@@ -6,10 +6,10 @@ import React from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Modal,
   Platform,
   RefreshControl,
-  Image,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -183,9 +183,9 @@ export default function GalleryScreen() {
   const images =
     enrollmentType === "masterclass" ? MASTERCLASS_IMAGES : EVENT_IMAGES;
   const eventTitle =
-    enrollmentType === "masterclass" ? "Event Pass" : "Synergy Sphere 2.0";
+    enrollmentType === "masterclass" ? "Gryphon Academy's\nMasterclass 3.0" : "Gryphon Academy's\nSynergy Sphere 2.0";
   const pastEventTitle =
-    enrollmentType === "masterclass" ? "Event Pass 1.0" : "Synergy Sphere 1.0";
+    enrollmentType === "masterclass" ? "Gryphon Academy's Masterclass 3.0" : "Gryphon Academy's Synergy Sphere 1.0";
 
   if (loading) {
     return (

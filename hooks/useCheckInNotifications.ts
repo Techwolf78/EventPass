@@ -15,6 +15,7 @@ import {
 } from "firebase/firestore";
 import { useEffect, useRef } from "react";
 import { Platform } from "react-native";
+import { useRouter } from "expo-router";
 
 // ─── Background Task Name ─────────────────────────────────────────────────────
 // This MUST be defined at the top level (outside any component/function)
@@ -225,6 +226,7 @@ async function showLocalCheckInNotification(guestName: string): Promise<void> {
         body: `${guestName} has arrived at the event.`,
         sound: "default",
         priority: Notifications.AndroidNotificationPriority.HIGH,
+        data: { search: guestName },
         ...(Platform.OS === "android" && { channelId: "checkins" }),
       },
       trigger: null, // null = deliver immediately
@@ -269,6 +271,30 @@ async function showLocalCheckInNotification(guestName: string): Promise<void> {
  */
 export function useCheckInNotifications() {
   const isSetup = useRef(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    // Listen for notification responses (clicks)
+    const responseSubscription = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        console.log("[Notifications] User tapped notification:", response);
+        try {
+          const searchVal = response.notification.request.content.data?.search;
+          if (searchVal) {
+            router.push(`/(attendee)/attendees?search=${encodeURIComponent(String(searchVal))}`);
+          } else {
+            router.push("/(attendee)/attendees");
+          }
+        } catch (e) {
+          console.error("[Notifications] Navigation from notification failed:", e);
+        }
+      }
+    );
+
+    return () => {
+      responseSubscription.remove();
+    };
+  }, [router]);
 
   useEffect(() => {
     let unsubscribeFirestore: (() => void) | null = null;

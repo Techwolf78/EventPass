@@ -63,14 +63,14 @@ export default function TermsAndConditions() {
 
         <View style={styles.content}>
           <Text style={styles.paragraph}>
-            By downloading, installing, and using ConnectHQ, you agree to be bound
+            By downloading, installing, and using Gryphon Academy, you agree to be bound
             by these Terms and Conditions. If you do not agree, please do not use
             this service.
           </Text>
 
           <Text style={styles.heading}>1. License Grant</Text>
           <Text style={styles.paragraph}>
-            ConnectHQ grants you a limited, non-exclusive license to use the
+            Gryphon Academy grants you a limited, non-exclusive license to use the
             Application for personal, non-commercial purposes. You may not modify,
             reverse engineer, or use the app for illegal purposes.
           </Text>
@@ -84,13 +84,13 @@ export default function TermsAndConditions() {
 
           <Text style={styles.heading}>3. Acceptable Use</Text>
           <Text style={styles.paragraph}>
-            You agree not to use ConnectHQ for transmitting malware, harassment,
+            You agree not to use Gryphon Academy for transmitting malware, harassment,
             spamming, violating laws, or unauthorized access.
           </Text>
 
           <Text style={styles.heading}>4. Limitation of Liability</Text>
           <Text style={styles.paragraph}>
-            CONNECTHQ IS PROVIDED ON AN "AS IS" BASIS. WE DISCLAIM ALL WARRANTIES.
+            GRYPHON ACADEMY IS PROVIDED ON AN "AS IS" BASIS. WE DISCLAIM ALL WARRANTIES.
             IN NO EVENT SHALL WE BE LIABLE FOR INDIRECT, SPECIAL, OR CONSEQUENTIAL
             DAMAGES.
           </Text>
@@ -113,7 +113,7 @@ export default function TermsAndConditions() {
         </View>
 
         <Text style={styles.copyright}>
-          © 2026 ConnectHQ. All rights reserved.
+          © 2026 Gryphon Academy. All rights reserved.
         </Text>
       </ScrollView>
     </View>

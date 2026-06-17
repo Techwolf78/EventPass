@@ -76,7 +76,7 @@ export default function Support() {
             <View style={styles.iconCircle}>
               <Ionicons name="help-buoy" size={28} color="#2563eb" />
             </View>
-            <Text style={styles.brand}>ConnectHQ</Text>
+            <Text style={styles.brand}>Gryphon Academy</Text>
             <Text style={styles.title}>Support</Text>
             <Text style={styles.subtitle}>
               Send us your question or issue and our team will review it.

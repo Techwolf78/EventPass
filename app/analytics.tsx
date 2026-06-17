@@ -363,7 +363,7 @@ export default function AnalyticsPage() {
                 activeTab === "event" ? "text-slate-900" : "text-slate-500"
               }`}
             >
-              Synergy Sphere 2.0
+              {"Gryphon Academy's Synergy Sphere 2.0"}
             </Text>
           </TouchableOpacity>
 
@@ -384,7 +384,7 @@ export default function AnalyticsPage() {
                 activeTab === "masterclass" ? "text-slate-900" : "text-slate-500"
               }`}
             >
-              Masterclass 3.0
+              {"Gryphon Academy's Masterclass 3.0"}
             </Text>
           </TouchableOpacity>
         </View>
@@ -566,7 +566,7 @@ export default function AnalyticsPage() {
               Attendee List ({rows.length})
             </Text>
             <Text className="text-xs font-semibold text-slate-400">
-              {activeTab === "event" ? "Synergy Sphere 2.0" : "Masterclass 3.0"}
+              {activeTab === "event" ? "Gryphon Academy's Synergy Sphere 2.0" : "Gryphon Academy's Masterclass 3.0"}
             </Text>
           </View>
 
@@ -734,7 +734,7 @@ export default function AnalyticsPage() {
         {/* Footer */}
         <View className="flex-col gap-3 border-t border-slate-200 py-8 mt-12 md:flex-row md:items-center md:justify-between">
           <Text className="text-sm font-medium text-slate-500">
-            2026 ConnectHQ. All rights reserved.
+            © 2026 Gryphon Academy. All rights reserved.
           </Text>
           <View className="flex-row gap-5">
             <Link href="/privacy-policy" asChild>

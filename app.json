@@ -2,7 +2,7 @@
   "expo": {
     "name": "ConnectHQ",
     "slug": "connect-hq",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/connecthq-square.png",
     "scheme": "connecthq",
@@ -14,6 +14,7 @@
       "buildNumber": "1",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleDisplayName": "Gryphon Academy",
         "UIBackgroundModes": [
           "fetch",
           "remote-notification"
@@ -25,8 +26,8 @@
       "googleServicesFile": "./google-services.json",
       "predictiveBackGestureEnabled": false,
       "adaptiveIcon": {
-        "backgroundColor": "#0f172a",
-        "foregroundImage": "./assets/images/connecthq-square.png",
+        "backgroundColor": "#01224E",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
@@ -61,12 +62,12 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/connecthq.png",
+          "image": "./assets/images/shortlogo.png",
           "imageWidth": 400,
           "resizeMode": "contain",
           "backgroundColor": "#0f172a",
           "dark": {
-            "image": "./assets/images/connecthq.png",
+            "image": "./assets/images/shortlogo.png",
             "imageWidth": 400,
             "resizeMode": "contain",
             "backgroundColor": "#0f172a"
@@ -76,14 +77,14 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "ConnectHQ requires camera access to scan event QR codes for attendee check-in and attendance tracking."
+          "cameraPermission": "Gryphon Academy requires camera access to scan event QR codes for attendee check-in and attendance tracking."
         }
       ],
       [
         "expo-media-library",
         {
-          "photosPermission": "Allow ConnectHQ to access photos to save certificates.",
-          "savePhotosPermission": "Allow ConnectHQ to save certificates."
+          "photosPermission": "Allow Gryphon Academy to access photos to save certificates.",
+          "savePhotosPermission": "Allow Gryphon Academy to save certificates."
         }
       ],
       [

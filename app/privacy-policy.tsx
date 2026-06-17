@@ -67,7 +67,7 @@ export default function PrivacyPolicy() {
 
         <View style={styles.content}>
           <Text style={styles.paragraph}>
-            ConnectHQ ("we," "us," "our," or "Company") is committed to protecting
+            Gryphon Academy ("we," "us," "our," or "Company") is committed to protecting
             your privacy. This Privacy Policy explains how we collect, use,
             disclose, and otherwise process personal information in connection
             with our mobile application and services.
@@ -100,7 +100,7 @@ export default function PrivacyPolicy() {
 
           <Text style={styles.heading}>3. Firebase and Google Services</Text>
           <Text style={styles.paragraph}>
-            ConnectHQ uses Firebase for authentication, data storage, and push
+            Gryphon Academy uses Firebase for authentication, data storage, and push
             notifications. Your data is processed by Google according to their
             privacy policies at policies.google.com/privacy.
           </Text>
@@ -129,7 +129,7 @@ export default function PrivacyPolicy() {
         </View>
 
         <Text style={styles.copyright}>
-          © 2026 ConnectHQ. All rights reserved.
+          © 2026 Gryphon Academy. All rights reserved.
         </Text>
       </ScrollView>
     </View>

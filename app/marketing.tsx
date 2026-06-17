@@ -24,7 +24,7 @@ export default function MarketingPage() {
       <View className="mx-auto w-full max-w-[900px] px-5 py-6 md:px-8 md:py-8">
         <View className="flex-row items-center justify-between border-b border-slate-200 pb-4">
           <Text className="text-lg font-black text-slate-900">
-            ConnectHQ
+            Gryphon Academy
           </Text>
           <View className="flex-row items-center gap-4">
             <Link href="/privacy-policy" asChild>
@@ -42,10 +42,10 @@ export default function MarketingPage() {
 
         <View className="items-center py-16 md:py-20">
           <Text className="text-center text-4xl font-black leading-tight text-slate-950 md:text-5xl">
-            Simple event passes and check-ins for ConnectHQ events.
+            Simple event passes and check-ins for Gryphon Academy events.
           </Text>
           <Text className="mt-5 max-w-[620px] text-center text-base font-medium leading-7 text-slate-600 md:text-lg">
-            ConnectHQ helps attendees access event details, view QR passes,
+            Gryphon Academy helps attendees access event details, view QR passes,
             follow agendas, and support smoother event entry.
           </Text>
 
@@ -94,7 +94,7 @@ export default function MarketingPage() {
           <Text className="text-2xl font-black text-slate-900">Support</Text>
           <Text className="mt-3 text-base font-medium leading-7 text-slate-600">
             Need help with an event pass, account access, QR check-in, or app
-            setup? Use the support page and the ConnectHQ team will review your
+            setup? Use the support page and the Gryphon Academy team will review your
             request.
           </Text>
           <Link href={supportHref} asChild>
@@ -106,7 +106,7 @@ export default function MarketingPage() {
 
         <View className="flex-col gap-3 border-t border-slate-200 py-8 md:flex-row md:items-center md:justify-between">
           <Text className="text-sm font-medium text-slate-500">
-            2026 ConnectHQ. All rights reserved.
+            © 2026 Gryphon Academy. All rights reserved.
           </Text>
           <View className="flex-row gap-5">
             <Link href="/privacy-policy" asChild>

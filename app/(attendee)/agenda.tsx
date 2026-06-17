@@ -123,7 +123,7 @@ export default function AgendaScreen() {
   }
 
   const isMasterclass = resolvedEnrollmentType === "masterclass";
-  const displayTitle = isMasterclass ? "Event Pass" : "SYNERGY SPHERE 2.0";
+  const displayTitle = isMasterclass ? "Gryphon Academy's\nMasterclass 3.0" : "Gryphon Academy's\nSynergy Sphere 2.0";
   const displayDate = "June 27, 2026";
   const displayLocation = "Ritz-Carlton, Pune";
 

@@ -34,8 +34,10 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useLocalSearchParams } from "expo-router";
 
 type WebAlertButton = {
   text: string;
@@ -960,58 +962,58 @@ export default function GuestListScreen() {
               const status = getGuestStatus(item, checkedInIds);
               return (
                 <View key={item.id} style={styles.guestItem}>
-                  <View
-                    style={[
-                      styles.avatar,
-                      { backgroundColor: getAvatarColor(item.name) },
-                    ]}
-                  >
-                    <Text style={styles.avatarText}>
-                      {getInitials(item.name)}
-                    </Text>
-                  </View>
-                  <View style={styles.guestInfo}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                      <Text style={styles.guestName} numberOfLines={1}>
-                        {item.name}
-                      </Text>
-                      {item.isVIP && (
-                        <View style={{ backgroundColor: "#f59e0b", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                          <Text style={{ color: "#fff", fontSize: 10, fontWeight: "800" }}>VIP</Text>
-                        </View>
-                      )}
-                    </View>
-                    <Text style={styles.guestEmail} numberOfLines={1}>
-                      {item.email}
-                    </Text>
-                  </View>
-                  <View
-                    style={[
-                      styles.statusBadge,
-                      status === "arrived"
-                        ? styles.statusArrived
-                        : status === "unarrived"
-                          ? styles.statusUnarrived
-                          : styles.statusPending,
-                    ]}
-                  >
-                    <Text
+                    <View
                       style={[
-                        styles.statusText,
-                        status === "arrived"
-                          ? styles.statusTextArrived
-                          : status === "unarrived"
-                            ? styles.statusTextUnarrived
-                            : styles.statusTextPending,
+                        styles.avatar,
+                        { backgroundColor: getAvatarColor(item.name) },
                       ]}
                     >
-                      {status === "arrived"
-                        ? "Arrived"
-                        : status === "unarrived"
-                          ? "Unarrived"
-                          : "Pending"}
-                    </Text>
-                  </View>
+                      <Text style={styles.avatarText}>
+                        {getInitials(item.name)}
+                      </Text>
+                    </View>
+                    <View style={styles.guestInfo}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <Text style={styles.guestName} numberOfLines={1}>
+                          {item.name}
+                        </Text>
+                        {item.isVIP && (
+                          <View style={{ backgroundColor: "#f59e0b", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                            <Text style={{ color: "#fff", fontSize: 10, fontWeight: "800" }}>VIP</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={styles.guestEmail} numberOfLines={1}>
+                        {item.email}
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        status === "arrived"
+                          ? styles.statusArrived
+                          : status === "unarrived"
+                            ? styles.statusUnarrived
+                            : styles.statusPending,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.statusText,
+                          status === "arrived"
+                            ? styles.statusTextArrived
+                            : status === "unarrived"
+                              ? styles.statusTextUnarrived
+                              : styles.statusTextPending,
+                        ]}
+                      >
+                        {status === "arrived"
+                          ? "Arrived"
+                          : status === "unarrived"
+                            ? "Unarrived"
+                            : "Pending"}
+                      </Text>
+                    </View>
 
                   {canEdit && (
                     <View style={styles.actionButtons}>

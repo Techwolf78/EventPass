@@ -719,11 +719,10 @@ const styles = StyleSheet.create({
   },
   // Toggle
   toggleRow: {
-    flexDirection: "row",
+    flexDirection: "column",
     gap: 8,
   },
   toggleBtn: {
-    flex: 1,
     flexDirection: "row",
     paddingVertical: 10,
     borderRadius: 8,
@@ -732,6 +731,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#FFFFFF",
+    width: "100%",
   },
   toggleBtnActive: {
     backgroundColor: "#000000",

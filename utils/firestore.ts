@@ -1,22 +1,22 @@
 import { auth, db } from "@/config/firebase";
 import {
-    createUserWithEmailAndPassword,
-    signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
 } from "firebase/auth";
 import {
-    Timestamp,
-    addDoc,
-    collection,
-    deleteDoc,
-    doc,
-    getDoc,
-    getDocs,
-    onSnapshot,
-    orderBy,
-    query,
-    setDoc,
-    where,
-    writeBatch,
+  Timestamp,
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  onSnapshot,
+  orderBy,
+  query,
+  setDoc,
+  where,
+  writeBatch,
 } from "firebase/firestore";
 
 // Custom random token generator for Expo compatibility (avoids crypto error)
@@ -144,7 +144,8 @@ export async function validateAndRegisterAttendee(
     if (guestData.isDeleted === true || guestData.isDelete === true) {
       return {
         success: false,
-        message: "This account has been deleted. Please contact support at synergysphere@gryphonacademy.co.in.",
+        message:
+          "This account has been deleted. Please contact support at synergysphere@gryphonacademy.co.in.",
       };
     }
 
@@ -253,7 +254,8 @@ export async function loginGuestByEmail(
     if (guestData.isDeleted === true || guestData.isDelete === true) {
       return {
         success: false,
-        message: "This account has been deleted. Please contact support at synergysphere@gryphonacademy.co.in.",
+        message:
+          "This account has been deleted. Please contact support at synergysphere@gryphonacademy.co.in.",
       };
     }
 

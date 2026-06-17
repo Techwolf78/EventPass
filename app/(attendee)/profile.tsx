@@ -262,7 +262,7 @@ export default function ProfileScreen() {
             <View className="flex-row items-center gap-3">
               <Ionicons name="information-circle-outline" size={20} color="#64748b" />
               <Text className="text-sm font-semibold text-slate-800">
-                About ConnectHQ
+                About Gryphon Academy
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
@@ -294,7 +294,7 @@ export default function ProfileScreen() {
 
         {/* App Version Footer */}
         <Text className="text-center text-xs font-semibold text-slate-400 mt-6">
-          App Version 1.0.0
+          App Version 1.0.1
         </Text>
       </ScrollView>
     </View>

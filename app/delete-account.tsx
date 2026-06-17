@@ -609,7 +609,7 @@ export default function DeleteAccount() {
         </View>
 
         <Text style={{ textAlign: "center", fontSize: 11, color: "#94a3b8", marginBottom: 10 }}>
-          © 2026 ConnectHQ. All rights reserved.
+          © 2026 Gryphon Academy. All rights reserved.
         </Text>
       </ScrollView>
     </View>

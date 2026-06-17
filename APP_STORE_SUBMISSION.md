@@ -153,3 +153,103 @@ Under Apple Guideline 5.1.1, you must disclose the exact data collected by the a
   - *Usage:* **App Functionality**.
   - *Linked to User:* **Yes**.
   - *Tracking:* **No**.
+
+---
+
+## 5. Updating App Store Screenshots (Active Apps)
+
+When an app is in the **Ready for Distribution** (or live) status on App Store Connect, you cannot edit or replace screenshots directly for that version. You have two ways to update the screenshots shown on the App Store:
+
+### Method A: Creating a New App Version (Standard Way)
+This is the recommended and most common method if you are also releasing minor fixes or updating build versions.
+
+1. **Log in to App Store Connect** ([appstoreconnect.apple.com](https://appstoreconnect.apple.com/apps)).
+2. Select **ConnectHQ EventPass**.
+3. In the left sidebar, click the **`+`** icon next to **iOS App** to create a new version.
+4. Enter the new version number (e.g., `1.0.1` or `1.1.0`) and click **Create**.
+5. Select the newly created version under **iOS App** in the left sidebar (it will show `Prepare for Submission`).
+6. Scroll down to the **App Video Previews and Screenshots** section.
+7. Click the tab for the appropriate display sizes (e.g., **iPhone 6.7" Display**, **iPhone 6.5" Display**, and **iPhone 5.5" Display**).
+8. Hover over the old screenshots and click the **Delete (Trash)** icon, then drag and drop your new screenshots into the empty slots.
+9. **Update build numbers in local codebase** (if needed, increment `version` and `buildNumber` in `app.json`, rebuild using `eas build -p ios`, and upload).
+10. Select the new build in the **Build** section of App Store Connect.
+11. Click **Save** in the top right, then click **Add for Review** or **Submit for Review**.
+12. Once approved by Apple, the new screenshots will go live.
+
+### Method B: Using Product Page Optimization (No Code Release Required)
+This is a powerful workaround if you only want to change the screenshots without rebuilding the app or submitting a new binary code version.
+
+1. **Log in to App Store Connect** and select **ConnectHQ EventPass**.
+2. In the left sidebar, under the **Features** section, click on **Product Page Optimization**.
+3. Click **Create Test** (or the **`+`** icon).
+4. Enter a reference name (e.g., `New Screenshots Update`).
+5. Choose **1 Treatment** and set the traffic proportion to **100%** (if you want all users to see the new ones once live) or lower if you want to A/B test first. Click **Create**.
+6. On the test setup screen, click on the **Treatment A** tab.
+7. Scroll down to **Screenshots**, delete the old screenshots, and upload your new ones.
+8. Click **Save**, then click **Submit for Review** in the top right. 
+   - *Note: This reviews only the page metadata/screenshots, not the app binary. It is typically approved quickly.*
+9. Once approved, go back to **Product Page Optimization**, select the test, and click **Start Test**.
+10. To make them permanent: Go to the running test, click **Apply Treatment to Original Product Page**. This will overwrite the live screenshots with the new ones and stop the test.
+
+---
+
+### Local Project Assets (For Reference)
+If you also want to update the screenshots kept in the repository/codebase for documentation and marketing purposes, replace the old files in `assets/images/` with your new files using the same names:
+- `assets/images/1splashscreen.png`
+- `assets/images/2qrpass.png`
+- `assets/images/3attendee.png`
+- `assets/images/4gallery.png`
+- `assets/images/5profile.png`
+- `assets/images/6androidpass.png`
+- `assets/images/7agenda.png`
+
+---
+
+## 6. Official App Store Description (Gryphon Academy Branding)
+
+Copy and paste one of the options below into the **Description** field of your app on App Store Connect (under the App Information/Version page).
+
+### Option 1: Professional & Educational (Recommended)
+```text
+ConnectHQ EventPass is the official event companion app developed and powered by Gryphon Academy. Designed specifically for Gryphon Academy’s academic conferences, campus events, seminars, workshops, and professional training sessions, this app brings organizers and attendees together in a seamless, paperless environment.
+
+With ConnectHQ EventPass, managing event access, schedules, and attendance is simpler than ever:
+
+For Attendees:
+• Academic & Event Agendas: View detailed schedules, session times, speaker profiles, and tracks for Gryphon Academy events.
+• Digital QR Passes: Instantly access your secure, unique QR event pass for rapid entry check-in.
+• Profile Management: Maintain your profile details, manage event registrations, and control your account settings directly in the app.
+
+For Organizers:
+• Lightning-Fast Check-ins: Scan attendee QR passes using the built-in organizer scanner for instant verification.
+• Real-Time Attendance Logs: Monitor attendee check-in counts and live stats on a unified dashboard.
+• Seamless Data Management: Sync guest lists, import registrations, and export attendance reports in CSV format.
+
+Built to elevate the educational and professional event experience, ConnectHQ EventPass keeps Gryphon Academy’s events simple, organized, secure, and mobile-first.
+```
+
+### Option 2: Brief & Direct (Under 1000 characters)
+```text
+ConnectHQ EventPass is the official event companion app developed by Gryphon Academy. Built to streamline campus events, seminars, and academic workshops, it serves as an all-in-one check-in and agenda tool for the Gryphon Academy community.
+
+Key Features:
+- Attendees: Easily view upcoming event schedules, access personalized digital QR event passes, and manage your attendee profile.
+- Organizers: Use QR scanning tools to verify entries, track attendance live, and export check-in data securely.
+
+Powered by Gryphon Academy, ConnectHQ EventPass makes academic and corporate event coordination simple, fast, and mobile-first.
+```
+
+---
+
+## 7. What's New in This Version (Release Notes)
+
+Copy and paste the template below into the **What's New in This Version** field when uploading this update to App Store Connect.
+
+```text
+- Gryphon Academy Branding: Refreshed store images and official app descriptions.
+- Tablet & iPad Support: Optimized dimensions and container sizes to ensure a premium visual layout on iPads.
+- Core Stability & Fixes: Resolved minor login redirect behaviors, updated terms/privacy pages, and improved navigation routing on iOS devices.
+```
+
+
+
