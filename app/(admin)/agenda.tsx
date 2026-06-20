@@ -307,6 +307,36 @@ export default function AgendaScreen() {
     );
   };
 
+  const handleMoveItem = (index: number, direction: "up" | "down") => {
+    if (direction === "up" && index === 0) return;
+    if (direction === "down" && index === items.length - 1) return;
+
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    setItems((prev) => {
+      const updated = [...prev];
+      const temp = updated[index];
+      updated[index] = updated[targetIndex];
+      updated[targetIndex] = temp;
+      return updated;
+    });
+  };
+
+  const handleSortItems = () => {
+    setItems((prev) => {
+      return [...prev].sort((a, b) => {
+        const getMinutes = (item: AgendaItemForm) => {
+          let h = item.hour || 12;
+          const m = item.minute || 0;
+          const mer = item.meridiem || "AM";
+          if (mer === "PM" && h !== 12) h += 12;
+          if (mer === "AM" && h === 12) h = 0;
+          return h * 60 + m;
+        };
+        return getMinutes(a) - getMinutes(b);
+      });
+    });
+  };
+
   const handleSave = async () => {
     // Validate
     const showAlert = (title: string, message: string) => {
@@ -420,7 +450,7 @@ export default function AgendaScreen() {
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={styles.headerTitle}>Agenda Builder</Text>
-            <Text style={styles.headerSubtitle}>ADMIN • EVENTPASS</Text>
+            <Text style={styles.headerSubtitle}>ADMIN • EVENTPASS ({role})</Text>
           </View>
         </View>
 
@@ -488,7 +518,19 @@ export default function AgendaScreen() {
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionLabel}>AGENDA ITEMS</Text>
-            <Text style={styles.itemCount}>{items.length} items</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              {canEdit && items.length > 1 && (
+                <TouchableOpacity
+                  onPress={handleSortItems}
+                  style={styles.sortBtn}
+                  disabled={saving}
+                >
+                  <Ionicons name="swap-vertical" size={14} color="#000000" />
+                  <Text style={styles.sortBtnText}>Sort by Time</Text>
+                </TouchableOpacity>
+              )}
+              <Text style={styles.itemCount}>{items.length} items</Text>
+            </View>
           </View>
 
           {items.map((item, index) => (
@@ -498,14 +540,38 @@ export default function AgendaScreen() {
                   <Text style={styles.itemNumberText}>#{index + 1}</Text>
                 </View>
                 {canEdit && (
-                  <TouchableOpacity
-                    style={styles.deleteItemBtn}
-                    onPress={() => handleRemoveItem(index)}
-                    disabled={saving}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  >
-                    <Ionicons name="trash-outline" size={18} color="#ef4444" />
-                  </TouchableOpacity>
+                  <View style={styles.headerActions}>
+                    <TouchableOpacity
+                      style={[styles.actionBtn, index === 0 && styles.actionBtnDisabled]}
+                      onPress={() => handleMoveItem(index, "up")}
+                      disabled={index === 0 || saving}
+                    >
+                      <Ionicons
+                        name="arrow-up"
+                        size={14}
+                        color={index === 0 ? "#D1D5DB" : "#000000"}
+                      />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.actionBtn, index === items.length - 1 && styles.actionBtnDisabled]}
+                      onPress={() => handleMoveItem(index, "down")}
+                      disabled={index === items.length - 1 || saving}
+                    >
+                      <Ionicons
+                        name="arrow-down"
+                        size={14}
+                        color={index === items.length - 1 ? "#D1D5DB" : "#000000"}
+                      />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.deleteItemBtn}
+                      onPress={() => handleRemoveItem(index)}
+                      disabled={saving}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                    </TouchableOpacity>
+                  </View>
                 )}
               </View>
 
@@ -797,6 +863,40 @@ const styles = StyleSheet.create({
   },
   deleteItemBtn: {
     padding: 4,
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  actionBtn: {
+    padding: 4,
+    borderRadius: 4,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  actionBtnDisabled: {
+    backgroundColor: "#F3F4F6",
+    borderColor: "#E5E7EB",
+  },
+  sortBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    backgroundColor: "#FFFFFF",
+  },
+  sortBtnText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#000000",
   },
   itemNumberBadge: {
     backgroundColor: "#000000",

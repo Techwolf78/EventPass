@@ -339,6 +339,7 @@ export async function validateAndCheckIn(
     await setDoc(attendanceRef, {
       candidateId: candidateDoc.id,
       candidateName: candidateData.name,
+      candidateEnrollmentType: candidateData.enrollmentType,
       eventId: eventId,
       scannedAt: Timestamp.now(),
       scannedBy: adminUid,
@@ -1240,5 +1241,64 @@ export async function getGuestStatistics(): Promise<{
       registered: 0,
       pending: 0,
     };
+  }
+}
+
+/**
+ * Manually register a pending guest and check them in (for gates/superadmin)
+ */
+export async function registerAndCheckInPendingGuest(
+  guestId: string,
+  eventId: string,
+  adminUid: string,
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const guestRef = doc(db, "guestList", guestId);
+    const guestDoc = await getDoc(guestRef);
+    if (!guestDoc.exists()) {
+      return { success: false, message: "Guest not found" };
+    }
+    const guestData = guestDoc.data() as GuestListItem;
+    const qrToken = guestData.qrToken || generateToken();
+    
+    const batch = writeBatch(db);
+    
+    // 1. Update guestList doc
+    batch.update(guestRef, {
+      status: "registered",
+      registeredAt: Timestamp.now(),
+      qrToken,
+    });
+    
+    // 2. Create candidates doc
+    const candidateRef = doc(db, "candidates", guestId);
+    batch.set(candidateRef, {
+      name: guestData.name,
+      email: guestData.email.toLowerCase().trim(),
+      role: "attendee",
+      companyName: guestData.companyName || "",
+      qrToken,
+      fcmToken: "manual-checkin",
+      enrollmentType: guestData.enrollmentType,
+      registeredAt: Timestamp.now(),
+      isVIP: guestData.isVIP || false,
+    });
+    
+    // 3. Create attendance record
+    const attendanceRef = doc(collection(db, "attendance"));
+    batch.set(attendanceRef, {
+      candidateId: guestId,
+      candidateName: guestData.name,
+      candidateEnrollmentType: guestData.enrollmentType,
+      eventId: eventId,
+      scannedAt: Timestamp.now(),
+      scannedBy: adminUid,
+    });
+    
+    await batch.commit();
+    return { success: true, message: `Successfully registered and checked in ${guestData.name}` };
+  } catch (error: any) {
+    console.error("Error in registerAndCheckInPendingGuest:", error);
+    return { success: false, message: error.message || "Failed to register and check in" };
   }
 }

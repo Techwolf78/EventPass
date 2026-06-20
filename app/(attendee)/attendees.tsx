@@ -21,6 +21,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams } from "expo-router";
+import { useAuth } from "@/context/AuthContext";
+import { useAttendeeTheme } from "@/hooks/use-attendee-theme";
 
 const getInitials = (name: string) => {
   const parts = name.split(" ").filter(Boolean);
@@ -61,6 +63,9 @@ const getFormattedCheckInTime = (timestamp: any) => {
 export default function AttendeesScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ search?: string }>();
+  const { isAdmin } = useAuth();
+  const { enrollmentType, loading: themeLoading } = useAttendeeTheme();
+  
   const [attendees, setAttendees] = useState<
     (Candidate & { checkInTime?: any })[]
   >([]);
@@ -86,17 +91,22 @@ export default function AttendeesScreen() {
     loadAttendees(false);
   }, []);
 
+  const visibleAttendees = useMemo(() => {
+    if (isAdmin) return attendees;
+    return attendees.filter((a) => a.enrollmentType === enrollmentType);
+  }, [attendees, isAdmin, enrollmentType]);
+
   // Handle incoming search query and auto-open profile detail
   useEffect(() => {
-    if (params.search && attendees.length > 0) {
+    if (params.search && visibleAttendees.length > 0) {
       setSearchQuery(params.search);
       const queryLower = params.search.toLowerCase().trim();
-      const matched = attendees.find(a => a.name.toLowerCase().includes(queryLower));
+      const matched = visibleAttendees.find(a => a.name.toLowerCase().includes(queryLower));
       if (matched) {
         setSelectedAttendeeDetail(matched);
       }
     }
-  }, [params.search, attendees]);
+  }, [params.search, visibleAttendees]);
 
   const loadAttendees = async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
@@ -133,16 +143,16 @@ export default function AttendeesScreen() {
   };
 
   const stats = useMemo(() => {
-    const total = attendees.length;
-    const checkedIn = attendees.filter((a) => checkedInIds.has(a.id)).length;
+    const total = visibleAttendees.length;
+    const checkedIn = visibleAttendees.filter((a) => checkedInIds.has(a.id)).length;
     const pending = total - checkedIn;
     const rate = total > 0 ? Math.round((checkedIn / total) * 100) : 0;
     return { total, checkedIn, pending, rate };
-  }, [attendees, checkedInIds]);
+  }, [visibleAttendees, checkedInIds]);
 
   const filteredAttendees = useMemo(() => {
     const normalized = searchQuery.trim().toLowerCase();
-    return attendees.filter((attendee) => {
+    return visibleAttendees.filter((attendee) => {
       const isCheckedIn = checkedInIds.has(attendee.id);
 
       // Filter by status
@@ -160,9 +170,9 @@ export default function AttendeesScreen() {
         companyName.includes(normalized)
       );
     });
-  }, [attendees, checkedInIds, searchQuery, activeFilter]);
+  }, [visibleAttendees, checkedInIds, searchQuery, activeFilter]);
 
-  if (loading) {
+  if (loading || themeLoading) {
     return (
       <View style={[styles.loadingContainer, { paddingTop: insets.top }]}>
         <ActivityIndicator size="large" color={themeColor} />

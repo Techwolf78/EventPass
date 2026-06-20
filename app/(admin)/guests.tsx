@@ -9,6 +9,7 @@ import {
   GuestListItem,
   updateGuest,
   validateAndCheckIn,
+  registerAndCheckInPendingGuest,
 } from "@/utils/firestore";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
@@ -166,10 +167,38 @@ export default function GuestListScreen() {
 
   const handleCheckIn = async (guest: GuestListItem) => {
     const targetEventId = "test-event";
-    if (!guest.qrToken) {
-      showAlert("Error", "Guest has no QR token.");
+    const status = getGuestStatus(guest, checkedInIds);
+
+    if (status === "pending" || !guest.qrToken) {
+      showAlert(
+        "Register & Check In",
+        `Do you want to manually register and check in ${guest.name} as present?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Mark Present",
+            onPress: async () => {
+              setLoading(true);
+              try {
+                const result = await registerAndCheckInPendingGuest(
+                  guest.id,
+                  targetEventId,
+                  "admin",
+                );
+                showAlert("Success", result.message);
+                loadGuests();
+              } catch (error: any) {
+                showAlert("Error", error.message || "Failed to check in pending guest");
+              } finally {
+                setLoading(false);
+              }
+            },
+          },
+        ],
+      );
       return;
     }
+
     setLoading(true);
     try {
       // Clear old checked in time (delete existing attendance records)
@@ -1017,18 +1046,16 @@ export default function GuestListScreen() {
 
                   {canEdit && (
                     <View style={styles.actionButtons}>
-                      {(status === "unarrived" || status === "arrived") && (
-                        <TouchableOpacity
-                          style={[styles.actionBtn, styles.checkInBtn]}
-                          onPress={() => handleCheckIn(item)}
-                        >
-                          <Ionicons
-                            name="checkmark-circle"
-                            size={16}
-                            color="#10b981"
-                          />
-                        </TouchableOpacity>
-                      )}
+                      <TouchableOpacity
+                        style={[styles.actionBtn, styles.checkInBtn]}
+                        onPress={() => handleCheckIn(item)}
+                      >
+                        <Ionicons
+                          name="checkmark-circle"
+                          size={16}
+                          color={status === "arrived" ? "#10b981" : "#9ca3af"}
+                        />
+                      </TouchableOpacity>
                       <TouchableOpacity
                         style={[styles.actionBtn, styles.editBtn]}
                         onPress={() => handleEditGuest(item)}

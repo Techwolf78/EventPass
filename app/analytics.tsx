@@ -326,12 +326,28 @@ export default function AnalyticsPage() {
             </Text>
           </View>
 
-          {/* Live Indicator */}
-          <View className="flex-row items-center self-start gap-2 bg-emerald-50 border border-emerald-100 rounded-full px-3 py-1.5 shadow-sm">
-            <View className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <Text className="text-xs font-bold text-emerald-800">
-              Live Updates Active
-            </Text>
+          {/* Live Indicator & Refresh Button */}
+          <View className="flex-row items-center self-start gap-3">
+            {/* Live Indicator */}
+            <View className="flex-row items-center gap-2 bg-emerald-50 border border-emerald-100 rounded-full px-3 py-1.5 shadow-sm">
+              <View className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              <Text className="text-xs font-bold text-emerald-800">
+                Live Updates Active
+              </Text>
+            </View>
+
+            {/* Refresh Button */}
+            <TouchableOpacity
+              onPress={onRefresh}
+              disabled={refreshing}
+              className="flex-row items-center justify-center p-2 bg-white border border-slate-200 rounded-full shadow-sm hover:bg-slate-50 active:scale-95 transition-transform"
+            >
+              {refreshing ? (
+                <ActivityIndicator size="small" color="#0f172a" />
+              ) : (
+                <Ionicons name="refresh" size={16} color="#0f172a" />
+              )}
+            </TouchableOpacity>
           </View>
         </View>
 

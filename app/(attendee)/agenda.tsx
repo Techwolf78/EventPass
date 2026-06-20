@@ -294,31 +294,33 @@ export default function AgendaScreen() {
               </Text>
 
               {/* Footer info (Speaker) */}
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                <View 
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 14,
-                    backgroundColor: "#ffffff",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginRight: 8,
-                    borderWidth: 1,
-                    borderColor: palette.primaryBorder,
-                  }}
-                >
-                  <Ionicons name="mic" size={14} color={palette.primary} />
+              {liveSession.speaker && liveSession.speaker.trim() !== "" && (
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <View 
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 14,
+                      backgroundColor: "#ffffff",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginRight: 8,
+                      borderWidth: 1,
+                      borderColor: palette.primaryBorder,
+                    }}
+                  >
+                    <Ionicons name="mic" size={14} color={palette.primary} />
+                  </View>
+                  <View>
+                    <Text style={{ fontSize: 10, fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                      Speaker
+                    </Text>
+                    <Text style={{ fontSize: 14, fontWeight: "800", color: palette.primaryText, marginTop: 1 }}>
+                      {liveSession.speaker}
+                    </Text>
+                  </View>
                 </View>
-                <View>
-                  <Text style={{ fontSize: 10, fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5 }}>
-                    Speaker
-                  </Text>
-                  <Text style={{ fontSize: 14, fontWeight: "800", color: palette.primaryText, marginTop: 1 }}>
-                    {liveSession.speaker}
-                  </Text>
-                </View>
-              </View>
+              )}
             </View>
           </View>
         )}
@@ -465,23 +467,27 @@ export default function AgendaScreen() {
 
                       {/* Footer Details: Speaker and Live indicators */}
                       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                        <View style={{ flexDirection: "row", alignItems: "center" }}>
-                          <Ionicons
-                            name="mic-outline"
-                            size={14}
-                            color={isLive ? palette.primary : "#64748b"}
-                          />
-                          <Text 
-                            style={{ 
-                              fontSize: 12, 
-                              fontWeight: "600", 
-                              marginLeft: 4,
-                              color: isLive ? palette.primary : "#475569" 
-                            }}
-                          >
-                            {item.speaker}
-                          </Text>
-                        </View>
+                        {item.speaker && item.speaker.trim() !== "" ? (
+                          <View style={{ flexDirection: "row", alignItems: "center" }}>
+                            <Ionicons
+                              name="mic-outline"
+                              size={14}
+                              color={isLive ? palette.primary : "#64748b"}
+                            />
+                            <Text 
+                              style={{ 
+                                fontSize: 12, 
+                                fontWeight: "600", 
+                                marginLeft: 4,
+                                color: isLive ? palette.primary : "#475569" 
+                              }}
+                            >
+                              {item.speaker}
+                            </Text>
+                          </View>
+                        ) : (
+                          <View />
+                        )}
 
                         {/* Pulse Live Badge */}
                         {isLive && (

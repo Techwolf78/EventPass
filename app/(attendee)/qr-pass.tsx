@@ -16,8 +16,17 @@ import {
   TouchableOpacity,
   useWindowDimensions,
   View,
+  AppState,
+  AppStateStatus,
+  StyleSheet,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import NotificationBell from "@/components/qr-pass/NotificationBell";
+import NotificationPermissionModal from "@/components/qr-pass/NotificationPermissionModal";
+import {
+  checkNotificationPermission,
+  PermissionStatus,
+} from "@/utils/notificationHelper";
 import {
   Candidate,
   CheckInStatusResult,
@@ -47,6 +56,45 @@ export default function QRPassScreen() {
   const [isSaved, setIsSaved] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const certificateRef = useRef<any>(null);
+
+  // Notification states
+  const [permissionStatus, setPermissionStatus] =
+    useState<PermissionStatus | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<"success" | "warning">("success");
+
+  const checkStatus = useCallback(async () => {
+    const status = await checkNotificationPermission();
+    setPermissionStatus(status);
+  }, []);
+
+  useEffect(() => {
+    checkStatus();
+    const subscription = AppState.addEventListener(
+      "change",
+      (nextAppState: AppStateStatus) => {
+        if (nextAppState === "active") {
+          checkStatus();
+        }
+      },
+    );
+    return () => {
+      subscription.remove();
+    };
+  }, [checkStatus]);
+
+  const handlePermissionUpdated = (
+    status: PermissionStatus,
+    toastMsg: string,
+  ) => {
+    setPermissionStatus(status);
+    setToastType(status === "granted" ? "success" : "warning");
+    setToastMessage(toastMsg);
+    setTimeout(() => {
+      setToastMessage("");
+    }, 4000);
+  };
 
   const qrSize = Math.min(width * 0.5, 220);
   const activeToken = resolvedToken || (qrToken as string);
@@ -555,6 +603,17 @@ export default function QRPassScreen() {
               />
             }
           >
+            {/* Top row with Notification Bell */}
+            <View style={{ flexDirection: "row", justifyContent: "flex-end", paddingHorizontal: 24, marginTop: 10 }}>
+              <NotificationBell
+                permissionStatus={permissionStatus}
+                onPress={() => setModalVisible(true)}
+                themeColor={brandColor}
+                themeSoftBg={brandAccentBg}
+                themeBorderColor={brandBorderColor}
+              />
+            </View>
+
             {/* Checked In Celebration Header */}
             <View
               style={{
@@ -796,6 +855,29 @@ export default function QRPassScreen() {
               </View>
             </View>
           </ScrollView>
+
+          {/* Notification permission sheet */}
+          <NotificationPermissionModal
+            visible={modalVisible}
+            onClose={() => setModalVisible(false)}
+            permissionStatus={permissionStatus}
+            onPermissionUpdated={handlePermissionUpdated}
+            enrollmentType={candidate?.enrollmentType || "attendee"}
+            qrToken={activeToken}
+            email={candidate?.email}
+          />
+
+          {/* Custom feedback toast overlay */}
+          {toastMessage ? (
+            <View style={styles.toastContainer}>
+              <Ionicons
+                name={toastType === "success" ? "checkmark-circle" : "alert-circle"}
+                size={20}
+                color={toastType === "success" ? "#10B981" : "#EF4444"}
+              />
+              <Text style={styles.toastText}>{toastMessage}</Text>
+            </View>
+          ) : null}
         </View>
       );
     }
@@ -821,6 +903,17 @@ export default function QRPassScreen() {
               />
             }
           >
+            {/* Top row with Notification Bell */}
+            <View style={{ flexDirection: "row", justifyContent: "flex-end", paddingHorizontal: 24, marginTop: 10 }}>
+              <NotificationBell
+                permissionStatus={permissionStatus}
+                onPress={() => setModalVisible(true)}
+                themeColor={brandColor}
+                themeSoftBg={brandAccentBg}
+                themeBorderColor={brandBorderColor}
+              />
+            </View>
+
             {/* Header Details */}
             <View
               style={{
@@ -1044,6 +1137,29 @@ export default function QRPassScreen() {
               </TouchableOpacity>
             </View>
           </ScrollView>
+
+          {/* Notification permission sheet */}
+          <NotificationPermissionModal
+            visible={modalVisible}
+            onClose={() => setModalVisible(false)}
+            permissionStatus={permissionStatus}
+            onPermissionUpdated={handlePermissionUpdated}
+            enrollmentType={candidate?.enrollmentType || "attendee"}
+            qrToken={activeToken}
+            email={candidate?.email}
+          />
+
+          {/* Custom feedback toast overlay */}
+          {toastMessage ? (
+            <View style={styles.toastContainer}>
+              <Ionicons
+                name={toastType === "success" ? "checkmark-circle" : "alert-circle"}
+                size={20}
+                color={toastType === "success" ? "#10B981" : "#EF4444"}
+              />
+              <Text style={styles.toastText}>{toastMessage}</Text>
+            </View>
+          ) : null}
         </View>
       );
     }
@@ -1068,6 +1184,17 @@ export default function QRPassScreen() {
             />
           }
         >
+          {/* Top row with Notification Bell */}
+          <View style={{ flexDirection: "row", justifyContent: "flex-end", paddingHorizontal: 24, marginTop: 10 }}>
+            <NotificationBell
+              permissionStatus={permissionStatus}
+              onPress={() => setModalVisible(true)}
+              themeColor={brandColor}
+              themeSoftBg={brandAccentBg}
+              themeBorderColor={brandBorderColor}
+            />
+          </View>
+
           {/* Header */}
           <View
             style={{
@@ -1353,6 +1480,29 @@ export default function QRPassScreen() {
             </Text>
           </TouchableOpacity>
         </ScrollView>
+
+        {/* Notification permission sheet */}
+        <NotificationPermissionModal
+          visible={modalVisible}
+          onClose={() => setModalVisible(false)}
+          permissionStatus={permissionStatus}
+          onPermissionUpdated={handlePermissionUpdated}
+          enrollmentType={candidate?.enrollmentType || "attendee"}
+          qrToken={activeToken}
+          email={candidate?.email}
+        />
+
+        {/* Custom feedback toast overlay */}
+        {toastMessage ? (
+          <View style={styles.toastContainer}>
+            <Ionicons
+              name={toastType === "success" ? "checkmark-circle" : "alert-circle"}
+              size={20}
+              color={toastType === "success" ? "#10B981" : "#EF4444"}
+            />
+            <Text style={styles.toastText}>{toastMessage}</Text>
+          </View>
+        ) : null}
       </View>
     );
   }
@@ -1379,3 +1529,29 @@ export default function QRPassScreen() {
     />
   );
 }
+
+const styles = StyleSheet.create({
+  toastContainer: {
+    position: "absolute",
+    bottom: 100, // Make sure it sits above the bottom tab bar
+    alignSelf: "center",
+    backgroundColor: "#1E293B",
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+    zIndex: 1000,
+  },
+  toastText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "600",
+    marginLeft: 8,
+  },
+});

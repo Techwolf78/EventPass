@@ -16,6 +16,7 @@ import {
 import { useEffect, useRef } from "react";
 import { Platform } from "react-native";
 import { useRouter } from "expo-router";
+import { useAttendeeTheme } from "@/hooks/use-attendee-theme";
 
 // ─── Background Task Name ─────────────────────────────────────────────────────
 // This MUST be defined at the top level (outside any component/function)
@@ -129,7 +130,7 @@ async function requestNotificationPermissions(): Promise<boolean> {
 // ⚠️  IMPORTANT: Expo Push Tokens only work on PHYSICAL DEVICES with a
 //    development build (not Expo Go or simulator). If you're testing on a
 //    simulator, this will fail — use a real device.
-async function registerPushToken(): Promise<string | null> {
+async function registerPushToken(enrollmentType: string): Promise<string | null> {
   try {
     // Simulators/emulators cannot receive push notifications
     // Use expo-device instead of deprecated Constants.isDevice
@@ -166,11 +167,15 @@ async function registerPushToken(): Promise<string | null> {
 
     // Store in Firestore — the Cloud Function reads these to send pushes.
     // Using the token as the document ID prevents duplicates.
+    // experienceId MUST be stored so the Cloud Function can group tokens
+    // by Expo project before sending (avoids PUSH_TOO_MANY_EXPERIENCE_IDS).
     await setDoc(
       doc(db, "pushTokens", token),
       {
         token,
         platform: Platform.OS,
+        enrollmentType,
+        experienceId: "@connecthq/connect-hq",
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
       },
@@ -217,13 +222,13 @@ async function registerBackgroundNotificationTask(): Promise<void> {
 
 // ─── Local notification (foreground fallback) ────────────────────────────────
 // When the app is open, the Firestore listener triggers this instantly.
-// The Cloud Function push will also arrive, but Expo deduplicates for us.
-async function showLocalCheckInNotification(guestName: string): Promise<void> {
+async function showLocalCheckInNotification(guestName: string, enrollmentType: string): Promise<void> {
   try {
+    const eventDisplayName = enrollmentType === "masterclass" ? "Masterclass 3.0" : "Synergy Sphere 2.0";
     await Notifications.scheduleNotificationAsync({
       content: {
         title: "Guest Checked In",
-        body: `${guestName} has arrived at the event.`,
+        body: `${guestName} has arrived at ${eventDisplayName}.`,
         sound: "default",
         priority: Notifications.AndroidNotificationPriority.HIGH,
         data: { search: guestName },
@@ -236,42 +241,28 @@ async function showLocalCheckInNotification(guestName: string): Promise<void> {
   }
 }
 
+// ─── Local milestone notification ───────────────────────────────────────────
+async function showLocalMilestoneNotification(count: number, eventDisplayName: string): Promise<void> {
+  try {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: `${count} guests have checked in for ${eventDisplayName}!`,
+        sound: "default",
+        priority: Notifications.AndroidNotificationPriority.HIGH,
+        ...(Platform.OS === "android" && { channelId: "checkins" }),
+      },
+      trigger: null,
+    });
+  } catch (error) {
+    console.error("[Notifications] Failed to show milestone notification:", error);
+  }
+}
+
 // ─── Main Hook ───────────────────────────────────────────────────────────────
-/**
- * Production-level check-in notification system using Expo Notifications.
- *
- * HOW IT WORKS:
- *
- * 1. **Background / Lock Screen / App Killed:**
- *    - Registers an Expo Push Token and stores it in Firestore.
- *    - A Firebase Cloud Function (sendCheckInNotification) triggers on
- *      every new attendance doc → reads all tokens from `pushTokens`
- *      collection → sends real push notifications via Expo Push API.
- *    - These are delivered by FCM (Android) / APNs (iOS) even when
- *      the app is completely killed or the device is locked.
- *    - The `BACKGROUND_NOTIFICATION_TASK` (defined at top of this file)
- *      runs when a push arrives while the app is killed/background.
- *
- * 2. **Foreground (app is open):**
- *    - A Firestore real-time listener detects new check-ins instantly
- *      and shows a local notification immediately (no server round-trip).
- *    - The setNotificationHandler above ensures it appears as a
- *      heads-up alert even while using the app.
- *
- * REQUIREMENTS FOR BACKGROUND NOTIFICATIONS:
- * - Must run on a PHYSICAL device (not emulator/simulator)
- * - Must use a development build (not Expo Go) or production build
- * - Firebase Cloud Function must be deployed
- * - EAS projectId must be configured in app.json > extra > eas > projectId
- *
- * NOTES:
- * - Works for ALL users regardless of role (admin, attendee, guest).
- * - Every device that has the app installed gets the notification.
- * - No FCM topic subscription needed — fully Expo-native approach.
- */
 export function useCheckInNotifications() {
   const isSetup = useRef(false);
   const router = useRouter();
+  const { enrollmentType, loading: themeLoading } = useAttendeeTheme();
 
   useEffect(() => {
     // Listen for notification responses (clicks)
@@ -297,6 +288,7 @@ export function useCheckInNotifications() {
   }, [router]);
 
   useEffect(() => {
+    if (themeLoading) return;
     let unsubscribeFirestore: (() => void) | null = null;
 
     const setup = async () => {
@@ -321,9 +313,14 @@ export function useCheckInNotifications() {
         await registerBackgroundNotificationTask();
 
         // 4. Register push token for background/lock screen delivery
-        await registerPushToken();
+        await registerPushToken(enrollmentType);
 
-        // 5. Set up Firestore listener for instant foreground notifications
+        // 5. Keep Firestore listener running for real-time data awareness.
+        // ⚠️ NOTE: We do NOT trigger local notifications from here anymore.
+        // The Cloud Function (sendCheckInNotification) now handles ALL push
+        // notification delivery via FCM — including when the app is in the
+        // foreground (setNotificationHandler shows them as heads-up alerts).
+        // Triggering local notifications here too would cause DUPLICATES.
         const mountedAt = Timestamp.now();
         const attendanceRef = collection(db, "attendance");
         const q = query(attendanceRef, orderBy("scannedAt", "desc"), limit(1));
@@ -335,11 +332,15 @@ export function useCheckInNotifications() {
               if (change.type === "added") {
                 const data = change.doc.data();
                 const scannedAt = data.scannedAt;
+                const candidateEnrollmentType = data.candidateEnrollmentType;
 
-                // Only notify for check-ins AFTER mount (prevents historical flood)
                 if (scannedAt && scannedAt.toMillis() > mountedAt.toMillis()) {
-                  const name = data.candidateName || "A guest";
-                  showLocalCheckInNotification(name);
+                  if (candidateEnrollmentType === enrollmentType) {
+                    // Real-time data received — Cloud Function push handles the notification.
+                    console.log(
+                      `[Notifications] New check-in detected for ${enrollmentType}: ${data.candidateName || "A guest"}. Push handled by Cloud Function.`,
+                    );
+                  }
                 }
               }
             });
@@ -350,7 +351,7 @@ export function useCheckInNotifications() {
         );
 
         console.log(
-          "[Notifications] ✅ Push token registered + Background task active + Firestore listener running.",
+          `[Notifications] ✅ Push token registered + Background task active + Firestore listener running for ${enrollmentType}.`,
         );
       } catch (error) {
         console.error("[Notifications] Error during setup:", error);
@@ -365,5 +366,5 @@ export function useCheckInNotifications() {
       }
       isSetup.current = false;
     };
-  }, []);
+  }, [themeLoading, enrollmentType, router]);
 }

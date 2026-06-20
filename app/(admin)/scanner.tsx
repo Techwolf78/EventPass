@@ -79,7 +79,7 @@ export default function QRScannerScreen() {
 
       setRecentScans((prev) => [
         {
-          id: Date.now().toString(),
+          id: `${Date.now()}-${Math.random()}`,
           name: scanName,
           time: now,
           status: (result.success ? 'success' : 'failed') as 'success' | 'failed',
@@ -99,7 +99,7 @@ export default function QRScannerScreen() {
       });
       setRecentScans((prev) => [
         {
-          id: Date.now().toString(),
+          id: `${Date.now()}-${Math.random()}`,
           name: 'Unknown',
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           status: 'failed' as const,
