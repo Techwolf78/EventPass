@@ -1,5 +1,6 @@
 import { useAuth } from "@/context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
+import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
@@ -130,7 +131,7 @@ export default function AboutGryphonAcademy() {
               marginTop: 4,
             }}
           >
-            V1.0.1
+            V{Constants.expoConfig?.version ?? "1.0.3"}
           </Text>
 
           {/* Legal / Provider details */}

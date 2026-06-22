@@ -8,6 +8,7 @@ import {
 } from "@/utils/firestore";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -298,7 +299,7 @@ export default function ProfileScreen() {
 
         {/* App Version Footer */}
         <Text className="text-center text-xs font-semibold text-slate-400 mt-6">
-          App Version 1.0.1
+          App Version {Constants.expoConfig?.version ?? "1.0.3"}
         </Text>
       </ScrollView>
     </View>
