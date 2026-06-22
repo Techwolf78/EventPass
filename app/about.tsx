@@ -131,7 +131,7 @@ export default function AboutGryphonAcademy() {
               marginTop: 4,
             }}
           >
-            V{Constants.expoConfig?.version ?? "1.0.3"}
+            V{Constants.expoConfig?.version ?? "1.0.4"}
           </Text>
 
           {/* Legal / Provider details */}

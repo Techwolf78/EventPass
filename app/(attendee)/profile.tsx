@@ -299,7 +299,7 @@ export default function ProfileScreen() {
 
         {/* App Version Footer */}
         <Text className="text-center text-xs font-semibold text-slate-400 mt-6">
-          App Version {Constants.expoConfig?.version ?? "1.0.3"}
+          App Version {Constants.expoConfig?.version ?? "1.0.4"}
         </Text>
       </ScrollView>
     </View>
