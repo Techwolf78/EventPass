@@ -33,7 +33,7 @@
       "adaptiveIcon": {
         "backgroundColor": "#01224E",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "monochromeImage": "./assets/images/android-icon-foreground.png"
       },
       "permissions": [
         "android.permission.CAMERA",
@@ -89,11 +89,7 @@
           "ios": {
             "useFrameworks": "static",
             "deploymentTarget": "15.1",
-            "forceStaticLinking": [
-              "RNFBApp",
-              "RNFBFirestore",
-              "RNFBAuth"
-            ]
+            "forceStaticLinking": ["RNFBApp", "RNFBFirestore", "RNFBAuth"]
           }
         }
       ],

@@ -8,6 +8,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Platform,
   RefreshControl,
   ScrollView,
@@ -60,6 +61,8 @@ interface AgendaItemForm {
   hour?: number;
   minute?: number;
   meridiem?: "AM" | "PM";
+  itemType?: "session" | "poll";
+  pollUrl?: string;
 }
 
 export default function AgendaScreen() {
@@ -196,6 +199,8 @@ export default function AgendaScreen() {
           hour: 9,
           minute: 0,
           meridiem: "AM",
+          itemType: "session",
+          pollUrl: "",
         },
       ];
     });
@@ -239,6 +244,8 @@ export default function AgendaScreen() {
             hour: item.hour || 9,
             minute: item.minute || 0,
             meridiem: item.meridiem || "AM",
+            itemType: item.itemType || "session",
+            pollUrl: (item.itemType === "poll" ? item.pollUrl?.trim() : "") || "",
           })),
         );
         if (!result.success) {
@@ -391,6 +398,8 @@ export default function AgendaScreen() {
           hour: item.hour || 9,
           minute: item.minute || 0,
           meridiem: item.meridiem || "AM",
+          itemType: item.itemType || "session",
+          pollUrl: (item.itemType === "poll" ? item.pollUrl?.trim() : "") || "",
         })),
       );
       console.log("Save result:", result);
@@ -617,17 +626,108 @@ export default function AgendaScreen() {
                 </View>
               </View>
 
+              {/* Item Type Toggle: Session / Poll */}
               <View style={styles.itemRow}>
                 <View style={[styles.itemField, { flex: 1 }]}>
-                  <Text style={styles.fieldLabel}>Speaker</Text>
-                  <TextInput
-                    style={styles.inputSmall}
-                    placeholder="Speaker name"
-                    placeholderTextColor="#9ca3af"
-                    value={item.speaker}
-                    onChangeText={(v) => handleUpdateItem(index, "speaker", v)}
-                    editable={!saving && canEdit}
-                  />
+                  <Text style={styles.fieldLabel}>Item Type</Text>
+                  <View style={{ flexDirection: "row", gap: 8, marginTop: 2 }}>
+                    <TouchableOpacity
+                      style={[
+                        styles.typeToggleBtn,
+                        (item.itemType === "session" || !item.itemType) && styles.typeToggleBtnActive,
+                      ]}
+                      onPress={() =>
+                        canEdit && handleUpdateItem(index, "itemType", "session")
+                      }
+                      disabled={saving || !canEdit}
+                    >
+                      <Ionicons
+                        name="mic-outline"
+                        size={13}
+                        color={(item.itemType === "session" || !item.itemType) ? "#fff" : "#4B5563"}
+                        style={{ marginRight: 4 }}
+                      />
+                      <Text
+                        style={[
+                          styles.typeToggleBtnText,
+                          (item.itemType === "session" || !item.itemType) && styles.typeToggleBtnTextActive,
+                        ]}
+                      >
+                        Session
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.typeToggleBtn,
+                        item.itemType === "poll" && styles.typeToggleBtnPollActive,
+                      ]}
+                      onPress={() =>
+                        canEdit && handleUpdateItem(index, "itemType", "poll")
+                      }
+                      disabled={saving || !canEdit}
+                    >
+                      <Ionicons
+                        name="bar-chart-outline"
+                        size={13}
+                        color={item.itemType === "poll" ? "#fff" : "#4B5563"}
+                        style={{ marginRight: 4 }}
+                      />
+                      <Text
+                        style={[
+                          styles.typeToggleBtnText,
+                          item.itemType === "poll" && styles.typeToggleBtnTextActive,
+                        ]}
+                      >
+                        Poll
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+
+              {/* Speaker (session) OR Poll URL (poll) */}
+              <View style={styles.itemRow}>
+                <View style={[styles.itemField, { flex: 1 }]}>
+                  {item.itemType === "poll" ? (
+                    <>
+                      <Text style={styles.fieldLabel}>Poll URL</Text>
+                      <TextInput
+                        style={[
+                          styles.inputSmall,
+                          { borderColor: "#7c3aed", borderWidth: 1.5 },
+                        ]}
+                        placeholder="https://app.sli.do/event/... or any poll link"
+                        placeholderTextColor="#9ca3af"
+                        value={item.pollUrl || ""}
+                        onChangeText={(v) => handleUpdateItem(index, "pollUrl", v)}
+                        editable={!saving && canEdit}
+                        autoCapitalize="none"
+                        keyboardType="url"
+                      />
+                      {item.pollUrl ? (
+                        <TouchableOpacity
+                          onPress={() => Linking.openURL(item.pollUrl!)}
+                          activeOpacity={0.75}
+                          style={styles.viewPollBtn}
+                        >
+                          <Ionicons name="open-outline" size={13} color="#000000" style={{ marginRight: 6 }} />
+                          <Text style={styles.viewPollBtnText}>View Poll</Text>
+                        </TouchableOpacity>
+                      ) : null}
+                    </>
+                  ) : (
+                    <>
+                      <Text style={styles.fieldLabel}>Speaker</Text>
+                      <TextInput
+                        style={styles.inputSmall}
+                        placeholder="Speaker name"
+                        placeholderTextColor="#9ca3af"
+                        value={item.speaker}
+                        onChangeText={(v) => handleUpdateItem(index, "speaker", v)}
+                        editable={!saving && canEdit}
+                      />
+                    </>
+                  )}
                 </View>
               </View>
 
@@ -1063,5 +1163,50 @@ const styles = StyleSheet.create({
   meridiemTextActive: {
     color: "#FFFFFF",
     fontWeight: "600",
+  },
+  // Item Type Toggle (Session / Poll)
+  typeToggleBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    backgroundColor: "#FFFFFF",
+  },
+  typeToggleBtnActive: {
+    backgroundColor: "#000000",
+    borderColor: "#000000",
+  },
+  typeToggleBtnPollActive: {
+    backgroundColor: "#7c3aed",
+    borderColor: "#7c3aed",
+  },
+  typeToggleBtnText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#4B5563",
+  },
+  typeToggleBtnTextActive: {
+    color: "#FFFFFF",
+  },
+  // View Poll Button (admin)
+  viewPollBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    backgroundColor: "#F9FAFB",
+  },
+  viewPollBtnText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#000000",
   },
 });

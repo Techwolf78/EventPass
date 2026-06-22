@@ -66,6 +66,8 @@ export interface EventData {
     title: string;
     speaker: string;
     tag: string;
+    itemType?: "session" | "poll";
+    pollUrl?: string;
   }[];
 }
 
@@ -588,6 +590,8 @@ export async function saveAgenda(
     title: string;
     speaker: string;
     tag: string;
+    itemType?: "session" | "poll";
+    pollUrl?: string;
   }[],
 ): Promise<{ success: boolean; message: string }> {
   try {

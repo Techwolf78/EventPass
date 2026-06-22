@@ -10,6 +10,7 @@ import { useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Linking,
   RefreshControl,
   ScrollView,
   Text,
@@ -293,10 +294,42 @@ export default function AgendaScreen() {
                 {liveSession.title}
               </Text>
 
-              {/* Footer info (Speaker) */}
-              {liveSession.speaker && liveSession.speaker.trim() !== "" && (
+              {/* Footer info (Speaker or Live Poll button) */}
+              {liveSession.itemType === "poll" && liveSession.pollUrl ? (
+                <TouchableOpacity
+                  onPress={() => Linking.openURL(liveSession.pollUrl!)}
+                  activeOpacity={0.75}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    alignSelf: "flex-start",
+                    backgroundColor: palette.primary,
+                    paddingHorizontal: 18,
+                    paddingVertical: 11,
+                    borderRadius: 50,
+                    marginTop: 4,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: "#ffffff",
+                      fontWeight: "600",
+                      fontSize: 14,
+                      letterSpacing: -0.1,
+                    }}
+                  >
+                    Open Live Poll
+                  </Text>
+                  <Ionicons
+                    name="open-outline"
+                    size={15}
+                    color="rgba(255,255,255,0.85)"
+                    style={{ marginLeft: 8 }}
+                  />
+                </TouchableOpacity>
+              ) : liveSession.speaker && liveSession.speaker.trim() !== "" ? (
                 <View style={{ flexDirection: "row", alignItems: "center" }}>
-                  <View 
+                  <View
                     style={{
                       width: 28,
                       height: 28,
@@ -320,7 +353,7 @@ export default function AgendaScreen() {
                     </Text>
                   </View>
                 </View>
-              )}
+              ) : null}
             </View>
           </View>
         )}
@@ -465,9 +498,40 @@ export default function AgendaScreen() {
                         {item.title}
                       </Text>
 
-                      {/* Footer Details: Speaker and Live indicators */}
+                      {/* Footer Details: Speaker, Live Poll button, and Live indicator */}
                       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                        {item.speaker && item.speaker.trim() !== "" ? (
+                        {/* Left: Speaker or Open Live Poll button (always visible for poll items) */}
+                        {item.itemType === "poll" && item.pollUrl ? (
+                          <TouchableOpacity
+                            onPress={() => Linking.openURL(item.pollUrl!)}
+                            activeOpacity={0.75}
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              backgroundColor: palette.primary,
+                              paddingHorizontal: 14,
+                              paddingVertical: 7,
+                              borderRadius: 50,
+                            }}
+                          >
+                            <Text
+                              style={{
+                                color: "#ffffff",
+                                fontWeight: "600",
+                                fontSize: 12,
+                                letterSpacing: -0.1,
+                              }}
+                            >
+                              Open Live Poll
+                            </Text>
+                            <Ionicons
+                              name="open-outline"
+                              size={13}
+                              color="rgba(255,255,255,0.85)"
+                              style={{ marginLeft: 6 }}
+                            />
+                          </TouchableOpacity>
+                        ) : item.speaker && item.speaker.trim() !== "" ? (
                           <View style={{ flexDirection: "row", alignItems: "center" }}>
                             <Ionicons
                               name="mic-outline"
