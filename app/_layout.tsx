@@ -63,7 +63,6 @@ console.warn = (...args: any[]) => {
   ) {
     return; // Suppress this specific warning
   }
-  originalWarn.call(console, ...args);
 };
 
 // Keep the splash screen visible while we fetch resources
@@ -96,6 +95,7 @@ function RootLayoutInner() {
     "support",
     "marketing",
     "analytics",
+    "email",
   ].includes(segments[0]));
 
   useEffect(() => {
@@ -135,6 +135,7 @@ function RootLayoutInner() {
       "support",
       "marketing",
       "analytics",
+      "email",
     ]);
     const isLegalPage = legalPages.has(segments[0]);
 
@@ -220,6 +221,7 @@ function RootLayoutInner() {
               "about",
               "support",
               "delete-account",
+              "email",
             ].includes(segments[0])
               ? {
                   maxWidth: 600,
