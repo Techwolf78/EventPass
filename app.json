@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "ConnectHQ",
+    "name": "Gryphon Academy",
     "slug": "connect-hq",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "orientation": "portrait",
     "icon": "./assets/images/connecthq-square.png",
     "scheme": "connecthq",
@@ -33,7 +33,6 @@
       "adaptiveIcon": {
         "backgroundColor": "#01224E",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "permissions": [
@@ -104,12 +103,12 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/shortlogo.png",
-          "imageWidth": 400,
+          "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#0f172a",
           "dark": {
             "image": "./assets/images/shortlogo.png",
-            "imageWidth": 400,
+            "imageWidth": 200,
             "resizeMode": "contain",
             "backgroundColor": "#0f172a"
           }
