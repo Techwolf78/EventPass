@@ -39,6 +39,32 @@ app.post('/api/send-email', async (req, res) => {
     });
   }
 
+
+
+  // Automatically attach horizontal email banners inline (CID)
+  if (mailOptions.bannerImage) {
+    attachments.push({
+      filename: mailOptions.bannerImage,
+      path: path.join(process.cwd(), 'assets', 'images', mailOptions.bannerImage),
+      cid: 'email_banner'
+    });
+  } else {
+    // Fallbacks
+    if (mailOptions.sphereBanner) {
+      attachments.push({
+        filename: 'synergy_sphere_download_banner.png',
+        path: path.join(process.cwd(), 'assets', 'images', 'synergy_sphere_download_banner.png'),
+        cid: 'email_banner'
+      });
+    } else if (mailOptions.masterclassBanner) {
+      attachments.push({
+        filename: 'masterclass_download_banner.png',
+        path: path.join(process.cwd(), 'assets', 'images', 'masterclass_download_banner.png'),
+        cid: 'email_banner'
+      });
+    }
+  }
+
   // Support manual attachments passed from UI
   if (mailOptions.attachments && mailOptions.attachments.length > 0) {
     attachments.push(...mailOptions.attachments);

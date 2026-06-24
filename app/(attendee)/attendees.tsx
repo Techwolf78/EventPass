@@ -1,3 +1,5 @@
+import { useAuth } from "@/context/AuthContext";
+import { useAttendeeTheme } from "@/hooks/use-attendee-theme";
 import {
   Candidate,
   getAttendeeListWithCheckIn,
@@ -5,6 +7,7 @@ import {
 } from "@/utils/firestore";
 import { formatTimeAgo } from "@/utils/time";
 import { Ionicons } from "@expo/vector-icons";
+import { useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -16,13 +19,9 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useLocalSearchParams } from "expo-router";
-import { useAuth } from "@/context/AuthContext";
-import { useAttendeeTheme } from "@/hooks/use-attendee-theme";
 
 const getInitials = (name: string) => {
   const parts = name.split(" ").filter(Boolean);
@@ -50,9 +49,19 @@ const getAvatarColor = (name: string) => {
 const getFormattedCheckInTime = (timestamp: any) => {
   if (!timestamp) return null;
   try {
-    const date = typeof timestamp.toDate === "function" ? timestamp.toDate() : new Date(timestamp);
-    const formattedTime = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const formattedDate = date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+    const date =
+      typeof timestamp.toDate === "function"
+        ? timestamp.toDate()
+        : new Date(timestamp);
+    const formattedTime = date.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    const formattedDate = date.toLocaleDateString([], {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
     return `${formattedDate} at ${formattedTime}`;
   } catch (e) {
     console.error(e);
@@ -65,7 +74,7 @@ export default function AttendeesScreen() {
   const params = useLocalSearchParams<{ search?: string }>();
   const { isAdmin } = useAuth();
   const { enrollmentType, loading: themeLoading } = useAttendeeTheme();
-  
+
   const [attendees, setAttendees] = useState<
     (Candidate & { checkInTime?: any })[]
   >([]);
@@ -101,7 +110,9 @@ export default function AttendeesScreen() {
     if (params.search && visibleAttendees.length > 0) {
       setSearchQuery(params.search);
       const queryLower = params.search.toLowerCase().trim();
-      const matched = visibleAttendees.find(a => a.name.toLowerCase().includes(queryLower));
+      const matched = visibleAttendees.find((a) =>
+        a.name.toLowerCase().includes(queryLower),
+      );
       if (matched) {
         setSelectedAttendeeDetail(matched);
       }
@@ -144,7 +155,9 @@ export default function AttendeesScreen() {
 
   const stats = useMemo(() => {
     const total = visibleAttendees.length;
-    const checkedIn = visibleAttendees.filter((a) => checkedInIds.has(a.id)).length;
+    const checkedIn = visibleAttendees.filter((a) =>
+      checkedInIds.has(a.id),
+    ).length;
     const pending = total - checkedIn;
     const rate = total > 0 ? Math.round((checkedIn / total) * 100) : 0;
     return { total, checkedIn, pending, rate };
@@ -408,7 +421,9 @@ export default function AttendeesScreen() {
                     { backgroundColor: getAvatarColor(item.name) },
                   ]}
                 >
-                  <Text style={styles.avatarText}>{getInitials(item.name)}</Text>
+                  <Text style={styles.avatarText}>
+                    {getInitials(item.name)}
+                  </Text>
                 </View>
 
                 <View style={styles.attendeeInfo}>
@@ -441,7 +456,11 @@ export default function AttendeesScreen() {
 
                     {isCheckedIn && (
                       <View style={styles.timeContainer}>
-                        <Ionicons name="time-outline" size={12} color="#64748B" />
+                        <Ionicons
+                          name="time-outline"
+                          size={12}
+                          color="#64748B"
+                        />
                         <Text style={styles.timeText}>
                           {formatTimeAgo(item.checkInTime)}
                         </Text>
@@ -449,48 +468,53 @@ export default function AttendeesScreen() {
                     )}
                   </View>
                 </View>
+              </TouchableOpacity>
 
+              {item.linkedinUrl ? (
+                <TouchableOpacity
+                  style={styles.linkedinButton}
+                  onPress={() => {
+                    Linking.openURL(item.linkedinUrl!).catch((err) =>
+                      console.error("Couldn't load page", err),
+                    );
+                  }}
+                >
+                  <Ionicons name="logo-linkedin" size={24} color="#0A66C2" />
+                </TouchableOpacity>
+              ) : (
+                <View style={{ width: 40, marginHorizontal: 8 }} />
+              )}
+
+              <View
+                style={[
+                  styles.statusBadge,
+                  isCheckedIn
+                    ? [
+                        styles.statusBadgeChecked,
+                        { borderColor: statusColor },
+                      ]
+                    : styles.statusBadgePending,
+                ]}
+              >
                 <View
                   style={[
-                    styles.statusBadge,
+                    styles.statusDot,
                     isCheckedIn
-                      ? [styles.statusBadgeChecked, { borderColor: statusColor }]
-                      : styles.statusBadgePending,
+                      ? { backgroundColor: statusColor }
+                      : styles.statusDotPending,
+                  ]}
+                />
+                <Text
+                  style={[
+                    styles.statusBadgeText,
+                    isCheckedIn
+                      ? styles.statusBadgeTextChecked
+                      : styles.statusBadgeTextPending,
                   ]}
                 >
-                  <View
-                    style={[
-                      styles.statusDot,
-                      isCheckedIn
-                        ? { backgroundColor: statusColor }
-                        : styles.statusDotPending,
-                    ]}
-                  />
-                  <Text
-                    style={[
-                      styles.statusBadgeText,
-                      isCheckedIn
-                        ? styles.statusBadgeTextChecked
-                        : styles.statusBadgeTextPending,
-                    ]}
-                  >
-                    {isCheckedIn ? "Arrived" : "Pending"}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.linkedinButton}
-                onPress={() => {
-                  const url =
-                    item.linkedinUrl || "https://www.linkedin.com/feed/";
-                  Linking.openURL(url).catch((err) =>
-                    console.error("Couldn't load page", err),
-                  );
-                }}
-              >
-                <Ionicons name="logo-linkedin" size={24} color="#0A66C2" />
-              </TouchableOpacity>
+                  {isCheckedIn ? "Arrived" : "Pending"}
+                </Text>
+              </View>
             </View>
           );
         }}
@@ -525,9 +549,9 @@ export default function AttendeesScreen() {
       >
         <View style={styles.tcOverlay}>
           {/* Backdrop Touch Target */}
-          <TouchableOpacity 
-            style={StyleSheet.absoluteFillObject} 
-            activeOpacity={1} 
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
             onPress={() => setSelectedAttendeeDetail(null)}
           />
           <View style={styles.tcContent}>
@@ -543,178 +567,249 @@ export default function AttendeesScreen() {
               </TouchableOpacity>
             </View>
 
-            {selectedAttendeeDetail && (() => {
-              const isCheckedIn = checkedInIds.has(selectedAttendeeDetail.id);
-              const formattedTime = getFormattedCheckInTime(selectedAttendeeDetail.checkInTime);
-              return (
-                <ScrollView 
-                  showsVerticalScrollIndicator={false}
-                  contentContainerStyle={styles.tcScrollContent}
-                >
-                  {/* Top Profile Card */}
-                  <View style={styles.tcProfileHeader}>
-                    <View
-                      style={[
-                        styles.tcLargeAvatar,
-                        { backgroundColor: getAvatarColor(selectedAttendeeDetail.name) },
-                      ]}
-                    >
-                      <Text style={styles.tcLargeAvatarText}>
-                        {getInitials(selectedAttendeeDetail.name)}
-                      </Text>
-                      {selectedAttendeeDetail.isVIP && (
-                        <View style={styles.tcCrownBadge}>
-                          <Ionicons name="ribbon" size={14} color="#fff" />
-                        </View>
-                      )}
-                    </View>
-                    
-                    <Text style={styles.tcProfileName}>{selectedAttendeeDetail.name}</Text>
-                    {selectedAttendeeDetail.companyName ? (
-                      <Text style={styles.tcProfileSubtitle}>
-                        {selectedAttendeeDetail.companyName}
-                      </Text>
-                    ) : (
-                      <Text style={styles.tcProfileSubtitle}>Independent Attendee</Text>
-                    )}
-
-                    {/* VIP glowing badge */}
-                    {selectedAttendeeDetail.isVIP && (
-                      <View style={styles.tcVipBadge}>
-                        <Ionicons name="star" size={12} color="#fff" style={{ marginRight: 4 }} />
-                        <Text style={styles.tcVipBadgeText}>VIP ATTENDEE</Text>
-                      </View>
-                    )}
-                  </View>
-
-                  {/* iOS Quick Actions Row */}
-                  <View style={styles.tcQuickActionsRow}>
-                    {/* LinkedIn Action */}
-                    <TouchableOpacity
-                      style={[
-                        styles.tcActionCol,
-                        !selectedAttendeeDetail.linkedinUrl && { opacity: 0.4 }
-                      ]}
-                      disabled={!selectedAttendeeDetail.linkedinUrl}
-                      onPress={() => {
-                        if (selectedAttendeeDetail.linkedinUrl) {
-                          Linking.openURL(selectedAttendeeDetail.linkedinUrl);
-                        }
-                      }}
-                    >
-                      <View style={styles.tcActionIconCircle}>
-                        <Ionicons name="logo-linkedin" size={22} color="#0a66c2" />
-                      </View>
-                      <Text style={styles.tcActionLabel}>LinkedIn</Text>
-                    </TouchableOpacity>
-
-                    {/* Email Action */}
-                    <TouchableOpacity
-                      style={styles.tcActionCol}
-                      onPress={() => {
-                        if (selectedAttendeeDetail.email) {
-                          Linking.openURL(`mailto:${selectedAttendeeDetail.email}`);
-                        }
-                      }}
-                    >
-                      <View style={styles.tcActionIconCircle}>
-                        <Ionicons name="mail" size={22} color="#0284c7" />
-                      </View>
-                      <Text style={styles.tcActionLabel}>Email</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Grouped Info Sections (iOS Style Cards) */}
-                  <View style={styles.tcGroup}>
-                    <Text style={styles.tcGroupTitle}>CONTACT DETAILS</Text>
-                    <View style={styles.tcCard}>
-                      <View style={styles.tcRow}>
-                        <Ionicons name="mail-outline" size={18} color="#64748b" style={styles.tcRowIcon} />
-                        <View style={styles.tcRowTextContainer}>
-                          <Text style={styles.tcRowLabel}>Email</Text>
-                          <Text style={styles.tcRowValue}>{selectedAttendeeDetail.email}</Text>
-                        </View>
-                      </View>
-                      <View style={styles.tcRowBorder} />
-                      <View style={styles.tcRow}>
-                        <Ionicons name="business-outline" size={18} color="#64748b" style={styles.tcRowIcon} />
-                        <View style={styles.tcRowTextContainer}>
-                          <Text style={styles.tcRowLabel}>Company</Text>
-                          <Text style={styles.tcRowValue}>
-                            {selectedAttendeeDetail.companyName || "Not Specified"}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-                  </View>
-
-                  <View style={styles.tcGroup}>
-                    <Text style={styles.tcGroupTitle}>EVENT TICKET & PRIVILEGES</Text>
-                    <View style={styles.tcCard}>
-                      <View style={styles.tcRow}>
-                        <Ionicons name="ticket-outline" size={18} color="#64748b" style={styles.tcRowIcon} />
-                        <View style={styles.tcRowTextContainer}>
-                          <Text style={styles.tcRowLabel}>Pass Type</Text>
-                          <Text style={styles.tcRowValue}>
-                            {selectedAttendeeDetail.enrollmentType === "masterclass"
-                              ? "Exclusive Masterclass Pass"
-                              : "Synergy Sphere General Pass"}
-                          </Text>
-                        </View>
-                      </View>
-                      <View style={styles.tcRowBorder} />
-                      <View style={styles.tcRow}>
-                        <Ionicons name="information-circle-outline" size={18} color="#64748b" style={styles.tcRowIcon} />
-                        <View style={styles.tcRowTextContainer}>
-                          <Text style={styles.tcRowLabel}>Registration ID</Text>
-                          <Text style={styles.tcRowValue}>{selectedAttendeeDetail.id}</Text>
-                        </View>
-                      </View>
-                    </View>
-                  </View>
-
-                  <View style={styles.tcGroup}>
-                    <Text style={styles.tcGroupTitle}>CHECK-IN TIMELINE</Text>
-                    <View style={styles.tcCard}>
-                      <View style={styles.tcRow}>
-                        <Ionicons 
-                          name={isCheckedIn ? "ellipse" : "ellipse-outline"} 
-                          size={16} 
-                          color={isCheckedIn ? "#22c55e" : "#cbd5e1"} 
-                          style={styles.tcRowIcon} 
-                        />
-                        <View style={styles.tcRowTextContainer}>
-                          <Text style={styles.tcRowLabel}>Arrival Status</Text>
-                          <Text 
-                            style={[
-                              styles.tcRowValue, 
-                              isCheckedIn ? { color: "#10b981", fontWeight: "700" } : { color: "#64748b" }
-                            ]}
-                          >
-                            {isCheckedIn ? "Arrived & Verified" : "Pending Registration"}
-                          </Text>
-                        </View>
-                      </View>
-                      {isCheckedIn && formattedTime && (
-                        <>
-                          <View style={styles.tcRowBorder} />
-                          <View style={styles.tcRow}>
-                            <Ionicons name="time-outline" size={18} color="#64748b" style={styles.tcRowIcon} />
-                            <View style={styles.tcRowTextContainer}>
-                              <Text style={styles.tcRowLabel}>Checked In Time</Text>
-                              <Text style={styles.tcRowValue}>{formattedTime}</Text>
-                            </View>
+            {selectedAttendeeDetail &&
+              (() => {
+                const isCheckedIn = checkedInIds.has(selectedAttendeeDetail.id);
+                const formattedTime = getFormattedCheckInTime(
+                  selectedAttendeeDetail.checkInTime,
+                );
+                return (
+                  <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={styles.tcScrollContent}
+                  >
+                    {/* Top Profile Card */}
+                    <View style={styles.tcProfileHeader}>
+                      <View
+                        style={[
+                          styles.tcLargeAvatar,
+                          {
+                            backgroundColor: getAvatarColor(
+                              selectedAttendeeDetail.name,
+                            ),
+                          },
+                        ]}
+                      >
+                        <Text style={styles.tcLargeAvatarText}>
+                          {getInitials(selectedAttendeeDetail.name)}
+                        </Text>
+                        {selectedAttendeeDetail.isVIP && (
+                          <View style={styles.tcCrownBadge}>
+                            <Ionicons name="ribbon" size={14} color="#fff" />
                           </View>
-                        </>
+                        )}
+                      </View>
+
+                      <Text style={styles.tcProfileName}>
+                        {selectedAttendeeDetail.name}
+                      </Text>
+                      {selectedAttendeeDetail.companyName ? (
+                        <Text style={styles.tcProfileSubtitle}>
+                          {selectedAttendeeDetail.companyName}
+                        </Text>
+                      ) : (
+                        <Text style={styles.tcProfileSubtitle}>
+                          Independent Attendee
+                        </Text>
+                      )}
+
+                      {/* VIP glowing badge */}
+                      {selectedAttendeeDetail.isVIP && (
+                        <View style={styles.tcVipBadge}>
+                          <Ionicons
+                            name="star"
+                            size={12}
+                            color="#fff"
+                            style={{ marginRight: 4 }}
+                          />
+                          <Text style={styles.tcVipBadgeText}>
+                            VIP ATTENDEE
+                          </Text>
+                        </View>
                       )}
                     </View>
-                  </View>
 
-                  <View style={{ height: 60 }} />
-                </ScrollView>
-              );
-            })()}
-            </View>
+                    {/* iOS Quick Actions Row */}
+                    <View style={styles.tcQuickActionsRow}>
+                      {/* LinkedIn Action */}
+                      <TouchableOpacity
+                        style={[
+                          styles.tcActionCol,
+                          !selectedAttendeeDetail.linkedinUrl && {
+                            opacity: 0.4,
+                          },
+                        ]}
+                        disabled={!selectedAttendeeDetail.linkedinUrl}
+                        onPress={() => {
+                          if (selectedAttendeeDetail.linkedinUrl) {
+                            Linking.openURL(selectedAttendeeDetail.linkedinUrl);
+                          }
+                        }}
+                      >
+                        <View style={styles.tcActionIconCircle}>
+                          <Ionicons
+                            name="logo-linkedin"
+                            size={22}
+                            color="#0a66c2"
+                          />
+                        </View>
+                        <Text style={styles.tcActionLabel}>LinkedIn</Text>
+                      </TouchableOpacity>
+
+                      {/* Email Action */}
+                      <TouchableOpacity
+                        style={styles.tcActionCol}
+                        onPress={() => {
+                          if (selectedAttendeeDetail.email) {
+                            Linking.openURL(
+                              `mailto:${selectedAttendeeDetail.email}`,
+                            );
+                          }
+                        }}
+                      >
+                        <View style={styles.tcActionIconCircle}>
+                          <Ionicons name="mail" size={22} color="#0284c7" />
+                        </View>
+                        <Text style={styles.tcActionLabel}>Email</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Grouped Info Sections (iOS Style Cards) */}
+                    <View style={styles.tcGroup}>
+                      <Text style={styles.tcGroupTitle}>CONTACT DETAILS</Text>
+                      <View style={styles.tcCard}>
+                        <View style={styles.tcRow}>
+                          <Ionicons
+                            name="mail-outline"
+                            size={18}
+                            color="#64748b"
+                            style={styles.tcRowIcon}
+                          />
+                          <View style={styles.tcRowTextContainer}>
+                            <Text style={styles.tcRowLabel}>Email</Text>
+                            <Text style={styles.tcRowValue}>
+                              {selectedAttendeeDetail.email}
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={styles.tcRowBorder} />
+                        <View style={styles.tcRow}>
+                          <Ionicons
+                            name="business-outline"
+                            size={18}
+                            color="#64748b"
+                            style={styles.tcRowIcon}
+                          />
+                          <View style={styles.tcRowTextContainer}>
+                            <Text style={styles.tcRowLabel}>Company</Text>
+                            <Text style={styles.tcRowValue}>
+                              {selectedAttendeeDetail.companyName ||
+                                "Not Specified"}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+
+                    <View style={styles.tcGroup}>
+                      <Text style={styles.tcGroupTitle}>
+                        EVENT TICKET & PRIVILEGES
+                      </Text>
+                      <View style={styles.tcCard}>
+                        <View style={styles.tcRow}>
+                          <Ionicons
+                            name="ticket-outline"
+                            size={18}
+                            color="#64748b"
+                            style={styles.tcRowIcon}
+                          />
+                          <View style={styles.tcRowTextContainer}>
+                            <Text style={styles.tcRowLabel}>Pass Type</Text>
+                            <Text style={styles.tcRowValue}>
+                              {selectedAttendeeDetail.enrollmentType ===
+                              "masterclass"
+                                ? "Exclusive Masterclass Pass"
+                                : "Synergy Sphere General Pass"}
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={styles.tcRowBorder} />
+                        <View style={styles.tcRow}>
+                          <Ionicons
+                            name="information-circle-outline"
+                            size={18}
+                            color="#64748b"
+                            style={styles.tcRowIcon}
+                          />
+                          <View style={styles.tcRowTextContainer}>
+                            <Text style={styles.tcRowLabel}>
+                              Registration ID
+                            </Text>
+                            <Text style={styles.tcRowValue}>
+                              {selectedAttendeeDetail.id}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+
+                    <View style={styles.tcGroup}>
+                      <Text style={styles.tcGroupTitle}>CHECK-IN TIMELINE</Text>
+                      <View style={styles.tcCard}>
+                        <View style={styles.tcRow}>
+                          <Ionicons
+                            name={isCheckedIn ? "ellipse" : "ellipse-outline"}
+                            size={16}
+                            color={isCheckedIn ? "#22c55e" : "#cbd5e1"}
+                            style={styles.tcRowIcon}
+                          />
+                          <View style={styles.tcRowTextContainer}>
+                            <Text style={styles.tcRowLabel}>
+                              Arrival Status
+                            </Text>
+                            <Text
+                              style={[
+                                styles.tcRowValue,
+                                isCheckedIn
+                                  ? { color: "#10b981", fontWeight: "700" }
+                                  : { color: "#64748b" },
+                              ]}
+                            >
+                              {isCheckedIn
+                                ? "Arrived & Verified"
+                                : "Pending Registration"}
+                            </Text>
+                          </View>
+                        </View>
+                        {isCheckedIn && formattedTime && (
+                          <>
+                            <View style={styles.tcRowBorder} />
+                            <View style={styles.tcRow}>
+                              <Ionicons
+                                name="time-outline"
+                                size={18}
+                                color="#64748b"
+                                style={styles.tcRowIcon}
+                              />
+                              <View style={styles.tcRowTextContainer}>
+                                <Text style={styles.tcRowLabel}>
+                                  Checked In Time
+                                </Text>
+                                <Text style={styles.tcRowValue}>
+                                  {formattedTime}
+                                </Text>
+                              </View>
+                            </View>
+                          </>
+                        )}
+                      </View>
+                    </View>
+
+                    <View style={{ height: 60 }} />
+                  </ScrollView>
+                );
+              })()}
+          </View>
         </View>
       </Modal>
     </View>

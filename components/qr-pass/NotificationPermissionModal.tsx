@@ -11,6 +11,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Linking,
 } from "react-native";
 
 interface NotificationPermissionModalProps {
@@ -37,6 +38,7 @@ export default function NotificationPermissionModal({
 }: NotificationPermissionModalProps) {
   const [requesting, setRequesting] = useState(false);
   const isEnabled = permissionStatus === "granted";
+  const isDenied = permissionStatus === "denied";
 
   const handleEnableNotifications = async () => {
     setRequesting(true);
@@ -78,6 +80,17 @@ export default function NotificationPermissionModal({
     }
   };
 
+  const handleOpenSettings = async () => {
+    try {
+      await Linking.openSettings();
+    } catch (error) {
+      console.error("[NotificationPermissionModal] Error opening settings:", error);
+    } finally {
+      onClose();
+    }
+  };
+
+
   return (
     <Modal
       visible={visible}
@@ -109,13 +122,29 @@ export default function NotificationPermissionModal({
             <View
               style={[
                 styles.iconWrapper,
-                isEnabled ? styles.iconWrapperSuccess : styles.iconWrapperPending,
+                isEnabled
+                  ? styles.iconWrapperSuccess
+                  : isDenied
+                  ? styles.iconWrapperDenied
+                  : styles.iconWrapperPending,
               ]}
             >
               <Ionicons
-                name={isEnabled ? "notifications-circle" : "notifications"}
+                name={
+                  isEnabled
+                    ? "notifications-circle"
+                    : isDenied
+                    ? "notifications-off"
+                    : "notifications"
+                }
                 size={44}
-                color={isEnabled ? "#16A34A" : "#2563EB"}
+                color={
+                  isEnabled
+                    ? "#16A34A"
+                    : isDenied
+                    ? "#EF4444"
+                    : "#2563EB"
+                }
               />
             </View>
           </View>
@@ -123,11 +152,17 @@ export default function NotificationPermissionModal({
           {/* Content Area */}
           <View style={styles.body}>
             <Text style={styles.title}>
-              {isEnabled ? "Notifications Enabled" : "Stay Updated"}
+              {isEnabled
+                ? "Notifications Enabled"
+                : isDenied
+                ? "Permission Denied"
+                : "Stay Updated"}
             </Text>
             <Text style={styles.message}>
               {isEnabled
                 ? "You are all set! You will not miss any important alerts."
+                : isDenied
+                ? "Notification permission was denied. Please enable notifications in your device settings to get updates."
                 : "You are missing out on the latest event updates."}
             </Text>
 
@@ -170,14 +205,14 @@ export default function NotificationPermissionModal({
               <>
                 <TouchableOpacity
                   style={styles.primaryButton}
-                  onPress={handleEnableNotifications}
+                  onPress={isDenied ? handleOpenSettings : handleEnableNotifications}
                   disabled={requesting}
                 >
                   {requesting ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
                     <Text style={styles.primaryButtonText}>
-                      Enable Notifications
+                      {isDenied ? "Open Settings" : "Enable Notifications"}
                     </Text>
                   )}
                 </TouchableOpacity>
@@ -251,6 +286,9 @@ const styles = StyleSheet.create({
   },
   iconWrapperSuccess: {
     backgroundColor: "#ECFDF5", // Green tint for enabled state
+  },
+  iconWrapperDenied: {
+    backgroundColor: "#FEF2F2", // Red/pink tint for denied state
   },
   body: {
     alignItems: "center",

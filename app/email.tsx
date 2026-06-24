@@ -8,6 +8,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   Platform,
+  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -21,6 +22,25 @@ interface Recipient {
   status?: "pending" | "sending" | "success" | "failed";
   error?: string;
 }
+
+const resolveLocalAsset = (asset: any): string => {
+  if (!asset) return "";
+  if (typeof asset === "string") return asset;
+  if (typeof asset === "object") {
+    if (asset.uri && typeof asset.uri === "string") return asset.uri;
+    if (asset.default && typeof asset.default === "string") return asset.default;
+  }
+  try {
+    const resolver = Image.resolveAssetSource || (Image as any).default?.resolveAssetSource;
+    if (typeof resolver === "function") {
+      const resolved = resolver(asset);
+      if (resolved && resolved.uri) return resolved.uri;
+    }
+  } catch (e) {
+    console.warn("Error resolving asset source", e);
+  }
+  return "";
+};
 
 export default function EmailDashboard() {
   const router = useRouter();
@@ -193,6 +213,129 @@ export default function EmailDashboard() {
     const name = rec.name;
     const email = rec.email;
 
+    const emailStyles = `
+      <style>
+        /* Support system-wide light/dark mode preference */
+        :root {
+          color-scheme: light dark;
+          supported-color-schemes: light dark;
+        }
+        
+        /* Base email styles */
+        .email-body {
+          background-color: #F8F7F5;
+        }
+        .email-card {
+          background-color: #ffffff;
+          border-color: #E5D5BA;
+        }
+        
+        /* Synergy Banner fallback and gradient */
+        .banner-synergy {
+          background-color: #0B1E36 !important;
+          background: linear-gradient(90deg, #0B1E36 0%, #D84B20 100%) !important;
+        }
+        
+        /* Masterclass Banner fallback and gradient */
+        .banner-masterclass {
+          background-color: #041D1C !important;
+          background: linear-gradient(90deg, #041D1C 0%, #0FA596 100%) !important;
+        }
+        
+        /* Dark Mode specific overrides */
+        @media (prefers-color-scheme: dark) {
+          .email-body {
+            background-color: #121212 !important;
+          }
+          .email-card {
+            background-color: #1E293B !important;
+            border-color: #334155 !important;
+            box-shadow: none !important;
+          }
+          .banner-synergy {
+            background-color: #0B1E36 !important;
+            background: linear-gradient(90deg, #0B1E36 0%, #D84B20 100%) !important;
+          }
+          .banner-masterclass {
+            background-color: #041D1C !important;
+            background: linear-gradient(90deg, #041D1C 0%, #0FA596 100%) !important;
+          }
+          .text-title {
+            color: #ffffff !important;
+          }
+          .text-body {
+            color: #E2E8F0 !important;
+          }
+          .text-strong {
+            color: #ffffff !important;
+          }
+          .bullet-point {
+            color: #E2E8F0 !important;
+          }
+          .ticket-box {
+            background-color: #0F172A !important;
+            border-color: #334155 !important;
+            border-left-color: #B89047 !important;
+          }
+          .ticket-title {
+            color: #ffffff !important;
+          }
+          .ticket-label {
+            color: #94A3B8 !important;
+          }
+          .ticket-value {
+            color: #ffffff !important;
+          }
+          .ticket-note {
+            color: #B89047 !important;
+          }
+          .divider {
+            border-top-color: #334155 !important;
+            border-bottom-color: #334155 !important;
+          }
+          .footer-label {
+            color: #94A3B8 !important;
+          }
+          .footer-value {
+            color: #ffffff !important;
+          }
+          .link-text {
+            color: #60A5FA !important;
+          }
+        }
+        
+        /* Outlook App specific Dark Mode overrides */
+        [data-ogsc] .email-body {
+          background-color: #121212 !important;
+        }
+        [data-ogsc] .email-card {
+          background-color: #1E293B !important;
+          border-color: #334155 !important;
+        }
+        [data-ogsc] .banner-synergy {
+          background-color: #0B1E36 !important;
+          background: linear-gradient(90deg, #0B1E36 0%, #D84B20 100%) !important;
+        }
+        [data-ogsc] .banner-masterclass {
+          background-color: #041D1C !important;
+          background: linear-gradient(90deg, #041D1C 0%, #0FA596 100%) !important;
+        }
+        [data-ogsc] .text-title {
+          color: #ffffff !important;
+        }
+        [data-ogsc] .text-strong {
+          color: #ffffff !important;
+        }
+        [data-ogsc] .text-body {
+          color: #E2E8F0 !important;
+        }
+        [data-ogsc] .ticket-box {
+          background-color: #0F172A !important;
+          border-color: #334155 !important;
+        }
+      </style>
+    `;
+
     let subject = "";
     let html = "";
     let text = "";
@@ -229,73 +372,77 @@ We have provided a brief visual guide below to ensure your setup is completed wi
 Warm regards,`;
 
         html = `
-          <div style="background-color: #F8F7F5; padding: 24px 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; text-align: left;">
-            <div style="max-width: 600px; margin: 0 auto; border: 1px solid #E5D5BA; border-top: 6px solid #0E1B38; background-color: #ffffff; padding: 32px 20px; box-shadow: 0 8px 30px rgba(14, 27, 56, 0.05); border-radius: 4px;">
+          ${emailStyles}
+          <div class="email-body" style="background-color: #F8F7F5; padding: 24px 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; text-align: left;">
+            <div class="email-card" style="max-width: 600px; margin: 0 auto; border: 1px solid #E5D5BA; border-top: 6px solid #0E1B38; background-color: #ffffff; padding: 32px 20px; box-shadow: 0 8px 30px rgba(14, 27, 56, 0.05); border-radius: 4px;">
               
-              <!-- Event Header -->
-              <div style="text-align: center; margin-bottom: 24px; border-bottom: 1px solid #F3EFE9; padding-bottom: 20px;">
-                <span style="font-family: Georgia, serif; font-size: 11px; letter-spacing: 3px; color: #B89047; text-transform: uppercase; font-weight: 600; display: block; margin-bottom: 8px;">Exclusive Guest Pass</span>
-                <h1 style="font-family: Georgia, serif; font-weight: normal; color: #0E1B38; font-size: 24px; margin: 0; letter-spacing: 1px; text-transform: uppercase;">SYNERGY SPHERE 2.0</h1>
-                <div style="width: 40px; height: 1px; background-color: #B89047; margin: 15px auto 0 auto;"></div>
+              <!-- Event Header Banner Block -->
+              <div class="banner-synergy" style="background-color: #0B1E36; background-image: linear-gradient(90deg, #0B1E36 0%, #D84B20 100%); padding: 28px 20px; text-align: center; border-radius: 4px; margin-bottom: 28px; border: 1px solid #E5D5BA;">
+                <span class="text-title" style="font-family: Georgia, serif; font-size: 11px; letter-spacing: 3px; color: #ffffff; text-transform: uppercase; font-weight: 600; display: block; margin-bottom: 8px;">Exclusive Guest Pass</span>
+                <h1 class="text-title" style="font-family: Georgia, serif; font-weight: normal; color: #ffffff; font-size: 24px; margin: 0; letter-spacing: 1.5px; text-transform: uppercase;">SYNERGY SPHERE 2.0</h1>
               </div>
 
-              <h2 style="font-family: Georgia, serif; color: #0E1B38; font-size: 20px; font-weight: normal; margin-top: 0; margin-bottom: 20px; letter-spacing: 0.2px;">Dear ${name},</h2>
+              <h2 class="text-title" style="font-family: Georgia, serif; color: #0E1B38; font-size: 20px; font-weight: normal; margin-top: 0; margin-bottom: 20px; letter-spacing: 0.2px;">Dear ${name},</h2>
               
-              <p style="font-size: 15px; line-height: 1.7; color: #3E4756; margin-bottom: 16px;">Greetings from <strong>Gryphon Academy Pvt. Ltd.</strong></p>
+              <p class="text-body" style="font-size: 15px; line-height: 1.7; color: #3E4756; margin-bottom: 16px;">Greetings from <strong class="text-strong">Gryphon Academy Pvt. Ltd.</strong></p>
               
-              <p style="font-size: 15px; line-height: 1.7; color: #3E4756; margin-bottom: 20px;">We are dedicated to providing a memorable and impactful experience for all our esteemed attendees. To ensure you stay perfectly connected throughout <strong>Synergy Sphere 2.0 - The Adventurous Intelligence</strong>, we request you to download our official event app <strong>${appName}</strong>.</p>
+              <p class="text-body" style="font-size: 15px; line-height: 1.7; color: #3E4756; margin-bottom: 20px;">We are dedicated to providing a memorable and impactful experience for all our esteemed attendees. To ensure you stay perfectly connected throughout <strong>Synergy Sphere 2.0 - The Adventurous Intelligence</strong>, we request you to download our official event app <strong class="text-strong">${appName}</strong>.</p>
               
-              <p style="font-size: 15px; line-height: 1.7; color: #3E4756; margin-bottom: 16px;">The <strong>${appName}</strong> serves as your personalized gateway to every aspect of the evening. Through the app, you will enjoy seamless access to:</p>
+              <p class="text-body" style="font-size: 15px; line-height: 1.7; color: #3E4756; margin-bottom: 16px;">The <strong class="text-strong">${appName}</strong> serves as your personalized gateway to every aspect of the evening. Through the app, you will enjoy seamless access to:</p>
               
               <ul style="padding-left: 0; list-style-type: none; margin-bottom: 24px; margin-top: 10px;">
-                <li style="margin-bottom: 12px; font-size: 14.5px; line-height: 1.6; color: #3E4756; position: relative; padding-left: 18px;">
+                <li class="bullet-point" style="margin-bottom: 12px; font-size: 14.5px; line-height: 1.6; color: #3E4756; position: relative; padding-left: 18px;">
                   <span style="color: #B89047; position: absolute; left: 0; top: 2px; font-size: 10px;">&#9670;</span>
-                  <strong>The Live Event Agenda:</strong> Plan your evening timeline with absolute precision.
+                  <strong class="text-strong">The Live Event Agenda:</strong> Plan your evening timeline with absolute precision.
                 </li>
-                <li style="margin-bottom: 12px; font-size: 14.5px; line-height: 1.6; color: #3E4756; position: relative; padding-left: 18px;">
+                <li class="bullet-point" style="margin-bottom: 12px; font-size: 14.5px; line-height: 1.6; color: #3E4756; position: relative; padding-left: 18px;">
                   <span style="color: #B89047; position: absolute; left: 0; top: 2px; font-size: 10px;">&#9670;</span>
-                  <strong>Exclusive Networking:</strong> View attendee profiles and connect effortlessly with fellow corporate leaders and pioneers.
+                  <strong class="text-strong">Exclusive Networking:</strong> View attendee profiles and connect effortlessly with fellow corporate leaders and pioneers.
                 </li>
-                <li style="margin-bottom: 12px; font-size: 14.5px; line-height: 1.6; color: #3E4756; position: relative; padding-left: 18px;">
+                <li class="bullet-point" style="margin-bottom: 12px; font-size: 14.5px; line-height: 1.6; color: #3E4756; position: relative; padding-left: 18px;">
                   <span style="color: #B89047; position: absolute; left: 0; top: 2px; font-size: 10px;">&#9670;</span>
-                  <strong>Real-Time Updates:</strong> Receive instant notifications regarding sessions, reveals, and evening highlights.
+                  <strong class="text-strong">Real-Time Updates:</strong> Receive instant notifications regarding sessions, reveals, and evening highlights.
                 </li>
               </ul>
               
               <!-- Guest Login Ticket Details -->
-              <div style="background-color: #FAF8F5; border: 1px solid #E5D5BA; border-left: 4px solid #B89047; padding: 20px 16px; border-radius: 2px; margin: 28px 0; box-shadow: inset 0 1px 3px rgba(184, 144, 71, 0.05);">
-                <h4 style="margin-top: 0; margin-bottom: 16px; color: #0E1B38; font-family: Georgia, serif; font-size: 15px; font-weight: normal; letter-spacing: 1px; text-transform: uppercase;">Your App Login Details</h4>
-                <div style="border-bottom: 1px solid #EAE6DF; padding-bottom: 12px; margin-bottom: 12px;">
-                  <p style="margin: 0; font-size: 11px; color: #8A92A6; letter-spacing: 0.5px; text-transform: uppercase;">Registered Name</p>
-                  <p style="margin: 4px 0 0 0; font-family: Georgia, serif; font-size: 16px; color: #0E1B38; font-weight: bold;">${name}</p>
+              <div class="ticket-box" style="background-color: #FAF8F5; border: 1px solid #E5D5BA; border-left: 4px solid #B89047; padding: 20px 16px; border-radius: 2px; margin: 28px 0; box-shadow: inset 0 1px 3px rgba(184, 144, 71, 0.05);">
+                <h4 class="ticket-title" style="margin-top: 0; margin-bottom: 16px; color: #0E1B38; font-family: Georgia, serif; font-size: 15px; font-weight: normal; letter-spacing: 1px; text-transform: uppercase;">Your App Login Details</h4>
+                <div class="divider" style="border-bottom: 1px solid #EAE6DF; padding-bottom: 12px; margin-bottom: 12px;">
+                  <p class="ticket-label" style="margin: 0; font-size: 11px; color: #8A92A6; letter-spacing: 0.5px; text-transform: uppercase;">Registered Name</p>
+                  <p class="ticket-value" style="margin: 4px 0 0 0; font-family: Georgia, serif; font-size: 16px; color: #0E1B38; font-weight: bold;">${name}</p>
                 </div>
-                <div style="border-bottom: 1px solid #EAE6DF; padding-bottom: 12px; margin-bottom: 12px;">
-                  <p style="margin: 0; font-size: 11px; color: #8A92A6; letter-spacing: 0.5px; text-transform: uppercase;">Registered Email</p>
-                  <p style="margin: 4px 0 0 0; font-family: Georgia, serif; font-size: 16px; color: #0E1B38; font-weight: bold;">${email}</p>
+                <div class="divider" style="border-bottom: 1px solid #EAE6DF; padding-bottom: 12px; margin-bottom: 12px;">
+                  <p class="ticket-label" style="margin: 0; font-size: 11px; color: #8A92A6; letter-spacing: 0.5px; text-transform: uppercase;">Registered Email</p>
+                  <p class="ticket-value" style="margin: 4px 0 0 0; font-family: Georgia, serif; font-size: 16px; color: #0E1B38; font-weight: bold;">${email}</p>
                 </div>
-                <p style="margin: 12px 0 0 0; font-size: 12px; color: #B89047; font-style: italic; font-weight: 500; line-height: 1.5;">
+                <p class="ticket-note" style="margin: 12px 0 0 0; font-size: 12px; color: #B89047; font-style: italic; font-weight: 500; line-height: 1.5;">
                   Note: No password is required. Simply enter the above Registered Name and Registered Email on the App's Guest login screen to gain instant access.
                 </p>
               </div>
               
-              <p style="font-size: 14.5px; color: #3E4756; margin-bottom: 20px;">Please use the secure links below to download the application onto your device:</p>
+              <p class="text-body" style="font-size: 14.5px; color: #3E4756; margin-bottom: 20px;">Please use the secure links below to download the application onto your device:</p>
               
-              <div style="margin: 20px 0;">
-                <a href="${iosLink}" style="background-color: #0E1B38; color: #ffffff; border: 1px solid #B89047; padding: 14px 24px; text-decoration: none; border-radius: 2px; font-weight: bold; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; display: inline-block; margin-right: 15px; margin-bottom: 10px; font-family: Georgia, serif; box-shadow: 0 4px 10px rgba(14,27,56,0.15);">Download for iOS</a>
-                <a href="${androidLink}" style="background-color: #B89047; color: #ffffff; border: 1px solid #B89047; padding: 14px 24px; text-decoration: none; border-radius: 2px; font-weight: bold; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; display: inline-block; margin-bottom: 10px; font-family: Georgia, serif; box-shadow: 0 4px 10px rgba(184,144,71,0.15);">Download for Android</a>
+              <div style="margin: 24px 0;">
+                <a href="${iosLink}" style="text-decoration: none; display: inline-block; margin-right: 12px; margin-bottom: 10px; vertical-align: middle;">
+                  <img src="https://res.cloudinary.com/mailmodo/image/upload/v1695904276/editor/p/2c28dec6-c21c-4385-a91f-96e9a90c404f/85ca6f8884c5476b9a1f14dd5f3ffcb5_ezmawe.png" alt="Download on the App Store" style="height: 40px; border: 0; display: block;" />
+                </a>
+                <a href="${androidLink}" style="text-decoration: none; display: inline-block; margin-bottom: 10px; vertical-align: middle;">
+                  <img src="https://res.cloudinary.com/mailmodo/image/upload/v1695904247/editor/p/2c28dec6-c21c-4385-a91f-96e9a90c404f/1dd94ac4a5fe7a0c06236e0da89c1267_ws0h5q.png" alt="Get it on Google Play" style="height: 40px; border: 0; display: block;" />
+                </a>
               </div>
               
-              <p style="font-size: 13.5px; color: #8A92A6; margin-bottom: 24px; font-style: italic;">We have provided a brief visual guide below to ensure your setup is completed with ease.</p>
+              <p class="text-body" style="font-size: 13.5px; color: #8A92A6; margin-bottom: 24px; font-style: italic;">We have provided a brief visual guide below to ensure your setup is completed with ease.</p>
               
-              <hr style="border: 0; border-top: 1px solid #F3EFE9; margin: 28px 0;" />
+              <hr class="divider" style="border: 0; border-top: 1px solid #F3EFE9; margin: 28px 0;" />
               
               <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                 <div>
-                  <p style="margin-bottom: 0; color: #8A92A6; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Warm regards,</p>
-                  <p style="margin-top: 6px; font-family: Georgia, serif; font-size: 15px; color: #0E1B38; font-weight: bold;">Gryphon Academy Team</p>
+                  <p class="footer-label" style="margin-bottom: 0; color: #8A92A6; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Warm regards,</p>
+                  <p class="footer-value" style="margin-top: 6px; font-family: Georgia, serif; font-size: 15px; color: #0E1B38; font-weight: bold;">Gryphon Academy Team</p>
                 </div>
                 <div style="text-align: right; font-family: Georgia, serif; font-size: 11px; padding-top: 8px;">
-                  <a href="https://maps.google.com/?q=The+Ritz-Carlton,+Pune" target="_blank" style="color: #B89047; text-decoration: none; letter-spacing: 1.5px; text-transform: uppercase;">Venue: The Ritz-Carlton</a>
+                  <a class="link-text" href="https://maps.google.com/?q=The+Ritz-Carlton,+Pune" target="_blank" style="color: #B89047; text-decoration: none; letter-spacing: 1.5px; text-transform: uppercase;">Venue: The Ritz-Carlton</a>
                 </div>
               </div>
 
@@ -323,42 +470,46 @@ We look forward to sharing an unforgettable, inspiring experience with you tomor
 Warm regards,`;
 
         html = `
-          <div style="background-color: #F8F7F5; padding: 24px 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; text-align: left;">
-            <div style="max-width: 600px; margin: 0 auto; border: 1px solid #E5D5BA; border-top: 6px solid #0E1B38; background-color: #ffffff; padding: 32px 20px; box-shadow: 0 8px 30px rgba(14, 27, 56, 0.05); border-radius: 4px;">
+          ${emailStyles}
+          <div class="email-body" style="background-color: #F8F7F5; padding: 24px 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; text-align: left;">
+            <div class="email-card" style="max-width: 600px; margin: 0 auto; border: 1px solid #E5D5BA; border-top: 6px solid #0E1B38; background-color: #ffffff; padding: 32px 20px; box-shadow: 0 8px 30px rgba(14, 27, 56, 0.05); border-radius: 4px;">
               
-              <!-- Event Header -->
-              <div style="text-align: center; margin-bottom: 24px; border-bottom: 1px solid #F3EFE9; padding-bottom: 20px;">
-                <span style="font-family: Georgia, serif; font-size: 11px; letter-spacing: 3px; color: #B89047; text-transform: uppercase; font-weight: 600; display: block; margin-bottom: 8px;">Event Reminder</span>
-                <h1 style="font-family: Georgia, serif; font-weight: normal; color: #0E1B38; font-size: 24px; margin: 0; letter-spacing: 1px; text-transform: uppercase;">SYNERGY SPHERE 2.0</h1>
-                <div style="width: 40px; height: 1px; background-color: #B89047; margin: 15px auto 0 auto;"></div>
+              <!-- Event Header Banner Block -->
+              <div class="banner-synergy" style="background-color: #0B1E36; background-image: linear-gradient(90deg, #0B1E36 0%, #D84B20 100%); padding: 28px 20px; text-align: center; border-radius: 4px; margin-bottom: 28px; border: 1px solid #E5D5BA;">
+                <span class="text-title" style="font-family: Georgia, serif; font-size: 11px; letter-spacing: 3px; color: #ffffff; text-transform: uppercase; font-weight: 600; display: block; margin-bottom: 8px;">Event Reminder</span>
+                <h1 class="text-title" style="font-family: Georgia, serif; font-weight: normal; color: #ffffff; font-size: 24px; margin: 0; letter-spacing: 1.5px; text-transform: uppercase;">SYNERGY SPHERE 2.0</h1>
               </div>
 
-              <h2 style="font-family: Georgia, serif; color: #0E1B38; font-size: 20px; font-weight: normal; margin-top: 0; margin-bottom: 20px; letter-spacing: 0.2px;">Dear ${name},</h2>
+              <h2 class="text-title" style="font-family: Georgia, serif; color: #0E1B38; font-size: 20px; font-weight: normal; margin-top: 0; margin-bottom: 20px; letter-spacing: 0.2px;">Dear ${name},</h2>
               
-              <p style="font-size: 15px; line-height: 1.7; color: #3E4756; margin-bottom: 16px;">Greetings from <strong>Gryphon Academy Pvt. Ltd.</strong></p>
+              <p class="text-body" style="font-size: 15px; line-height: 1.7; color: #3E4756; margin-bottom: 16px;">Greetings from <strong class="text-strong">Gryphon Academy Pvt. Ltd.</strong></p>
               
-              <p style="font-size: 15px; line-height: 1.7; color: #3E4756; margin-bottom: 16px;">We are absolutely thrilled to host you tomorrow for our highly anticipated flagship evening, <strong>Synergy Sphere 2.0</strong>. The venue is prepared, our speakers are set, and the stage is ready for a landmark gathering of corporate and academic minds.</p>
+              <p class="text-body" style="font-size: 15px; line-height: 1.7; color: #3E4756; margin-bottom: 16px;">We are absolutely thrilled to host you tomorrow for our highly anticipated flagship evening, <strong>Synergy Sphere 2.0</strong>. The venue is prepared, our speakers are set, and the stage is ready for a landmark gathering of corporate and academic minds.</p>
               
-              <p style="font-size: 15px; line-height: 1.7; color: #3E4756; margin-bottom: 20px;">As you finalize your schedule, please take a quick moment to download and set up the official <strong>${appName}</strong> if you have not already done so. Completing this quick step ensures your digital pass is fully active for a seamless arrival at our registration desk.</p>
+              <p class="text-body" style="font-size: 15px; line-height: 1.7; color: #3E4756; margin-bottom: 20px;">As you finalize your schedule, please take a quick moment to download and set up the official <strong>${appName}</strong> if you have not already done so. Completing this quick step ensures your digital pass is fully active for a seamless arrival at our registration desk.</p>
               
-              <div style="margin: 20px 0;">
-                <a href="${iosLink}" style="background-color: #0E1B38; color: #ffffff; border: 1px solid #B89047; padding: 14px 24px; text-decoration: none; border-radius: 2px; font-weight: bold; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; display: inline-block; margin-right: 20px; margin-bottom: 10px; font-family: Georgia, serif; box-shadow: 0 4px 10px rgba(14,27,56,0.15);">Download for iOS</a>
-                <a href="${androidLink}" style="background-color: #B89047; color: #ffffff; border: 1px solid #B89047; padding: 14px 24px; text-decoration: none; border-radius: 2px; font-weight: bold; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; display: inline-block; margin-bottom: 10px; font-family: Georgia, serif; box-shadow: 0 4px 10px rgba(184,144,71,0.15);">Download for Android</a>
+              <div style="margin: 24px 0;">
+                <a href="${iosLink}" style="text-decoration: none; display: inline-block; margin-right: 12px; margin-bottom: 10px; vertical-align: middle;">
+                  <img src="https://res.cloudinary.com/mailmodo/image/upload/v1695904276/editor/p/2c28dec6-c21c-4385-a91f-96e9a90c404f/85ca6f8884c5476b9a1f14dd5f3ffcb5_ezmawe.png" alt="Download on the App Store" style="height: 40px; border: 0; display: block;" />
+                </a>
+                <a href="${androidLink}" style="text-decoration: none; display: inline-block; margin-bottom: 10px; vertical-align: middle;">
+                  <img src="https://res.cloudinary.com/mailmodo/image/upload/v1695904247/editor/p/2c28dec6-c21c-4385-a91f-96e9a90c404f/1dd94ac4a5fe7a0c06236e0da89c1267_ws0h5q.png" alt="Get it on Google Play" style="height: 40px; border: 0; display: block;" />
+                </a>
               </div>
               
-              <p style="font-size: 15px; line-height: 1.7; color: #3E4756; margin-bottom: 16px;">Having the app ready on your phone guarantees instant access to the event timeline, live panel participation, and our premium networking suite the moment you arrive.</p>
+              <p class="text-body" style="font-size: 15px; line-height: 1.7; color: #3E4756; margin-bottom: 16px;">Having the app ready on your phone guarantees instant access to the event timeline, live panel participation, and our premium networking suite the moment you arrive.</p>
               
-              <p style="font-size: 15px; line-height: 1.7; color: #3E4756; margin-bottom: 30px;">We look forward to sharing an unforgettable, inspiring experience with you tomorrow evening.</p>
+              <p class="text-body" style="font-size: 15px; line-height: 1.7; color: #3E4756; margin-bottom: 30px;">We look forward to sharing an unforgettable, inspiring experience with you tomorrow evening.</p>
               
-              <hr style="border: 0; border-top: 1px solid #F3EFE9; margin: 28px 0;" />
+              <hr class="divider" style="border: 0; border-top: 1px solid #F3EFE9; margin: 28px 0;" />
               
               <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                 <div>
-                  <p style="margin-bottom: 0; color: #8A92A6; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Warm regards,</p>
-                  <p style="margin-top: 6px; font-family: Georgia, serif; font-size: 15px; color: #0E1B38; font-weight: bold;">Gryphon Academy Team</p>
+                  <p class="footer-label" style="margin-bottom: 0; color: #8A92A6; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Warm regards,</p>
+                  <p class="footer-value" style="margin-top: 6px; font-family: Georgia, serif; font-size: 15px; color: #0E1B38; font-weight: bold;">Gryphon Academy Team</p>
                 </div>
                 <div style="text-align: right; font-family: Georgia, serif; font-size: 11px; padding-top: 8px;">
-                  <a href="https://maps.google.com/?q=The+Ritz-Carlton,+Pune" target="_blank" style="color: #B89047; text-decoration: none; letter-spacing: 1.5px; text-transform: uppercase;">Venue: The Ritz-Carlton</a>
+                  <a class="link-text" href="https://maps.google.com/?q=The+Ritz-Carlton,+Pune" target="_blank" style="color: #B89047; text-decoration: none; letter-spacing: 1.5px; text-transform: uppercase;">Venue: The Ritz-Carlton</a>
                 </div>
               </div>
 
@@ -400,77 +551,81 @@ Warm regards,
 Gryphon Academy Team`;
 
         html = `
-          <div style="background-color: #F8F7F5; padding: 24px 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; text-align: left;">
-            <div style="max-width: 600px; margin: 0 auto; border: 1px solid #E5D5BA; border-top: 6px solid #0E1B38; background-color: #ffffff; padding: 36px 20px; box-shadow: 0 8px 30px rgba(14, 27, 56, 0.05); border-radius: 4px;">
+          ${emailStyles}
+          <div class="email-body" style="background-color: #F8F7F5; padding: 24px 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; text-align: left;">
+            <div class="email-card" style="max-width: 600px; margin: 0 auto; border: 1px solid #E5D5BA; border-top: 6px solid #0E1B38; background-color: #ffffff; padding: 32px 20px; box-shadow: 0 8px 30px rgba(14, 27, 56, 0.05); border-radius: 4px;">
               
-              <!-- Event Header -->
-              <div style="text-align: center; margin-bottom: 24px; border-bottom: 1px solid #F3EFE9; padding-bottom: 20px;">
-                <span style="font-family: Georgia, serif; font-size: 11px; letter-spacing: 3px; color: #B89047; text-transform: uppercase; font-weight: 600; display: block; margin-bottom: 8px;">Exclusive Guest Pass</span>
-                <h1 style="font-family: Georgia, serif; font-weight: normal; color: #0E1B38; font-size: 24px; margin: 0; letter-spacing: 1px; text-transform: uppercase;">MASTERCLASS 3.0</h1>
-                <div style="width: 40px; height: 1px; background-color: #B89047; margin: 15px auto 0 auto;"></div>
+              <!-- Event Header Banner Block -->
+              <div class="banner-masterclass" style="background-color: #041D1C; background-image: linear-gradient(90deg, #041D1C 0%, #0FA596 100%); padding: 28px 20px; text-align: center; border-radius: 4px; margin-bottom: 28px; border: 1px solid #E5D5BA;">
+                <span class="text-title" style="font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 11px; letter-spacing: 3px; color: #ffffff; text-transform: uppercase; font-weight: 600; display: block; margin-bottom: 8px;">Exclusive Guest Pass</span>
+                <h1 class="text-title" style="font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-weight: bold; color: #ffffff; font-size: 24px; margin: 0; letter-spacing: 1.5px; text-transform: uppercase;">MASTERCLASS 3.0</h1>
               </div>
 
-              <h2 style="font-family: Georgia, serif; color: #0E1B38; font-size: 20px; font-weight: normal; margin-top: 0; margin-bottom: 20px; letter-spacing: 0.2px;">Dear ${name},</h2>
+              <h2 class="text-title" style="font-family: Georgia, serif; color: #0E1B38; font-size: 20px; font-weight: normal; margin-top: 0; margin-bottom: 20px; letter-spacing: 0.2px;">Dear ${name},</h2>
               
-              <p style="font-size: 15px; line-height: 1.7; color: #3E4756; margin-bottom: 16px;">Greetings from <strong>Gryphon Academy Pvt. Ltd.</strong></p>
+              <p class="text-body" style="font-size: 15px; line-height: 1.7; color: #3E4756; margin-bottom: 16px;">Greetings from <strong class="text-strong">Gryphon Academy Pvt. Ltd.</strong></p>
               
-              <p style="font-size: 15px; line-height: 1.7; color: #3E4756; margin-bottom: 20px;">We are dedicated to providing a memorable and impactful experience for all our esteemed attendees. To ensure you stay perfectly connected throughout <strong>Masterclass 3.0 – The Adventurous Intelligence</strong>, we request you to download our official event app <strong>${appName}</strong>.</p>
+              <p class="text-body" style="font-size: 15px; line-height: 1.7; color: #3E4756; margin-bottom: 20px;">We are dedicated to providing a memorable and impactful experience for all our esteemed attendees. To ensure you stay perfectly connected throughout <strong>Masterclass 3.0 – The Adventurous Intelligence</strong>, we request you to download our official event app <strong class="text-strong">${appName}</strong>.</p>
               
-              <p style="font-size: 15px; line-height: 1.7; color: #3E4756; margin-bottom: 16px;">The <strong>${appName}</strong> serves as your personalized gateway to every aspect of the day. Through the app, you will enjoy seamless access to:</p>
+              <p class="text-body" style="font-size: 15px; line-height: 1.7; color: #3E4756; margin-bottom: 16px;">The <strong class="text-strong">${appName}</strong> serves as your personalized gateway to every aspect of the day. Through the app, you will enjoy seamless access to:</p>
               
               <ul style="padding-left: 0; list-style-type: none; margin-bottom: 24px; margin-top: 10px;">
-                <li style="margin-bottom: 12px; font-size: 14.5px; line-height: 1.6; color: #3E4756; position: relative; padding-left: 18px;">
+                <li class="bullet-point" style="margin-bottom: 12px; font-size: 14.5px; line-height: 1.6; color: #3E4756; position: relative; padding-left: 18px;">
                   <span style="color: #B89047; position: absolute; left: 0; top: 2px; font-size: 10px;">&#9670;</span>
-                  <strong>The Live Event Agenda</strong> – Plan your day with absolute precision
+                  <strong class="text-strong">The Live Event Agenda</strong> – Plan your day with absolute precision
                 </li>
-                <li style="margin-bottom: 12px; font-size: 14.5px; line-height: 1.6; color: #3E4756; position: relative; padding-left: 18px;">
+                <li class="bullet-point" style="margin-bottom: 12px; font-size: 14.5px; line-height: 1.6; color: #3E4756; position: relative; padding-left: 18px;">
                   <span style="color: #B89047; position: absolute; left: 0; top: 2px; font-size: 10px;">&#9670;</span>
-                  <strong>Session Details & Speaker Profiles</strong> – Learn more about the experts and sessions
+                  <strong class="text-strong">Session Details & Speaker Profiles</strong> – Learn more about the experts and sessions
                 </li>
-                <li style="margin-bottom: 12px; font-size: 14.5px; line-height: 1.6; color: #3E4756; position: relative; padding-left: 18px;">
+                <li class="bullet-point" style="margin-bottom: 12px; font-size: 14.5px; line-height: 1.6; color: #3E4756; position: relative; padding-left: 18px;">
                   <span style="color: #B89047; position: absolute; left: 0; top: 2px; font-size: 10px;">&#9670;</span>
-                  <strong>Exclusive Networking</strong> – View attendee profiles and connect with fellow educators, trainers, and academic leaders
+                  <strong class="text-strong">Exclusive Networking</strong> – View attendee profiles and connect with fellow educators, trainers, and academic leaders
                 </li>
-                <li style="margin-bottom: 12px; font-size: 14.5px; line-height: 1.6; color: #3E4756; position: relative; padding-left: 18px;">
+                <li class="bullet-point" style="margin-bottom: 12px; font-size: 14.5px; line-height: 1.6; color: #3E4756; position: relative; padding-left: 18px;">
                   <span style="color: #B89047; position: absolute; left: 0; top: 2px; font-size: 10px;">&#9670;</span>
-                  <strong>Real-Time Updates</strong> – Receive instant notifications regarding session timings, reveals, and event highlights
+                  <strong class="text-strong">Real-Time Updates</strong> – Receive instant notifications regarding session timings, reveals, and event highlights
                 </li>
               </ul>
               
               <!-- Guest Login Ticket Details -->
-              <div style="background-color: #FAF8F5; border: 1px solid #E5D5BA; border-left: 4px solid #B89047; padding: 20px 16px; border-radius: 2px; margin: 28px 0; box-shadow: inset 0 1px 3px rgba(184, 144, 71, 0.05);">
-                <h4 style="margin-top: 0; margin-bottom: 16px; color: #0E1B38; font-family: Georgia, serif; font-size: 15px; font-weight: normal; letter-spacing: 1px; text-transform: uppercase;">Your App Login Details</h4>
-                <div style="border-bottom: 1px solid #EAE6DF; padding-bottom: 12px; margin-bottom: 12px;">
-                  <p style="margin: 0; font-size: 11px; color: #8A92A6; letter-spacing: 0.5px; text-transform: uppercase;">Registered Name</p>
-                  <p style="margin: 4px 0 0 0; font-family: Georgia, serif; font-size: 16px; color: #0E1B38; font-weight: bold;">${name}</p>
+              <div class="ticket-box" style="background-color: #FAF8F5; border: 1px solid #E5D5BA; border-left: 4px solid #B89047; padding: 20px 16px; border-radius: 2px; margin: 28px 0; box-shadow: inset 0 1px 3px rgba(184, 144, 71, 0.05);">
+                <h4 class="ticket-title" style="margin-top: 0; margin-bottom: 16px; color: #0E1B38; font-family: Georgia, serif; font-size: 15px; font-weight: normal; letter-spacing: 1px; text-transform: uppercase;">Your App Login Details</h4>
+                <div class="divider" style="border-bottom: 1px solid #EAE6DF; padding-bottom: 12px; margin-bottom: 12px;">
+                  <p class="ticket-label" style="margin: 0; font-size: 11px; color: #8A92A6; letter-spacing: 0.5px; text-transform: uppercase;">Registered Name</p>
+                  <p class="ticket-value" style="margin: 4px 0 0 0; font-family: Georgia, serif; font-size: 16px; color: #0E1B38; font-weight: bold;">${name}</p>
                 </div>
-                <div style="border-bottom: 1px solid #EAE6DF; padding-bottom: 12px; margin-bottom: 12px;">
-                  <p style="margin: 0; font-size: 11px; color: #8A92A6; letter-spacing: 0.5px; text-transform: uppercase;">Registered Email</p>
-                  <p style="margin: 4px 0 0 0; font-family: Georgia, serif; font-size: 16px; color: #0E1B38; font-weight: bold;">${email}</p>
+                <div class="divider" style="border-bottom: 1px solid #EAE6DF; padding-bottom: 12px; margin-bottom: 12px;">
+                  <p class="ticket-label" style="margin: 0; font-size: 11px; color: #8A92A6; letter-spacing: 0.5px; text-transform: uppercase;">Registered Email</p>
+                  <p class="ticket-value" style="margin: 4px 0 0 0; font-family: Georgia, serif; font-size: 16px; color: #0E1B38; font-weight: bold;">${email}</p>
                 </div>
-                <p style="margin: 12px 0 0 0; font-size: 12px; color: #B89047; font-style: italic; font-weight: 500; line-height: 1.5;">
+                <p class="ticket-note" style="margin: 12px 0 0 0; font-size: 12px; color: #B89047; font-style: italic; font-weight: 500; line-height: 1.5;">
                   Note: No password is required. Simply enter the above Registered Name and Registered Email on the App's Guest login screen to gain instant access.
                 </p>
               </div>
               
-              <p style="font-size: 14.5px; color: #3E4756; margin-bottom: 20px;">Please use the secure links below to download the application onto your device:</p>
+              <p class="text-body" style="font-size: 14.5px; color: #3E4756; margin-bottom: 20px;">Please use the secure links below to download the application onto your device:</p>
               
-              <div style="margin: 20px 0;">
-                <a href="${iosLink}" style="background-color: #0E1B38; color: #ffffff; border: 1px solid #B89047; padding: 14px 24px; text-decoration: none; border-radius: 2px; font-weight: bold; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; display: inline-block; margin-right: 15px; margin-bottom: 10px; font-family: Georgia, serif; box-shadow: 0 4px 10px rgba(14,27,56,0.15);">Download for iOS</a>
-                <a href="${androidLink}" style="background-color: #B89047; color: #ffffff; border: 1px solid #B89047; padding: 14px 24px; text-decoration: none; border-radius: 2px; font-weight: bold; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; display: inline-block; margin-bottom: 10px; font-family: Georgia, serif; box-shadow: 0 4px 10px rgba(184,144,71,0.15);">Download for Android</a>
+              <div style="margin: 24px 0;">
+                <a href="${iosLink}" style="text-decoration: none; display: inline-block; margin-right: 12px; margin-bottom: 10px; vertical-align: middle;">
+                  <img src="https://res.cloudinary.com/mailmodo/image/upload/v1695904276/editor/p/2c28dec6-c21c-4385-a91f-96e9a90c404f/85ca6f8884c5476b9a1f14dd5f3ffcb5_ezmawe.png" alt="Download on the App Store" style="height: 40px; border: 0; display: block;" />
+                </a>
+                <a href="${androidLink}" style="text-decoration: none; display: inline-block; margin-bottom: 10px; vertical-align: middle;">
+                  <img src="https://res.cloudinary.com/mailmodo/image/upload/v1695904247/editor/p/2c28dec6-c21c-4385-a91f-96e9a90c404f/1dd94ac4a5fe7a0c06236e0da89c1267_ws0h5q.png" alt="Get it on Google Play" style="height: 40px; border: 0; display: block;" />
+                </a>
               </div>
               
-              <p style="font-size: 13.5px; color: #8A92A6; margin-bottom: 24px; font-style: italic;">We have provided a brief visual guide below to ensure your setup is completed with ease.</p>
+              <p class="text-body" style="font-size: 13.5px; color: #8A92A6; margin-bottom: 24px; font-style: italic;">We have provided a brief visual guide below to ensure your setup is completed with ease.</p>
               
-              <hr style="border: 0; border-top: 1px solid #F3EFE9; margin: 28px 0;" />
+              <hr class="divider" style="border: 0; border-top: 1px solid #F3EFE9; margin: 28px 0;" />
               
               <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                 <div>
-                  <p style="margin-bottom: 0; color: #8A92A6; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Warm regards,</p>
-                  <p style="margin-top: 6px; font-family: Georgia, serif; font-size: 15px; color: #0E1B38; font-weight: bold;">Gryphon Academy Team</p>
+                  <p class="footer-label" style="margin-bottom: 0; color: #8A92A6; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Warm regards,</p>
+                  <p class="footer-value" style="margin-top: 6px; font-family: Georgia, serif; font-size: 15px; color: #0E1B38; font-weight: bold;">Gryphon Academy Team</p>
                 </div>
                 <div style="text-align: right; font-family: Georgia, serif; font-size: 11px; padding-top: 8px;">
-                  <a href="https://maps.google.com/?q=The+Ritz-Carlton,+Pune" target="_blank" style="color: #B89047; text-decoration: none; letter-spacing: 1.5px; text-transform: uppercase;">Venue: The Ritz-Carlton</a>
+                  <a class="link-text" href="https://maps.google.com/?q=The+Ritz-Carlton,+Pune" target="_blank" style="color: #B89047; text-decoration: none; letter-spacing: 1.5px; text-transform: uppercase;">Venue: The Ritz-Carlton</a>
                 </div>
               </div>
 
@@ -499,42 +654,46 @@ Warm regards,
 Gryphon Academy Team`;
 
         html = `
-          <div style="background-color: #F8F7F5; padding: 24px 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; text-align: left;">
-            <div style="max-width: 600px; margin: 0 auto; border: 1px solid #E5D5BA; border-top: 6px solid #0E1B38; background-color: #ffffff; padding: 32px 20px; box-shadow: 0 8px 30px rgba(14, 27, 56, 0.05); border-radius: 4px;">
+          ${emailStyles}
+          <div class="email-body" style="background-color: #F8F7F5; padding: 24px 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; text-align: left;">
+            <div class="email-card" style="max-width: 600px; margin: 0 auto; border: 1px solid #E5D5BA; border-top: 6px solid #0E1B38; background-color: #ffffff; padding: 32px 20px; box-shadow: 0 8px 30px rgba(14, 27, 56, 0.05); border-radius: 4px;">
               
-              <!-- Event Header -->
-              <div style="text-align: center; margin-bottom: 24px; border-bottom: 1px solid #F3EFE9; padding-bottom: 20px;">
-                <span style="font-family: Georgia, serif; font-size: 11px; letter-spacing: 3px; color: #B89047; text-transform: uppercase; font-weight: 600; display: block; margin-bottom: 8px;">Event Reminder</span>
-                <h1 style="font-family: Georgia, serif; font-weight: normal; color: #0E1B38; font-size: 24px; margin: 0; letter-spacing: 1px; text-transform: uppercase;">MASTERCLASS 3.0</h1>
-                <div style="width: 40px; height: 1px; background-color: #B89047; margin: 15px auto 0 auto;"></div>
+              <!-- Event Header Banner Block -->
+              <div class="banner-masterclass" style="background-color: #041D1C; background-image: linear-gradient(90deg, #041D1C 0%, #0FA596 100%); padding: 28px 20px; text-align: center; border-radius: 4px; margin-bottom: 28px; border: 1px solid #E5D5BA;">
+                <span class="text-title" style="font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 11px; letter-spacing: 3px; color: #ffffff; text-transform: uppercase; font-weight: 600; display: block; margin-bottom: 8px;">Event Reminder</span>
+                <h1 class="text-title" style="font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-weight: bold; color: #ffffff; font-size: 24px; margin: 0; letter-spacing: 1.5px; text-transform: uppercase;">MASTERCLASS 3.0</h1>
               </div>
 
-              <h2 style="font-family: Georgia, serif; color: #0E1B38; font-size: 20px; font-weight: normal; margin-top: 0; margin-bottom: 20px; letter-spacing: 0.2px;">Dear ${name},</h2>
+              <h2 class="text-title" style="font-family: Georgia, serif; color: #0E1B38; font-size: 20px; font-weight: normal; margin-top: 0; margin-bottom: 20px; letter-spacing: 0.2px;">Dear ${name},</h2>
               
-              <p style="font-size: 15px; line-height: 1.7; color: #3E4756; margin-bottom: 16px;">Greetings from <strong>Gryphon Academy Pvt. Ltd.</strong></p>
+              <p class="text-body" style="font-size: 15px; line-height: 1.7; color: #3E4756; margin-bottom: 16px;">Greetings from <strong class="text-strong">Gryphon Academy Pvt. Ltd.</strong></p>
               
-              <p style="font-size: 15px; line-height: 1.7; color: #3E4756; margin-bottom: 16px;">We are absolutely thrilled to host you tomorrow for our highly anticipated flagship gathering, <strong>Masterclass 3.0 – The Adventurous Intelligence</strong>. The venue is prepared, our speakers are set, and the stage is ready for a landmark day of learning and collaboration.</p>
+              <p class="text-body" style="font-size: 15px; line-height: 1.7; color: #3E4756; margin-bottom: 16px;">We are absolutely thrilled to host you tomorrow for our highly anticipated flagship gathering, <strong>Masterclass 3.0 – The Adventurous Intelligence</strong>. The venue is prepared, our speakers are set, and the stage is ready for a landmark day of learning and collaboration.</p>
               
-              <p style="font-size: 15px; line-height: 1.7; color: #3E4756; margin-bottom: 20px;">As you finalize your schedule, please take a quick moment to download and set up the official <strong>${appName}</strong> if you have not already done so. Completing this quick step ensures your digital pass is fully active for a seamless arrival at our registration desk.</p>
+              <p class="text-body" style="font-size: 15px; line-height: 1.7; color: #3E4756; margin-bottom: 20px;">As you finalize your schedule, please take a quick moment to download and set up the official <strong>${appName}</strong> if you have not already done so. Completing this quick step ensures your digital pass is fully active for a seamless arrival at our registration desk.</p>
               
-              <div style="margin: 20px 0;">
-                <a href="${iosLink}" style="background-color: #0E1B38; color: #ffffff; border: 1px solid #B89047; padding: 14px 28px; text-decoration: none; border-radius: 2px; font-weight: bold; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; display: inline-block; margin-right: 20px; margin-bottom: 10px; font-family: Georgia, serif; box-shadow: 0 4px 10px rgba(14,27,56,0.15);">Download for iOS</a>
-                <a href="${androidLink}" style="background-color: #B89047; color: #ffffff; border: 1px solid #B89047; padding: 14px 28px; text-decoration: none; border-radius: 2px; font-weight: bold; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; display: inline-block; margin-bottom: 10px; font-family: Georgia, serif; box-shadow: 0 4px 10px rgba(184,144,71,0.15);">Download for Android</a>
+              <div style="margin: 24px 0;">
+                <a href="${iosLink}" style="text-decoration: none; display: inline-block; margin-right: 12px; margin-bottom: 10px; vertical-align: middle;">
+                  <img src="https://res.cloudinary.com/mailmodo/image/upload/v1695904276/editor/p/2c28dec6-c21c-4385-a91f-96e9a90c404f/85ca6f8884c5476b9a1f14dd5f3ffcb5_ezmawe.png" alt="Download on the App Store" style="height: 40px; border: 0; display: block;" />
+                </a>
+                <a href="${androidLink}" style="text-decoration: none; display: inline-block; margin-bottom: 10px; vertical-align: middle;">
+                  <img src="https://res.cloudinary.com/mailmodo/image/upload/v1695904247/editor/p/2c28dec6-c21c-4385-a91f-96e9a90c404f/1dd94ac4a5fe7a0c06236e0da89c1267_ws0h5q.png" alt="Get it on Google Play" style="height: 40px; border: 0; display: block;" />
+                </a>
               </div>
               
-              <p style="font-size: 15px; line-height: 1.7; color: #3E4756; margin-bottom: 16px;">Having the app ready on your phone guarantees instant access to the event timeline, session details, and live updates the moment you arrive.</p>
+              <p class="text-body" style="font-size: 15px; line-height: 1.7; color: #3E4756; margin-bottom: 16px;">Having the app ready on your phone guarantees instant access to the event timeline, session details, and live updates the moment you arrive.</p>
               
-              <p style="font-size: 15px; line-height: 1.7; color: #3E4756; margin-bottom: 30px;">We look forward to sharing an unforgettable, inspiring experience with you tomorrow.</p>
+              <p class="text-body" style="font-size: 15px; line-height: 1.7; color: #3E4756; margin-bottom: 30px;">We look forward to sharing an unforgettable, inspiring experience with you tomorrow.</p>
               
-              <hr style="border: 0; border-top: 1px solid #F3EFE9; margin: 28px 0;" />
+              <hr class="divider" style="border: 0; border-top: 1px solid #F3EFE9; margin: 28px 0;" />
               
               <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                 <div>
-                  <p style="margin-bottom: 0; color: #8A92A6; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Warm regards,</p>
-                  <p style="margin-top: 6px; font-family: Georgia, serif; font-size: 15px; color: #0E1B38; font-weight: bold;">Gryphon Academy Team</p>
+                  <p class="footer-label" style="margin-bottom: 0; color: #8A92A6; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Warm regards,</p>
+                  <p class="footer-value" style="margin-top: 6px; font-family: Georgia, serif; font-size: 15px; color: #0E1B38; font-weight: bold;">Gryphon Academy Team</p>
                 </div>
                 <div style="text-align: right; font-family: Georgia, serif; font-size: 11px; padding-top: 8px;">
-                  <a href="https://maps.google.com/?q=The+Ritz-Carlton,+Pune" target="_blank" style="color: #B89047; text-decoration: none; letter-spacing: 1.5px; text-transform: uppercase;">Venue: The Ritz-Carlton</a>
+                  <a class="link-text" href="https://maps.google.com/?q=The+Ritz-Carlton,+Pune" target="_blank" style="color: #B89047; text-decoration: none; letter-spacing: 1.5px; text-transform: uppercase;">Venue: The Ritz-Carlton</a>
                 </div>
               </div>
 
@@ -576,6 +735,8 @@ Gryphon Academy Team`;
       html,
       text,
     };
+
+    // No bannerImage attachment required (using pure CSS gradients for header banner background)
 
     if (selectedTemplate === "sphere_download") {
       mailOptions.pdfFilename = "SYNERGY SPHERE APP STEP GUIDE.pdf";

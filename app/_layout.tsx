@@ -96,6 +96,7 @@ function RootLayoutInner() {
     "marketing",
     "analytics",
     "email",
+    "webagenda",
   ].includes(segments[0]));
 
   useEffect(() => {
@@ -136,6 +137,7 @@ function RootLayoutInner() {
       "marketing",
       "analytics",
       "email",
+      "webagenda",
     ]);
     const isLegalPage = legalPages.has(segments[0]);
 
@@ -222,6 +224,7 @@ function RootLayoutInner() {
               "support",
               "delete-account",
               "email",
+              "webagenda",
             ].includes(segments[0])
               ? {
                   maxWidth: 600,

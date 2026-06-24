@@ -918,26 +918,31 @@ export async function getAttendeeListWithCheckIn(): Promise<
       attendanceMap.set(data.candidateId, data.scannedAt);
     });
 
-    // Map company name from guestList by qrToken
+    // Map company name and linkedinUrl from guestList by qrToken
     const companyNameMap = new Map<string, string>();
+    const linkedinUrlMap = new Map<string, string>();
     guestListSnapshot.docs.forEach((doc) => {
       const data = doc.data() as GuestListItem;
       if (data.qrToken) {
         companyNameMap.set(data.qrToken, data.companyName || "");
+        linkedinUrlMap.set(data.qrToken, data.linkedinUrl || "");
       }
     });
 
     const attendees = attendeeSnapshot.docs.map((doc) => {
       const data = doc.data();
 
-      // Get company name from guestList using qrToken, fallback to candidate's companyName or empty string
+      // Get company name and linkedinUrl from guestList using qrToken, fallback to candidate's values
       const companyName =
         companyNameMap.get(data.qrToken) || data.companyName || "";
+      const linkedinUrl =
+        linkedinUrlMap.get(data.qrToken) || data.linkedinUrl || "";
 
       const candidate = {
         id: doc.id,
         ...data,
         companyName: companyName, // Override with guestList company name
+        linkedinUrl: linkedinUrl, // Override with guestList linkedinUrl
       } as Candidate;
 
       return {

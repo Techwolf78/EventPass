@@ -2,6 +2,7 @@ import { useAuth } from "@/context/AuthContext";
 import { getEnrollmentDisplayName } from "@/hooks/use-attendee-theme";
 import {
   checkNotificationPermission,
+  registerPushTokenForGuestOrUser,
   PermissionStatus,
 } from "@/utils/notificationHelper";
 import { Ionicons } from "@expo/vector-icons";
@@ -69,10 +70,23 @@ export default function DefaultPass({
 
   const { guestSession } = useAuth();
 
+  const qrTokenToUse =
+    candidate?.qrToken || guestSession?.qrToken || activeToken;
+  const emailToUse = candidate?.email || guestSession?.email;
+  const enrollmentTypeToUse =
+    candidate?.enrollmentType || (isMasterclass ? "masterclass" : "event");
+
   const checkStatus = useCallback(async () => {
     const status = await checkNotificationPermission();
     setPermissionStatus(status);
-  }, []);
+    if (status === "granted") {
+      await registerPushTokenForGuestOrUser(
+        enrollmentTypeToUse,
+        qrTokenToUse,
+        emailToUse,
+      );
+    }
+  }, [enrollmentTypeToUse, qrTokenToUse, emailToUse]);
 
   useEffect(() => {
     checkStatus();
@@ -104,11 +118,6 @@ export default function DefaultPass({
     }, 4000);
   };
 
-  const qrTokenToUse =
-    candidate?.qrToken || guestSession?.qrToken || activeToken;
-  const emailToUse = candidate?.email || guestSession?.email;
-  const enrollmentTypeToUse =
-    candidate?.enrollmentType || (isMasterclass ? "masterclass" : "event");
 
   return (
     <View style={{ flex: 1, backgroundColor: "#ffffff" }}>

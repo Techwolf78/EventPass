@@ -25,6 +25,7 @@ import NotificationBell from "@/components/qr-pass/NotificationBell";
 import NotificationPermissionModal from "@/components/qr-pass/NotificationPermissionModal";
 import {
   checkNotificationPermission,
+  registerPushTokenForGuestOrUser,
   PermissionStatus,
 } from "@/utils/notificationHelper";
 import {
@@ -64,10 +65,20 @@ export default function QRPassScreen() {
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState<"success" | "warning">("success");
 
+  const activeToken = resolvedToken || (qrToken as string);
+  const qrSize = Math.min(width * 0.5, 220);
+
   const checkStatus = useCallback(async () => {
     const status = await checkNotificationPermission();
     setPermissionStatus(status);
-  }, []);
+    if (status === "granted") {
+      await registerPushTokenForGuestOrUser(
+        candidate?.enrollmentType || "attendee",
+        activeToken,
+        candidate?.email,
+      );
+    }
+  }, [candidate, activeToken]);
 
   useEffect(() => {
     checkStatus();
@@ -95,9 +106,6 @@ export default function QRPassScreen() {
       setToastMessage("");
     }, 4000);
   };
-
-  const qrSize = Math.min(width * 0.5, 220);
-  const activeToken = resolvedToken || (qrToken as string);
 
   useEffect(() => {
     let unsubscribeStatus: (() => void) | null = null;
