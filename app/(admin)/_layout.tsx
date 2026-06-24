@@ -1,16 +1,21 @@
 import { useAuth } from "@/context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
-import { Tabs } from "expo-router";
+import { Tabs, useRouter } from "expo-router";
 import React from "react";
 import { Platform, TouchableOpacity } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 function LogoutButton() {
   const { logout } = useAuth();
+  const router = useRouter();
   return (
     <TouchableOpacity
-      onPress={logout}
+      onPress={async () => {
+        await logout();
+        router.replace("/(auth)/login");
+      }}
       activeOpacity={0.7}
+      hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
       style={{
         width: 36,
         height: 36,
@@ -111,7 +116,7 @@ export default function AdminLayout() {
         name="panel"
         options={{
           title: "Dashboard",
-          headerRight: () => null,
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="bar-chart" size={size} color={color} />
           ),

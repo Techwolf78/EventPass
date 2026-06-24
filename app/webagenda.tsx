@@ -1,223 +1,197 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   ScrollView,
   Text,
   View,
   TextInput,
   TouchableOpacity,
-  ActivityIndicator,
   Alert,
   Platform,
+  ActivityIndicator,
+  Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import {
-  getGuestList,
-  addGuest,
-  addGuestsFromCSV,
-  deleteGuest,
-  GuestListItem,
-  getCheckedInCandidateIds,
-  registerAndCheckInPendingGuest,
+  getMasterclassAgenda,
+  getEventAgenda,
+  saveAgenda,
 } from "@/utils/firestore";
 
-type EnrollmentType = "masterclass" | "event";
+// Define TypeScript interfaces for our agenda types
+interface AgendaItem {
+  id: string; // client-only unique identifier
+  time: string;
+  title: string;
+  speaker: string;
+  tag: string;
+  itemType: "session" | "poll";
+  pollUrl?: string;
+}
+
+const TAG_OPTIONS = [
+  "Keynote",
+  "Workshop",
+  "Networking",
+  "Technical",
+  "General",
+] as const;
+
+const MASTERCLASS_TITLES = [
+  "Opening Keynote",
+  "Technical Deep Dive",
+  "Hands-on Workshop",
+  "Expert Panel Discussion",
+  "Q&A Session",
+  "Networking Break",
+  "Case Study Presentation",
+  "Closing Remarks",
+];
+
+const EVENT_TITLES = [
+  "Welcome Address",
+  "Guest Speaker Session",
+  "Panel Discussion",
+  "Networking Break",
+  "Workshop Session",
+  "Fireside Chat",
+  "Demo Session",
+  "Closing Ceremony",
+];
+
+const DEFAULT_TEMPLATE: AgendaItem[] = [
+  {
+    id: "temp-1",
+    time: "09:00 AM",
+    title: "Opening Keynote & Welcome",
+    speaker: "Dr. Aris Vance",
+    tag: "Keynote",
+    itemType: "session",
+    pollUrl: ""
+  },
+  {
+    id: "temp-2",
+    time: "10:15 AM",
+    title: "Architecting the Future of Web Apps",
+    speaker: "Elena Rostova",
+    tag: "Technical",
+    itemType: "session",
+    pollUrl: ""
+  },
+  {
+    id: "temp-3",
+    time: "11:30 AM",
+    title: "Interactive Live Q&A & Feedback Session",
+    speaker: "",
+    tag: "General",
+    itemType: "poll",
+    pollUrl: "https://eventpass.live/qa-poll"
+  },
+  {
+    id: "temp-4",
+    time: "12:30 PM",
+    title: "Networking Lunch & Exhibition Showcase",
+    speaker: "All attendees",
+    tag: "General",
+    itemType: "session",
+    pollUrl: ""
+  }
+];
 
 export default function WebAgendaDashboard() {
-  const [guests, setGuests] = useState<GuestListItem[]>([]);
-  const [checkedInIds, setCheckedInIds] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(true);
-
-  // Form states
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [enrollmentType, setEnrollmentType] = useState<EnrollmentType>("event");
-  const [companyName, setCompanyName] = useState("");
-  const [linkedinUrl, setLinkedinUrl] = useState("");
-  const [isVIP, setIsVIP] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-
-  // JSON Input states
+  const [agendaType, setAgendaType] = useState<"masterclass" | "event">("masterclass");
   const [jsonInput, setJsonInput] = useState("");
-  const [jsonError, setJsonError] = useState<string | null>(null);
-  const [jsonSuccess, setJsonSuccess] = useState<string | null>(null);
-  const [importingJson, setImportingJson] = useState(false);
+  const [eventTitle, setEventTitle] = useState("Tech Summit 2026");
+  const [eventDate, setEventDate] = useState("Monday, May 12, 2026");
+  const [agendaItems, setAgendaItems] = useState<AgendaItem[]>(DEFAULT_TEMPLATE);
+  
+  // Status and loader states
+  const [fetchingLive, setFetchingLive] = useState(false);
+  const [savingLive, setSavingLive] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [actionFeedback, setActionFeedback] = useState<{ type: "success" | "error" | "info"; msg: string } | null>(null);
 
-  // Filter & Search states
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterType, setFilterType] = useState<"all" | EnrollmentType | "vip">("all");
-  const [filterStatus, setFilterStatus] = useState<"all" | "arrived" | "unarrived" | "pending">("all");
-
-  const loadData = async () => {
+  // Load live agenda from Firestore
+  const fetchLiveAgenda = useCallback(async (type: "masterclass" | "event") => {
+    setFetchingLive(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
     try {
-      const [list, checkIns] = await Promise.all([
-        getGuestList(),
-        getCheckedInCandidateIds(),
-      ]);
-      setGuests(list);
-      setCheckedInIds(new Set(checkIns));
-    } catch (error) {
-      console.error("Error loading dashboard data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+      const agendaDoc = type === "masterclass" 
+        ? await getMasterclassAgenda() 
+        : await getEventAgenda();
+      
+      if (agendaDoc) {
+        setEventTitle(agendaDoc.title || "");
+        
+        // Format Timestamp date
+        if (agendaDoc.date) {
+          const jsDate = (agendaDoc.date as any).toDate ? (agendaDoc.date as any).toDate() : new Date(agendaDoc.date as any);
+          setEventDate(jsDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }));
+        } else {
+          setEventDate("");
+        }
 
-  useEffect(() => {
-    loadData();
+        // Map agenda items
+        if (agendaDoc.agenda && Array.isArray(agendaDoc.agenda)) {
+          const mapped = agendaDoc.agenda.map((item: any, idx: number) => ({
+            id: `agenda-db-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 5)}`,
+            time: item.time || "",
+            title: item.title || "",
+            speaker: item.speaker || "",
+            tag: item.tag || "General",
+            itemType: (item.itemType === "poll" || item.pollUrl) ? "poll" as const : "session" as const,
+            pollUrl: item.pollUrl || "",
+          }));
+          setAgendaItems(mapped);
+          setSuccessMsg(`Loaded live ${type === "masterclass" ? "Masterclass" : "Synergy Sphere"} agenda from Firestore.`);
+          triggerFeedback("success", "Loaded live agenda!");
+        } else {
+          setAgendaItems([]);
+          setSuccessMsg(`Live agenda document found but it contains no sessions.`);
+        }
+      } else {
+        setSuccessMsg(`No live agenda found in Firestore for ${type === "masterclass" ? "Masterclass" : "Synergy Sphere"}. Using default template.`);
+        setAgendaItems(DEFAULT_TEMPLATE);
+      }
+    } catch (err: any) {
+      setErrorMsg(`Failed to load live agenda: ${err.message}`);
+      triggerFeedback("error", "Error loading from Firestore");
+    } finally {
+      setFetchingLive(false);
+    }
   }, []);
 
-  const handleAddSingleGuest = async () => {
-    if (!name.trim() || !email.trim()) {
-      showAlert("Error", "Name and email are required fields.");
-      return;
-    }
+  // Fetch live agenda when component mounts or agendaType changes
+  useEffect(() => {
+    fetchLiveAgenda(agendaType);
+  }, [agendaType, fetchLiveAgenda]);
 
-    setSubmitting(true);
-    try {
-      const res = await addGuest(
-        name.trim(),
-        email.toLowerCase().trim(),
-        enrollmentType,
-        linkedinUrl.trim() || undefined,
-        companyName.trim() || undefined,
-        isVIP
-      );
-      
-      showAlert(res.success ? "Success" : "Error", res.message);
-      if (res.success) {
-        setName("");
-        setEmail("");
-        setCompanyName("");
-        setLinkedinUrl("");
-        setIsVIP(false);
-        loadData();
-      }
-    } catch (err: any) {
-      showAlert("Error", err.message || "Failed to add guest");
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  // Load clean template to input on mount
+  useEffect(() => {
+    const cleanTemplate = DEFAULT_TEMPLATE.map(({ id, ...rest }) => {
+      const timeParts = parseTimeString(rest.time);
+      return {
+        hour: timeParts.hour,
+        minute: timeParts.minute,
+        meridiem: timeParts.meridiem,
+        itemType: rest.itemType,
+        pollUrl: rest.pollUrl || "",
+        speaker: rest.speaker || "",
+        tag: rest.tag || "General",
+        time: rest.time,
+        title: rest.title,
+      };
+    });
+    setJsonInput(JSON.stringify(cleanTemplate, null, 2));
+  }, []);
 
-  const handleImportJSON = async () => {
-    setJsonError(null);
-    setJsonSuccess(null);
-    if (!jsonInput.trim()) {
-      setJsonError("Please paste a valid JSON array of guests.");
-      return;
-    }
-
-    setImportingJson(true);
-    try {
-      let parsed: any;
-      try {
-        parsed = JSON.parse(jsonInput.trim());
-      } catch {
-        throw new Error("Invalid JSON format. Please check syntax (missing commas, brackets, etc.)");
-      }
-
-      if (!Array.isArray(parsed)) {
-        throw new Error("JSON must be an array of guest objects.");
-      }
-
-      const formattedGuests = parsed.map((item: any, idx: number) => {
-        const name = item.name || item.fullName || item.Name;
-        const email = item.email || item.Email;
-        
-        let typeRaw = (item.enrollmentType || item.type || item.enrollment || "").toString().toLowerCase();
-        let finalType: EnrollmentType = "event";
-        if (typeRaw.includes("masterclass") || typeRaw.includes("class")) {
-          finalType = "masterclass";
-        } else if (typeRaw.includes("event") || typeRaw.includes("sphere") || typeRaw.includes("synergy")) {
-          finalType = "event";
-        } else {
-          finalType = "event";
-        }
-
-        if (!name || !email) {
-          throw new Error(`Guest at index ${idx} is missing a required name or email field.`);
-        }
-
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-          throw new Error(`Guest at index ${idx} ("${name}") has an invalid email format.`);
-        }
-
-        return {
-          name: name.toString().trim(),
-          email: email.toString().toLowerCase().trim(),
-          enrollmentType: finalType,
-          company: (item.company || item.companyName || item.organization || "").toString().trim() || undefined,
-          linkedinUrl: (item.linkedinUrl || item.linkedin || "").toString().trim() || undefined,
-          isVIP: !!(item.vip || item.isVIP || item.VIP),
-        };
-      });
-
-      if (formattedGuests.length === 0) {
-        throw new Error("No guest records found in the pasted array.");
-      }
-
-      const res = await addGuestsFromCSV(formattedGuests);
-      if (res.success) {
-        setJsonSuccess(`Successfully imported all ${res.added} guest(s)!`);
-        setJsonInput("");
-      } else {
-        setJsonSuccess(`Import complete: ${res.added} added successfully. ${res.failed} failed.`);
-        if (res.failures && res.failures.length > 0) {
-          const failMsg = res.failures.map(f => `• ${f.name} (${f.email}): ${f.error}`).join("\n");
-          setJsonError(`Some entries failed to import:\n${failMsg}`);
-        }
-      }
-      loadData();
-    } catch (err: any) {
-      setJsonError(err.message || "An unexpected error occurred during import.");
-    } finally {
-      setImportingJson(false);
-    }
-  };
-
-  const handleManualCheckIn = async (guest: GuestListItem) => {
-    const targetEventId = "test-event";
-    const status = getGuestStatus(guest);
-
-    if (status === "arrived") {
-      showAlert("Checked In", `${guest.name} is already checked in.`);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const result = await registerAndCheckInPendingGuest(
-        guest.id,
-        targetEventId,
-        "web-dashboard-admin"
-      );
-      showAlert(result.success ? "Success" : "Error", result.message);
-      loadData();
-    } catch (error: any) {
-      showAlert("Error", error.message || "Failed to check in guest");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDelete = async (guest: GuestListItem) => {
-    const confirmed = Platform.OS === "web" 
-      ? window.confirm(`Are you sure you want to delete ${guest.name} from the guest list?`)
-      : true;
-
-    if (!confirmed) return;
-
-    setLoading(true);
-    try {
-      const res = await deleteGuest(guest.id);
-      showAlert(res.success ? "Success" : "Error", res.message);
-      loadData();
-    } catch (err: any) {
-      showAlert("Error", err.message || "Failed to delete guest");
-    } finally {
-      setLoading(false);
-    }
+  // Display temporary feedback messages
+  const triggerFeedback = (type: "success" | "error" | "info", msg: string) => {
+    setActionFeedback({ type, msg });
+    setTimeout(() => {
+      setActionFeedback(null);
+    }, 4000);
   };
 
   const showAlert = (title: string, message: string) => {
@@ -228,624 +202,761 @@ export default function WebAgendaDashboard() {
     }
   };
 
-  const copyTemplateToClipboard = async () => {
-    const template = JSON.stringify([
-      {
-        name: "Alex Mercer",
-        email: "alex@mercer.com",
-        enrollmentType: "event",
-        company: "Gryphon Tech",
-        linkedinUrl: "https://linkedin.com/in/alex",
-        vip: true
-      },
-      {
-        name: "Sarah Connor",
-        email: "sarah@cyberdyne.com",
-        enrollmentType: "masterclass",
-        company: "Cyberdyne Systems",
-        vip: false
-      }
-    ], null, 2);
-
+  // Helper to copy text to clipboard
+  const copyToClipboard = async (text: string, successLabel: string = "Copied to clipboard!") => {
     try {
       if (typeof navigator !== "undefined" && navigator.clipboard) {
-        await navigator.clipboard.writeText(template);
-        showAlert("Copied!", "JSON template copied to clipboard.");
+        await navigator.clipboard.writeText(text);
+        triggerFeedback("success", successLabel);
       } else {
-        showAlert("Error", "Clipboard not supported on this device/browser.");
+        showAlert("Error", "Clipboard operations not supported in this browser.");
       }
     } catch {
-      showAlert("Error", "Failed to copy template.");
+      triggerFeedback("error", "Failed to copy to clipboard.");
     }
   };
 
-  const getGuestStatus = useCallback((guest: GuestListItem): "arrived" | "unarrived" | "pending" => {
-    if (guest.status === "registered") {
-      return checkedInIds.has(guest.id) ? "arrived" : "unarrived";
+  // Copy template JSON to clipboard
+  const handleCopyTemplate = () => {
+    const cleanTemplate = DEFAULT_TEMPLATE.map(({ id, ...rest }) => {
+      const timeParts = parseTimeString(rest.time);
+      return {
+        hour: timeParts.hour,
+        minute: timeParts.minute,
+        meridiem: timeParts.meridiem,
+        itemType: rest.itemType,
+        pollUrl: rest.pollUrl || "",
+        speaker: rest.speaker || "",
+        tag: rest.tag || "General",
+        time: rest.time,
+        title: rest.title,
+      };
+    });
+    copyToClipboard(JSON.stringify(cleanTemplate, null, 2), "Template JSON copied!");
+  };
+
+  // Parse Date string safely
+  const parseDateString = (dateStr: string): Date => {
+    const parsed = Date.parse(dateStr);
+    if (!isNaN(parsed)) {
+      return new Date(parsed);
     }
-    return "pending";
-  }, [checkedInIds]);
+    return new Date();
+  };
 
-  // Stats calculations
-  const stats = useMemo(() => {
-    const total = guests.length;
-    const masterclasses = guests.filter(g => g.enrollmentType === "masterclass").length;
-    const events = guests.filter(g => g.enrollmentType === "event").length;
-    const vips = guests.filter(g => g.isVIP).length;
-    const checkedIn = guests.filter(g => getGuestStatus(g) === "arrived").length;
-    const unarrived = guests.filter(g => getGuestStatus(g) === "unarrived").length;
-    const pending = guests.filter(g => getGuestStatus(g) === "pending").length;
-
-    return { total, masterclasses, events, vips, checkedIn, unarrived, pending };
-  }, [guests, getGuestStatus]);
-
-  const filteredGuests = useMemo(() => {
-    let result = [...guests];
-
-    // Search filter
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      result = result.filter(
-        g => g.name.toLowerCase().includes(q) || g.email.toLowerCase().includes(q) || (g.companyName && g.companyName.toLowerCase().includes(q))
-      );
-    }
-
-    // Enrollment type filter
-    if (filterType === "masterclass") {
-      result = result.filter(g => g.enrollmentType === "masterclass");
-    } else if (filterType === "event") {
-      result = result.filter(g => g.enrollmentType === "event");
-    } else if (filterType === "vip") {
-      result = result.filter(g => g.isVIP);
-    }
-
-    // Status filter
-    if (filterStatus !== "all") {
-      result = result.filter(g => getGuestStatus(g) === filterStatus);
+  // Parse time e.g., "10:00 AM" into hour: 10, minute: 0, meridiem: "AM"
+  const parseTimeString = (timeStr: string) => {
+    const trimmed = timeStr.trim();
+    
+    // Match 12-hour format: e.g. "10:00 AM", "10AM", "1:30 PM"
+    const match12 = trimmed.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/i);
+    if (match12) {
+      const hour = parseInt(match12[1], 10);
+      const minute = match12[2] ? parseInt(match12[2], 10) : 0;
+      const meridiem = match12[3].toUpperCase() as "AM" | "PM";
+      return { hour, minute, meridiem };
     }
 
-    // Sort by registration / name
-    return result.sort((a, b) => a.name.localeCompare(b.name));
-  }, [guests, searchQuery, filterType, filterStatus, getGuestStatus]);
+    // Match 24-hour format: e.g. "14:30", "09:00"
+    const match24 = trimmed.match(/^(\d{1,2}):(\d{2})$/);
+    if (match24) {
+      let hour = parseInt(match24[1], 10);
+      const minute = parseInt(match24[2], 10);
+      let meridiem: "AM" | "PM" = "AM";
+      if (hour >= 12) {
+        meridiem = "PM";
+        if (hour > 12) hour -= 12;
+      } else if (hour === 0) {
+        hour = 12;
+      }
+      return { hour, minute, meridiem };
+    }
 
-  const [testingCheckIn, setTestingCheckIn] = useState(false);
+    // Default fallback
+    return { hour: 12, minute: 0, meridiem: "AM" as const };
+  };
 
-  const handleTestCheckInRandomGuests = async () => {
-    const unarrivedGuests = guests.filter(g => getGuestStatus(g) !== "arrived");
-    if (unarrivedGuests.length === 0) {
-      showAlert("No Guests", "No unarrived guests found to check in.");
+  // Save changes back to Firestore
+  const handleSaveToFirestore = async () => {
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    // Basic validation
+    if (!eventTitle.trim()) {
+      setErrorMsg("Event Title is required.");
+      return;
+    }
+    if (!eventDate.trim()) {
+      setErrorMsg("Event Date is required.");
       return;
     }
 
-    // Pick up to 5 random ones
-    const shuffled = [...unarrivedGuests].sort(() => 0.5 - Math.random());
-    const selected = shuffled.slice(0, 5);
-
-    setTestingCheckIn(true);
-    showAlert("Test Started", `Checking in ${selected.length} random guests with a 2-second delay...`);
-
-    const targetEventId = "test-event";
-
-    for (let i = 0; i < selected.length; i++) {
-      const guest = selected[i];
-      try {
-        console.log(`[Testing] Checking in ${guest.name} (${i + 1}/${selected.length})...`);
-        await registerAndCheckInPendingGuest(
-          guest.id,
-          targetEventId,
-          "web-dashboard-admin"
-        );
-        await loadData();
-      } catch (error: any) {
-        console.error(`[Testing] Failed to check in ${guest.name}:`, error);
-      }
-
-      if (i < selected.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 2000));
+    // Validate items
+    for (let i = 0; i < agendaItems.length; i++) {
+      const item = agendaItems[i];
+      if (!item.time.trim() || !item.title.trim()) {
+        setErrorMsg(`Agenda item #${i + 1} is missing a time or title.`);
+        return;
       }
     }
 
-    setTestingCheckIn(false);
-    showAlert("Test Completed", "Finished checking in random guests.");
+    const confirmSave = Platform.OS === "web"
+      ? window.confirm(`Are you sure you want to save this to Firestore? This will overwrite the live ${agendaType === "masterclass" ? "Masterclass" : "Synergy Sphere"} agenda.`)
+      : true;
+
+    if (!confirmSave) return;
+
+    setSavingLive(true);
+    try {
+      const parsedDate = parseDateString(eventDate);
+      
+      // Structure matches the Firestore document schema exactly (with hour, minute, meridiem)
+      const formattedItems = agendaItems.map(item => {
+        const timeParts = parseTimeString(item.time);
+        return {
+          hour: timeParts.hour,
+          minute: timeParts.minute,
+          meridiem: timeParts.meridiem,
+          itemType: item.itemType,
+          pollUrl: item.itemType === "poll" ? (item.pollUrl?.trim() || "") : "",
+          speaker: item.itemType === "session" ? (item.speaker?.trim() || "") : "",
+          tag: item.tag || "General",
+          time: item.time,
+          title: item.title,
+        };
+      });
+
+      const res = await saveAgenda(agendaType, eventTitle, parsedDate, formattedItems);
+      
+      if (res.success) {
+        setSuccessMsg(`Successfully saved the ${agendaType === "masterclass" ? "Masterclass" : "Synergy Sphere"} agenda to Firestore!`);
+        triggerFeedback("success", "Agenda saved to Firestore!");
+      } else {
+        throw new Error(res.message);
+      }
+    } catch (err: any) {
+      setErrorMsg(`Failed to save agenda: ${err.message}`);
+      triggerFeedback("error", "Failed to save agenda");
+    } finally {
+      setSavingLive(false);
+    }
+  };
+
+  // Load and parse JSON input
+  const handleLoadJSON = () => {
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    if (!jsonInput.trim()) {
+      setErrorMsg("Please enter or paste some JSON text first.");
+      return;
+    }
+
+    try {
+      let parsed: any;
+      try {
+        parsed = JSON.parse(jsonInput.trim());
+      } catch (err: any) {
+        throw new Error(`JSON Syntax Error: ${err.message}. Please check for missing brackets, commas, or quotes.`);
+      }
+
+      let parsedAgenda: any[] = [];
+      let parsedTitle = eventTitle;
+      let parsedDate = eventDate;
+
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        if (parsed.title) parsedTitle = String(parsed.title);
+        if (parsed.date) parsedDate = String(parsed.date);
+        
+        if (parsed.agenda && Array.isArray(parsed.agenda)) {
+          parsedAgenda = parsed.agenda;
+        } else if (parsed.items && Array.isArray(parsed.items)) {
+          parsedAgenda = parsed.items;
+        } else {
+          throw new Error("JSON Object does not contain an 'agenda' or 'items' array.");
+        }
+      } 
+      else if (Array.isArray(parsed)) {
+        parsedAgenda = parsed;
+      } else {
+        throw new Error("Invalid structure. Must be either a JSON array of sessions or an object containing an 'agenda' array.");
+      }
+
+      // Map and validate agenda items
+      const formattedItems: AgendaItem[] = parsedAgenda.map((item: any, idx: number) => {
+        const title = item.title || item.name || item.sessionName;
+        const time = item.time || item.sessionTime || item.hour || "";
+        const speaker = item.speaker || item.presenter || item.host || "";
+        const tag = item.tag || item.category || "General";
+        
+        let itemType: "session" | "poll" = "session";
+        if (item.itemType === "poll" || item.type === "poll" || item.pollUrl) {
+          itemType = "poll";
+        }
+
+        if (!title) {
+          throw new Error(`Session at index ${idx} is missing a required 'title' or 'name' property.`);
+        }
+
+        return {
+          id: `agenda-loaded-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 5)}`,
+          time: String(time).trim(),
+          title: String(title).trim(),
+          speaker: String(speaker).trim(),
+          tag: String(tag).trim(),
+          itemType,
+          pollUrl: item.pollUrl ? String(item.pollUrl).trim() : undefined,
+        };
+      });
+
+      setEventTitle(parsedTitle);
+      setEventDate(parsedDate);
+      setAgendaItems(formattedItems);
+      setSuccessMsg(`Successfully loaded ${formattedItems.length} agenda sessions! Hit "Save to DB" to publish.`);
+      triggerFeedback("success", `Loaded ${formattedItems.length} sessions!`);
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to parse agenda JSON.");
+      triggerFeedback("error", "Failed to load JSON.");
+    }
+  };
+
+  // Update item field values dynamically
+  const updateItemField = (id: string, field: keyof AgendaItem, value: any) => {
+    setAgendaItems(prev =>
+      prev.map(item => {
+        if (item.id === id) {
+          const updated = { ...item, [field]: value };
+          if (field === "itemType" && value !== "poll") {
+            delete updated.pollUrl;
+          }
+          return updated;
+        }
+        return item;
+      })
+    );
+  };
+
+  // Add a new empty session item with default titles matching types
+  const handleAddNewItem = () => {
+    const defaultTitles = agendaType === "masterclass" ? MASTERCLASS_TITLES : EVENT_TITLES;
+    const defaultTitle = defaultTitles[agendaItems.length % defaultTitles.length];
+
+    const newItem: AgendaItem = {
+      id: `agenda-added-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      time: "09:00 AM",
+      title: defaultTitle,
+      speaker: "",
+      tag: "General",
+      itemType: "session",
+    };
+    setAgendaItems(prev => [...prev, newItem]);
+    triggerFeedback("info", "Added new session row");
+  };
+
+  // Delete a session item
+  const handleDeleteItem = (id: string) => {
+    setAgendaItems(prev => prev.filter(item => item.id !== id));
+    triggerFeedback("info", "Deleted session row");
+  };
+
+  // Reorder items manually (up or down)
+  const handleMoveItem = (index: number, direction: "up" | "down") => {
+    if (direction === "up" && index === 0) return;
+    if (direction === "down" && index === agendaItems.length - 1) return;
+
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    setAgendaItems(prev => {
+      const updated = [...prev];
+      const temp = updated[index];
+      updated[index] = updated[targetIndex];
+      updated[targetIndex] = temp;
+      return updated;
+    });
+    triggerFeedback("info", `Moved item ${direction === "up" ? "up" : "down"}`);
+  };
+
+  // Sort all agenda items automatically by time chronologically
+  const handleSortItems = () => {
+    setAgendaItems(prev => {
+      return [...prev].sort((a, b) => {
+        const getMinutes = (item: AgendaItem) => {
+          const parsed = parseTimeString(item.time);
+          let h = parsed.hour;
+          if (parsed.meridiem === "PM" && h !== 12) h += 12;
+          if (parsed.meridiem === "AM" && h === 12) h = 0;
+          return h * 60 + parsed.minute;
+        };
+        return getMinutes(a) - getMinutes(b);
+      });
+    });
+    triggerFeedback("success", "Sorted sessions chronologically!");
+  };
+
+  const handleOpenLink = (url?: string) => {
+    if (url) {
+      Linking.openURL(url).catch(() => {
+        showAlert("Error", "Could not open the provided URL link.");
+      });
+    }
   };
 
   return (
     <ScrollView className="flex-1 bg-slate-50">
-      <View className="mx-auto w-full max-w-[1400px] px-4 py-8 md:px-8">
+      <View className="mx-auto w-full max-w-[1500px] px-4 py-8 md:px-8">
         
-        {/* Header */}
+        {/* Floating Action Notifications */}
+        {actionFeedback && (
+          <View 
+            className={`fixed top-5 right-5 z-50 rounded-2xl px-6 py-4 shadow-xl border flex-row items-center gap-3 transition-all ${
+              actionFeedback.type === "success" 
+                ? "bg-emerald-50 border-emerald-250 text-emerald-900" 
+                : actionFeedback.type === "error" 
+                ? "bg-rose-50 border-rose-250 text-rose-900" 
+                : "bg-blue-50 border-blue-250 text-blue-900"
+            }`}
+            style={{ position: "fixed" as any }}
+          >
+            <Ionicons 
+              name={actionFeedback.type === "success" ? "checkmark-circle" : actionFeedback.type === "error" ? "alert-circle" : "information-circle"} 
+              size={20} 
+              color={actionFeedback.type === "success" ? "#059669" : actionFeedback.type === "error" ? "#e11d48" : "#2563eb"} 
+            />
+            <Text className="text-sm font-bold text-slate-800">{actionFeedback.msg}</Text>
+          </View>
+        )}
+
+        {/* Header Section */}
         <View className="mb-8 flex-col justify-between border-b border-slate-200 pb-6 md:flex-row md:items-center">
           <View>
-            <Text className="text-3xl font-black tracking-tight text-slate-900">
-              EventPass Admin
+            <Text className="text-3xl font-black tracking-tight text-slate-900 flex-row items-center gap-2">
+              🚀 Bulk Agenda Studio
             </Text>
-            <Text className="mt-1 text-sm font-medium text-slate-500">
-              Web Dashboard & Guest Registration Portal
+            <Text className="mt-1.5 text-sm font-medium text-slate-500">
+              Paste agenda JSON or sync live database items, edit times/details, and publish directly to Cloud Firestore.
             </Text>
           </View>
-          <View className="mt-4 flex-row flex-wrap items-center gap-3 md:mt-0">
+          
+          <View className="mt-4 flex-row items-center gap-3 md:mt-0">
             <View className="rounded-full bg-white px-4 py-2 border border-slate-200 flex-row items-center gap-2 shadow-sm">
               <View className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <Text className="text-xs font-semibold text-slate-600">Live Firebase DB Connected</Text>
+              <Text className="text-xs font-semibold text-slate-600">Live Firebase Connected</Text>
             </View>
-            <TouchableOpacity 
-              onPress={handleTestCheckInRandomGuests}
-              disabled={testingCheckIn}
-              className={`rounded-full px-4 py-2 border flex-row items-center gap-2 shadow-sm ${
-                testingCheckIn ? "bg-amber-100 border-amber-300" : "bg-amber-500 border-amber-600 hover:bg-amber-600"
-              }`}
-            >
-              {testingCheckIn ? (
-                <ActivityIndicator size="small" color="#d97706" />
-              ) : (
-                <Ionicons name="flask" size={14} color="#fff" />
-              )}
-              <Text className={`text-xs font-bold ${testingCheckIn ? "text-amber-800" : "text-white"}`}>
-                {testingCheckIn ? "Testing..." : "Test 5 Check-ins (2s)"}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={loadData}
-              className="rounded-full bg-white p-2.5 border border-slate-200 hover:bg-slate-50 shadow-sm"
-            >
-              <Ionicons name="refresh" size={18} color="#475569" />
-            </TouchableOpacity>
           </View>
         </View>
 
-        {/* Stats Row */}
-        <View className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4 md:grid-cols-4 lg:flex lg:flex-row lg:justify-between">
-          <View className="flex-1 min-w-[150px] rounded-2xl bg-white p-5 border border-slate-200 m-1 shadow-sm">
-            <Text className="text-xs font-bold uppercase tracking-wider text-slate-500">Total Guests</Text>
-            <Text className="mt-2 text-3xl font-black text-slate-900">{stats.total}</Text>
-          </View>
-          <View className="flex-1 min-w-[150px] rounded-2xl bg-white p-5 border border-slate-200 m-1 shadow-sm">
-            <Text className="text-xs font-bold uppercase tracking-wider text-red-500">Synergy Sphere</Text>
-            <Text className="mt-2 text-3xl font-black text-red-600">{stats.events}</Text>
-          </View>
-          <View className="flex-1 min-w-[150px] rounded-2xl bg-white p-5 border border-slate-200 m-1 shadow-sm">
-            <Text className="text-xs font-bold uppercase tracking-wider text-indigo-500">Masterclass</Text>
-            <Text className="mt-2 text-3xl font-black text-indigo-600">{stats.masterclasses}</Text>
-          </View>
-          <View className="flex-1 min-w-[150px] rounded-2xl bg-white p-5 border border-slate-200 m-1 shadow-sm">
-            <Text className="text-xs font-bold uppercase tracking-wider text-amber-500">VIP Guests</Text>
-            <Text className="mt-2 text-3xl font-black text-amber-600">{stats.vips}</Text>
-          </View>
-          <View className="flex-1 min-w-[150px] rounded-2xl bg-white p-5 border border-slate-200 m-1 shadow-sm">
-            <Text className="text-xs font-bold uppercase tracking-wider text-emerald-500">Checked In</Text>
-            <Text className="mt-2 text-3xl font-black text-emerald-600">{stats.checkedIn}</Text>
-          </View>
-        </View>
-
-        {/* Dashboard Panels Layout */}
-        <View className="flex flex-col gap-8 lg:flex-row">
+        {/* Main Workspace Layout */}
+        <View className="flex flex-col gap-8 lg:flex-row items-stretch">
           
-          {/* LEFT: Registration & Batch Import Form Panels */}
+          {/* LEFT PANEL: Live Firestore Selection & JSON Input */}
           <View className="w-full lg:w-5/12 flex flex-col gap-8">
             
-            {/* Panel 1: Single Guest Registration */}
-            <View className="rounded-2xl bg-white p-6 border border-slate-200 shadow-sm">
-              <View className="mb-5 flex-row items-center gap-2">
-                <Ionicons name="person-add" size={20} color="#2563eb" />
-                <Text className="text-lg font-black text-slate-900">Register Guest</Text>
+            {/* Live Sync Controls Card */}
+            <View className="rounded-3xl bg-white border border-slate-200 p-6 shadow-sm flex-col gap-4">
+              <View className="flex-row items-center gap-2">
+                <Ionicons name="sync-outline" size={20} color="#7c3aed" />
+                <Text className="text-lg font-black text-slate-900">Firestore Sync Center</Text>
               </View>
 
-              <View className="gap-4">
-                <View>
-                  <Text className="mb-1.5 text-xs font-bold text-slate-600">Full Name</Text>
-                  <TextInput
-                    value={name}
-                    onChangeText={setName}
-                    placeholder="Enter guest's full name"
-                    placeholderTextColor="#94a3b8"
-                    className="w-full rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-900 border border-slate-200 focus:border-blue-500 focus:bg-white"
-                  />
-                </View>
-
-                <View>
-                  <Text className="mb-1.5 text-xs font-bold text-slate-600">Email Address</Text>
-                  <TextInput
-                    value={email}
-                    onChangeText={setEmail}
-                    placeholder="Enter guest's email"
-                    placeholderTextColor="#94a3b8"
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    className="w-full rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-900 border border-slate-200 focus:border-blue-500 focus:bg-white"
-                  />
-                </View>
-
-                <View>
-                  <Text className="mb-1.5 text-xs font-bold text-slate-600">Company Name</Text>
-                  <TextInput
-                    value={companyName}
-                    onChangeText={setCompanyName}
-                    placeholder="Enter company name (optional)"
-                    placeholderTextColor="#94a3b8"
-                    className="w-full rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-900 border border-slate-200 focus:border-blue-500 focus:bg-white"
-                  />
-                </View>
-
-                <View>
-                  <Text className="mb-1.5 text-xs font-bold text-slate-600">LinkedIn URL</Text>
-                  <TextInput
-                    value={linkedinUrl}
-                    onChangeText={setLinkedinUrl}
-                    placeholder="https://linkedin.com/in/username (optional)"
-                    placeholderTextColor="#94a3b8"
-                    autoCapitalize="none"
-                    className="w-full rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-900 border border-slate-200 focus:border-blue-500 focus:bg-white"
-                  />
-                </View>
-
-                {/* Enrollment Type Selectors */}
-                <View>
-                  <Text className="mb-2 text-xs font-bold text-slate-600">Enrollment Option</Text>
-                  <View className="flex-row gap-3">
-                    <TouchableOpacity
-                      onPress={() => setEnrollmentType("event")}
-                      className={`flex-1 flex-row items-center justify-center gap-2 rounded-xl py-3 border ${
-                        enrollmentType === "event"
-                          ? "bg-red-600 border-red-600"
-                          : "bg-slate-50 border-slate-200"
-                      }`}
-                    >
-                      <View className={`h-4.5 w-4.5 rounded-full border items-center justify-center ${enrollmentType === "event" ? "border-white bg-white" : "border-slate-300"}`}>
-                        {enrollmentType === "event" && <View className="h-2.5 w-2.5 rounded-full bg-red-600" />}
-                      </View>
-                      <Text className={`text-xs font-bold ${enrollmentType === "event" ? "text-white" : "text-slate-600"}`}>
-                        Synergy Sphere
-                      </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      onPress={() => setEnrollmentType("masterclass")}
-                      className={`flex-1 flex-row items-center justify-center gap-2 rounded-xl py-3 border ${
-                        enrollmentType === "masterclass"
-                          ? "bg-indigo-600 border-indigo-600 text-white"
-                          : "bg-slate-50 border-slate-200"
-                      }`}
-                    >
-                      <View className={`h-4.5 w-4.5 rounded-full border items-center justify-center ${enrollmentType === "masterclass" ? "border-white bg-white" : "border-slate-300"}`}>
-                        {enrollmentType === "masterclass" && <View className="h-2.5 w-2.5 rounded-full bg-indigo-600" />}
-                      </View>
-                      <Text className={`text-xs font-bold ${enrollmentType === "masterclass" ? "text-white" : "text-slate-600"}`}>
-                        Masterclass
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                {/* VIP Switch */}
-                <TouchableOpacity
-                  onPress={() => setIsVIP(!isVIP)}
-                  className="flex-row items-center justify-between rounded-xl bg-slate-50 p-4 border border-slate-200"
-                >
-                  <View className="flex-row items-center gap-2">
-                    <Ionicons name="star" size={16} color={isVIP ? "#d97706" : "#64748b"} />
-                    <View>
-                      <Text className="text-sm font-bold text-slate-800">VIP Guest Status</Text>
-                      <Text className="text-xs text-slate-500">Enable premium privileges</Text>
-                    </View>
-                  </View>
-                  <View className={`h-6 w-11 rounded-full p-0.5 ${isVIP ? "bg-amber-500" : "bg-slate-250"}`}>
-                    <View className={`h-5 w-5 rounded-full bg-white shadow-sm transition-all ${isVIP ? "translate-x-5" : ""}`} />
-                  </View>
-                </TouchableOpacity>
-
-                {/* Submit Button */}
-                <TouchableOpacity
-                  onPress={handleAddSingleGuest}
-                  disabled={submitting}
-                  className="mt-2 w-full items-center justify-center rounded-xl bg-blue-600 py-3.5 hover:bg-blue-700 disabled:opacity-55"
-                >
-                  {submitting ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <Text className="text-sm font-extrabold text-white">Create Guest Record</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Panel 2: Paste JSON Field for Batch Import */}
-            <View className="rounded-2xl bg-white p-6 border border-slate-200 shadow-sm">
-              <View className="mb-3 flex-row items-center justify-between">
-                <View className="flex-row items-center gap-2">
-                  <Ionicons name="code-working" size={20} color="#7c3aed" />
-                  <Text className="text-lg font-black text-slate-900">JSON Batch Import</Text>
-                </View>
-                <TouchableOpacity
-                  onPress={copyTemplateToClipboard}
-                  className="flex-row items-center gap-1 rounded bg-purple-50 px-2.5 py-1.5 border border-purple-200 hover:bg-purple-100"
-                >
-                  <Ionicons name="copy-outline" size={12} color="#7c3aed" />
-                  <Text className="text-[10px] font-bold text-purple-700">Copy Template</Text>
-                </TouchableOpacity>
-              </View>
-              <Text className="mb-4 text-xs text-slate-500">
-                Paste a JSON array containing guest records to import multiple attendees instantly.
+              <Text className="text-xs leading-5 text-slate-500">
+                Select the target agenda collection to fetch current database sessions or publish your edits.
               </Text>
 
-              <View className="gap-4">
-                <TextInput
-                  value={jsonInput}
-                  onChangeText={setJsonInput}
-                  multiline
-                  numberOfLines={10}
-                  placeholder={`[\n  {\n    "name": "Alex Mercer",\n    "email": "alex@mercer.com",\n    "enrollmentType": "event",\n    "company": "Gryphon Tech",\n    "linkedinUrl": "https://linkedin.com/in/alex",\n    "vip": true\n  }\n]`}
-                  placeholderTextColor="#94a3b8"
-                  className="w-full rounded-xl bg-slate-50 px-4 py-3 text-xs font-mono text-slate-700 border border-slate-200 min-h-[180px] text-left focus:bg-white"
-                  style={{ textAlignVertical: "top" }}
-                />
-
-                {jsonError && (
-                  <View className="rounded-xl bg-red-550/10 border border-red-200 p-3 flex-row items-start gap-2">
-                    <Ionicons name="alert-circle" size={16} color="#dc2626" className="mt-0.5" />
-                    <Text className="flex-1 text-xs font-bold text-red-700 leading-5">{jsonError}</Text>
+              {/* Agenda Type Selectors */}
+              <View className="flex-row gap-3">
+                <TouchableOpacity
+                  onPress={() => setAgendaType("masterclass")}
+                  disabled={fetchingLive || savingLive}
+                  className={`flex-1 flex-row items-center justify-center gap-2 rounded-xl py-3 border ${
+                    agendaType === "masterclass"
+                      ? "bg-purple-600 border-purple-600"
+                      : "bg-slate-50 border-slate-200 hover:bg-slate-100"
+                  }`}
+                >
+                  <View className={`h-4.5 w-4.5 rounded-full border items-center justify-center ${agendaType === "masterclass" ? "border-white bg-white" : "border-slate-300"}`}>
+                    {agendaType === "masterclass" && <View className="h-2.5 w-2.5 rounded-full bg-purple-600" />}
                   </View>
-                )}
-
-                {jsonSuccess && (
-                  <View className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 flex-row items-start gap-2">
-                    <Ionicons name="checkmark-circle" size={16} color="#059669" className="mt-0.5" />
-                    <Text className="flex-1 text-xs font-bold text-emerald-700 leading-5">{jsonSuccess}</Text>
-                  </View>
-                )}
+                  <Text className={`text-xs font-bold ${agendaType === "masterclass" ? "text-white" : "text-slate-650"}`}>
+                    Masterclass Agenda
+                  </Text>
+                </TouchableOpacity>
 
                 <TouchableOpacity
-                  onPress={handleImportJSON}
-                  disabled={importingJson}
-                  className="w-full items-center justify-center rounded-xl bg-purple-600 py-3.5 hover:bg-purple-700 disabled:opacity-55"
+                  onPress={() => setAgendaType("event")}
+                  disabled={fetchingLive || savingLive}
+                  className={`flex-1 flex-row items-center justify-center gap-2 rounded-xl py-3 border ${
+                    agendaType === "event"
+                      ? "bg-blue-600 border-blue-600"
+                      : "bg-slate-50 border-slate-200 hover:bg-slate-100"
+                  }`}
                 >
-                  {importingJson ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <Text className="text-sm font-extrabold text-white">Import JSON Array</Text>
-                  )}
+                  <View className={`h-4.5 w-4.5 rounded-full border items-center justify-center ${agendaType === "event" ? "border-white bg-white" : "border-slate-300"}`}>
+                    {agendaType === "event" && <View className="h-2.5 w-2.5 rounded-full bg-blue-600" />}
+                  </View>
+                  <Text className={`text-xs font-bold ${agendaType === "event" ? "text-white" : "text-slate-650"}`}>
+                    Synergy Sphere Event
+                  </Text>
                 </TouchableOpacity>
               </View>
+
+              {/* Live Sync Action */}
+              <TouchableOpacity
+                onPress={() => fetchLiveAgenda(agendaType)}
+                disabled={fetchingLive || savingLive}
+                className="w-full rounded-2xl bg-slate-100 hover:bg-slate-200 border border-slate-200 py-3.5 flex-row items-center justify-center gap-2"
+              >
+                {fetchingLive ? (
+                  <ActivityIndicator size="small" color="#475569" />
+                ) : (
+                  <Ionicons name="refresh-outline" size={16} color="#475569" />
+                )}
+                <Text className="text-xs font-bold text-slate-700">
+                  {fetchingLive ? "Syncing Live Data..." : "Force Reload from Firestore"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* JSON Upload Form Card */}
+            <View className="rounded-3xl bg-white border border-slate-200 p-6 shadow-sm flex-col gap-4">
+              <View className="flex-row items-center justify-between">
+                <View className="flex-row items-center gap-2">
+                  <Ionicons name="code-working" size={20} color="#2563eb" />
+                  <Text className="text-lg font-black text-slate-900">Paste JSON Input</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={handleCopyTemplate}
+                  className="flex-row items-center gap-1.5 rounded-full bg-blue-50 px-3.5 py-1.5 border border-blue-200 hover:bg-blue-100"
+                >
+                  <Ionicons name="copy-outline" size={13} color="#2563eb" />
+                  <Text className="text-xs font-bold text-blue-600">Copy Template</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text className="text-xs leading-5 text-slate-500">
+                Bulk overwrite the current sessions editor by pasting an agenda JSON below and hitting parse.
+              </Text>
+
+              <TextInput
+                value={jsonInput}
+                onChangeText={setJsonInput}
+                multiline
+                numberOfLines={12}
+                placeholder={`{\n  "title": "Tech Summit 2026",\n  "date": "Monday, May 12, 2026",\n  "agenda": [\n    {\n      "time": "09:00 AM",\n      "title": "Opening Keynote",\n      "speaker": "John Doe",\n      "tag": "keynote"\n    }\n  ]\n}`}
+                placeholderTextColor="#94a3b8"
+                className="w-full rounded-2xl bg-slate-50 px-4 py-4 text-xs font-mono text-slate-800 border border-slate-200 min-h-[220px] text-left focus:border-blue-500/50 focus:bg-white"
+                style={{ textAlignVertical: "top" }}
+              />
+
+              {errorMsg && (
+                <View className="rounded-2xl bg-rose-50 border border-rose-200 p-4 flex-row items-start gap-3">
+                  <Ionicons name="alert-circle" size={18} color="#e11d48" className="mt-0.5" />
+                  <Text className="flex-1 text-xs font-semibold text-rose-700 leading-5">{errorMsg}</Text>
+                </View>
+              )}
+
+              {successMsg && (
+                <View className="rounded-2xl bg-emerald-50 border border-emerald-200 p-4 flex-row items-start gap-3">
+                  <Ionicons name="checkmark-circle" size={18} color="#059669" className="mt-0.5" />
+                  <Text className="flex-1 text-xs font-semibold text-emerald-700 leading-5">{successMsg}</Text>
+                </View>
+              )}
+
+              <TouchableOpacity
+                onPress={handleLoadJSON}
+                disabled={fetchingLive || savingLive}
+                className="w-full items-center justify-center rounded-2xl bg-blue-600 hover:bg-blue-700 py-4 shadow-sm"
+              >
+                <Text className="text-sm font-extrabold text-white">Parse & Load into Editor</Text>
+              </TouchableOpacity>
             </View>
 
           </View>
 
-          {/* RIGHT: Guest List Dashboard Panel */}
-          <View className="w-full lg:w-7/12 rounded-2xl bg-white p-6 border border-slate-200 shadow-sm flex-1">
-            <View className="mb-6 flex-row items-center justify-between">
-              <View className="flex-row items-center gap-2">
-                <Ionicons name="people" size={20} color="#d97706" />
-                <Text className="text-lg font-black text-slate-900">Guest Directory</Text>
-              </View>
-              <Text className="text-xs font-bold text-slate-500">
-                Showing {filteredGuests.length} of {guests.length}
-              </Text>
-            </View>
+          {/* RIGHT PANEL: Interactive Editor & Visual Mockup */}
+          <View className="w-full lg:w-7/12 flex-1 flex-col gap-8">
+            
+            {/* Interactive Timeline Editor */}
+            <View className="rounded-3xl bg-white border border-slate-200 p-6 shadow-sm flex-1 flex-col">
+              <View className="mb-6 flex-row gap-4 border-b border-slate-200 pb-5 items-center justify-between">
+                <View className="flex-row items-center gap-2">
+                  <Ionicons name="create-outline" size={20} color="#7c3aed" />
+                  <Text className="text-lg font-black text-slate-900">Interactive Editor</Text>
+                </View>
+                
+                <View className="flex-row items-center gap-2">
+                  {agendaItems.length > 1 && (
+                    <TouchableOpacity
+                      onPress={handleSortItems}
+                      disabled={fetchingLive || savingLive}
+                      className="flex-row items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 border border-slate-200 hover:bg-slate-200"
+                    >
+                      <Ionicons name="swap-vertical" size={13} color="#475569" />
+                      <Text className="text-xs font-bold text-slate-700">Sort by Time</Text>
+                    </TouchableOpacity>
+                  )}
 
-            {/* Search Input */}
-            <View className="mb-4 flex-row items-center rounded-xl bg-slate-50 px-4 border border-slate-200 focus-within:border-slate-350 focus-within:bg-white">
-              <Ionicons name="search" size={16} color="#475569" />
-              <TextInput
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                placeholder="Search by name, email, company..."
-                placeholderTextColor="#94a3b8"
-                className="flex-1 px-3 py-3 text-sm text-slate-900"
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery("")}>
-                  <Ionicons name="close-circle" size={16} color="#64748b" />
+                  <TouchableOpacity
+                    onPress={handleAddNewItem}
+                    disabled={fetchingLive || savingLive}
+                    className="flex-row items-center gap-1.5 rounded-full bg-purple-50 px-3 py-1.5 border border-purple-200 hover:bg-purple-100"
+                  >
+                    <Ionicons name="add" size={14} color="#7c3aed" />
+                    <Text className="text-xs font-bold text-purple-700">Add Row</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={handleSaveToFirestore}
+                    disabled={fetchingLive || savingLive}
+                    className="flex-row items-center gap-1.5 rounded-full bg-emerald-600 hover:bg-emerald-700 px-4 py-1.5 shadow-sm"
+                  >
+                    {savingLive ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Ionicons name="cloud-upload-outline" size={14} color="#fff" />
+                    )}
+                    <Text className="text-xs font-bold text-white">
+                      {savingLive ? "Saving..." : "Save to DB"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Event Meta Fields */}
+              <View className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+                <View className="flex-1 bg-slate-50/80 p-4 border border-slate-200 rounded-2xl">
+                  <Text className="mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-500">Event Title</Text>
+                  <TextInput
+                    value={eventTitle}
+                    onChangeText={setEventTitle}
+                    placeholder="E.g. Technical Seminar 2026"
+                    placeholderTextColor="#94a3b8"
+                    className="w-full rounded-xl bg-white px-3 py-2 text-sm text-slate-800 border border-slate-200 focus:border-purple-500/40"
+                  />
+                </View>
+                
+                <View className="flex-1 bg-slate-50/80 p-4 border border-slate-200 rounded-2xl">
+                  <Text className="mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-500">Event Date</Text>
+                  <TextInput
+                    value={eventDate}
+                    onChangeText={setEventDate}
+                    placeholder="E.g. Monday, May 12, 2026"
+                    placeholderTextColor="#94a3b8"
+                    className="w-full rounded-xl bg-white px-3 py-2 text-sm text-slate-800 border border-slate-200 focus:border-purple-500/40"
+                  />
+                </View>
+              </View>
+
+              {/* Session List */}
+              <ScrollView nestedScrollEnabled className="flex-1 max-h-[600px] pr-1">
+                {fetchingLive ? (
+                  <View className="py-24 items-center justify-center">
+                    <ActivityIndicator size="large" color="#7c3aed" />
+                    <Text className="mt-4 text-sm font-semibold text-slate-500">Fetching live Firestore agenda...</Text>
+                  </View>
+                ) : agendaItems.length === 0 ? (
+                  <View className="py-20 items-center justify-center border border-dashed border-slate-200 rounded-2xl bg-slate-50">
+                    <Ionicons name="calendar-outline" size={48} color="#64748b" />
+                    <Text className="mt-4 text-sm font-semibold text-slate-600">No sessions loaded in editor</Text>
+                    <Text className="mt-1 text-xs text-slate-500">Paste and load JSON, or click &quot;Add Row&quot; to start.</Text>
+                  </View>
+                ) : (
+                  <View className="gap-5">
+                    {agendaItems.map((item, idx) => (
+                      <View 
+                        key={item.id} 
+                        className="rounded-2xl bg-slate-50/50 border border-slate-200 p-5 flex-row gap-4 relative hover:border-slate-300 shadow-sm"
+                      >
+                        {/* Session Timeline Visual Line on the left */}
+                        <View className="items-center w-6">
+                          <View className="h-6 w-6 rounded-full bg-white border-2 border-purple-400 items-center justify-center shadow-sm">
+                            <Text className="text-[10px] font-black text-purple-600">{idx + 1}</Text>
+                          </View>
+                          <View className="w-0.5 flex-1 bg-slate-200 my-2" />
+                        </View>
+
+                        {/* Interactive Editor Form Fields */}
+                        <View className="flex-1 flex-col gap-4">
+                          {/* Row 1: Time and Tag */}
+                          <View className="flex-row gap-4">
+                            <View className="flex-1">
+                              <Text className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">Session Time</Text>
+                              <TextInput
+                                value={item.time}
+                                onChangeText={(val) => updateItemField(item.id, "time", val)}
+                                placeholder="E.g. 10:00 AM"
+                                placeholderTextColor="#94a3b8"
+                                className="w-full rounded-xl bg-white px-3 py-2 text-xs font-semibold text-slate-800 border border-slate-200 focus:border-purple-500/50"
+                              />
+                            </View>
+                            
+                            {/* Tag Input */}
+                            <View className="flex-1">
+                              <Text className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">Tag / Category</Text>
+                              <TextInput
+                                value={item.tag}
+                                onChangeText={(val) => updateItemField(item.id, "tag", val)}
+                                placeholder="E.g. General"
+                                placeholderTextColor="#94a3b8"
+                                className="w-full rounded-xl bg-white px-3 py-2 text-xs font-semibold text-slate-800 border border-slate-200 focus:border-purple-500/50"
+                              />
+                            </View>
+                          </View>
+
+                          {/* Quick Tag Selectors Chips */}
+                          <View className="-mt-1 flex-row flex-wrap gap-1.5">
+                            {TAG_OPTIONS.map((tagOpt) => (
+                              <TouchableOpacity
+                                key={tagOpt}
+                                onPress={() => updateItemField(item.id, "tag", tagOpt)}
+                                className={`rounded px-2.5 py-1 border text-[9px] font-bold ${
+                                  item.tag === tagOpt
+                                    ? "bg-purple-100 border-purple-250 text-purple-700"
+                                    : "bg-white border-slate-200 text-slate-500 hover:text-slate-700"
+                                }`}
+                              >
+                                <Text className={`text-[9px] font-bold ${item.tag === tagOpt ? "text-purple-700" : "text-slate-500"}`}>{tagOpt}</Text>
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+
+                          {/* Row 2: Title */}
+                          <View>
+                            <Text className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">Session Title</Text>
+                            <TextInput
+                              value={item.title}
+                              onChangeText={(val) => updateItemField(item.id, "title", val)}
+                              placeholder="Session Title"
+                              placeholderTextColor="#94a3b8"
+                              className="w-full rounded-xl bg-white px-3 py-2 text-xs text-slate-800 border border-slate-200 focus:border-purple-500/50"
+                            />
+                          </View>
+
+                          {/* Row 3: Item Type Selectors */}
+                          <View className="flex-row items-center gap-3">
+                            <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Item Type:</Text>
+                            
+                            <TouchableOpacity
+                              onPress={() => updateItemField(item.id, "itemType", "session")}
+                              className={`rounded-full px-3 py-1 border text-[10px] font-bold flex-row items-center gap-1 ${
+                                item.itemType === "session"
+                                  ? "bg-purple-100 border-purple-200 text-purple-700"
+                                  : "bg-transparent border-slate-255 text-slate-400 border-slate-200"
+                              }`}
+                            >
+                              <Ionicons name="videocam-outline" size={10} color={item.itemType === "session" ? "#7c3aed" : "#64748b"} />
+                              <Text className={`text-[10px] font-bold ${item.itemType === "session" ? "text-purple-700" : "text-slate-600"}`}>Session</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                              onPress={() => updateItemField(item.id, "itemType", "poll")}
+                              className={`rounded-full px-3 py-1 border text-[10px] font-bold flex-row items-center gap-1 ${
+                                item.itemType === "poll"
+                                  ? "bg-amber-100 border-amber-250 text-amber-700"
+                                  : "bg-transparent border-slate-255 text-slate-400 border-slate-200"
+                              }`}
+                            >
+                              <Ionicons name="bar-chart-outline" size={10} color={item.itemType === "poll" ? "#b45309" : "#64748b"} />
+                              <Text className={`text-[10px] font-bold ${item.itemType === "poll" ? "text-amber-700" : "text-slate-600"}`}>Poll / Form</Text>
+                            </TouchableOpacity>
+                          </View>
+
+                          {/* Row 4: Speaker (session) OR Poll URL (poll) */}
+                          <View>
+                            {item.itemType === "poll" ? (
+                              <View>
+                                <Text className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">Poll Url</Text>
+                                <View className="flex-row gap-2">
+                                  <TextInput
+                                    value={item.pollUrl || ""}
+                                    onChangeText={(val) => updateItemField(item.id, "pollUrl", val)}
+                                    placeholder="https://example.com/poll-link"
+                                    placeholderTextColor="#94a3b8"
+                                    autoCapitalize="none"
+                                    className="flex-1 rounded-xl bg-white px-3 py-2 text-xs text-amber-700 border border-slate-200 focus:border-amber-500/50"
+                                  />
+                                  {item.pollUrl ? (
+                                    <TouchableOpacity
+                                      onPress={() => handleOpenLink(item.pollUrl)}
+                                      className="rounded-xl bg-slate-100 border border-slate-200 px-3 justify-center items-center"
+                                    >
+                                      <Ionicons name="open-outline" size={14} color="#475569" />
+                                    </TouchableOpacity>
+                                  ) : null}
+                                </View>
+                              </View>
+                            ) : (
+                              <View>
+                                <Text className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">Speaker / Presenter</Text>
+                                <TextInput
+                                  value={item.speaker}
+                                  onChangeText={(val) => updateItemField(item.id, "speaker", val)}
+                                  placeholder="Presenter Name"
+                                  placeholderTextColor="#94a3b8"
+                                  className="w-full rounded-xl bg-white px-3 py-2 text-xs text-slate-800 border border-slate-200 focus:border-purple-500/50"
+                                />
+                              </View>
+                            )}
+                          </View>
+                        </View>
+
+                        {/* Top-Right Control Buttons (Delete, Reorder) */}
+                        <View className="absolute top-4 right-4 flex-row items-center gap-1">
+                          {/* Reorder Up */}
+                          <TouchableOpacity
+                            onPress={() => handleMoveItem(idx, "up")}
+                            disabled={idx === 0 || fetchingLive || savingLive}
+                            className={`h-7 w-7 rounded-full items-center justify-center border ${
+                              idx === 0 
+                                ? "bg-slate-50 border-slate-100 opacity-30" 
+                                : "bg-white border-slate-200 hover:bg-slate-50"
+                            }`}
+                          >
+                            <Ionicons name="arrow-up" size={12} color={idx === 0 ? "#cbd5e1" : "#475569"} />
+                          </TouchableOpacity>
+
+                          {/* Reorder Down */}
+                          <TouchableOpacity
+                            onPress={() => handleMoveItem(idx, "down")}
+                            disabled={idx === agendaItems.length - 1 || fetchingLive || savingLive}
+                            className={`h-7 w-7 rounded-full items-center justify-center border ${
+                              idx === agendaItems.length - 1 
+                                ? "bg-slate-50 border-slate-100 opacity-30" 
+                                : "bg-white border-slate-200 hover:bg-slate-50"
+                            }`}
+                          >
+                            <Ionicons name="arrow-down" size={12} color={idx === agendaItems.length - 1 ? "#cbd5e1" : "#475569"} />
+                          </TouchableOpacity>
+
+                          {/* Delete Row */}
+                          <TouchableOpacity
+                            onPress={() => handleDeleteItem(item.id)}
+                            disabled={fetchingLive || savingLive}
+                            className="h-7 w-7 rounded-full bg-red-50 border border-red-200 items-center justify-center hover:bg-red-100 ml-1"
+                          >
+                            <Ionicons name="trash-outline" size={12} color="#e11d48" />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </ScrollView>
+              
+              {/* Bottom Large Save Button */}
+              {agendaItems.length > 0 && !fetchingLive && (
+                <TouchableOpacity
+                  onPress={handleSaveToFirestore}
+                  disabled={savingLive}
+                  className="mt-6 w-full items-center justify-center rounded-2xl bg-emerald-600 hover:bg-emerald-700 py-4 shadow-sm"
+                >
+                  <Text className="text-sm font-extrabold text-white flex-row items-center gap-2">
+                    {savingLive ? "Saving Agenda Changes..." : "Publish Live to Firestore Database"}
+                  </Text>
                 </TouchableOpacity>
               )}
             </View>
 
-            {/* Filters Bar */}
-            <View className="mb-5 flex-col gap-3">
-              {/* Category Filter */}
-              <View className="flex-row flex-wrap gap-2">
-                <TouchableOpacity
-                  onPress={() => setFilterType("all")}
-                  className={`rounded-full px-4 py-1.5 border text-xs font-bold ${
-                    filterType === "all"
-                      ? "bg-slate-900 border-slate-900 text-white"
-                      : "bg-white border-slate-200 text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  <Text className={`text-xs font-bold ${filterType === "all" ? "text-white" : "text-slate-600"}`}>
-                    All Types
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setFilterType("event")}
-                  className={`rounded-full px-4 py-1.5 border text-xs font-bold ${
-                    filterType === "event"
-                      ? "bg-red-600 border-red-600 text-white"
-                      : "bg-white border-slate-200 text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  <Text className={`text-xs font-bold ${filterType === "event" ? "text-white" : "text-slate-600"}`}>
-                    Synergy Sphere
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setFilterType("masterclass")}
-                  className={`rounded-full px-4 py-1.5 border text-xs font-bold ${
-                    filterType === "masterclass"
-                      ? "bg-indigo-600 border-indigo-600 text-white"
-                      : "bg-white border-slate-200 text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  <Text className={`text-xs font-bold ${filterType === "masterclass" ? "text-white" : "text-slate-600"}`}>
-                    Masterclass
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setFilterType("vip")}
-                  className={`rounded-full px-4 py-1.5 border text-xs font-bold ${
-                    filterType === "vip"
-                      ? "bg-amber-500 border-amber-500 text-slate-900"
-                      : "bg-white border-slate-200 text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  <Text className={`text-xs font-bold ${filterType === "vip" ? "text-slate-900" : "text-slate-600"}`}>
-                    VIP Only
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Status Filter */}
-              <View className="flex-row flex-wrap gap-2">
-                <TouchableOpacity
-                  onPress={() => setFilterStatus("all")}
-                  className={`rounded-md px-3 py-1 text-xs font-semibold ${
-                    filterStatus === "all" ? "bg-slate-200 text-slate-800" : "text-slate-500 hover:text-slate-700"
-                  }`}
-                >
-                  <Text className="text-xs font-bold text-slate-700">All Status</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setFilterStatus("arrived")}
-                  className={`rounded-md px-3 py-1 text-xs font-semibold ${
-                    filterStatus === "arrived" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "text-slate-500 hover:text-slate-700"
-                  }`}
-                >
-                  <Text className="text-xs font-bold text-emerald-700">Arrived / Present</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setFilterStatus("unarrived")}
-                  className={`rounded-md px-3 py-1 text-xs font-semibold ${
-                    filterStatus === "unarrived" ? "bg-orange-50 text-orange-700 border border-orange-200" : "text-slate-500 hover:text-slate-700"
-                  }`}
-                >
-                  <Text className="text-xs font-bold text-orange-700">Unarrived</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setFilterStatus("pending")}
-                  className={`rounded-md px-3 py-1 text-xs font-semibold ${
-                    filterStatus === "pending" ? "bg-blue-50 text-blue-700 border border-blue-200" : "text-slate-500 hover:text-slate-700"
-                  }`}
-                >
-                  <Text className="text-xs font-bold text-blue-700">Pending Reg</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Directory Cards List */}
-            {loading ? (
-              <View className="py-20 items-center justify-center">
-                <ActivityIndicator size="large" color="#2563eb" />
-              </View>
-            ) : filteredGuests.length === 0 ? (
-              <View className="py-16 items-center justify-center border border-dashed border-slate-200 rounded-2xl bg-slate-50">
-                <Ionicons name="people-outline" size={48} color="#94a3b8" />
-                <Text className="mt-4 text-sm font-semibold text-slate-500">No matching guests found</Text>
-                <Text className="mt-1 text-xs text-slate-400">Try refining your search or filter options</Text>
-              </View>
-            ) : (
-              <View className="gap-3.5">
-                {filteredGuests.map((guest) => {
-                  const status = getGuestStatus(guest);
-                  let statusColor = "bg-blue-50 text-blue-700 border border-blue-200";
-                  let statusText = "Pending Registration";
-                  
-                  if (status === "arrived") {
-                    statusColor = "bg-emerald-50 text-emerald-700 border border-emerald-200";
-                    statusText = "Arrived / Checked In";
-                  } else if (status === "unarrived") {
-                    statusColor = "bg-orange-50 text-orange-700 border border-orange-200";
-                    statusText = "Registered (Unarrived)";
-                  }
-
-                  return (
-                    <View
-                      key={guest.id}
-                      className="rounded-xl bg-white p-4 border border-slate-200 flex-col gap-3 md:flex-row md:items-center md:justify-between hover:border-slate-350 shadow-sm"
-                    >
-                      <View className="flex-row items-center gap-3">
-                        {/* Initials Avatar */}
-                        <View 
-                          className="h-10 w-10 rounded-full items-center justify-center"
-                          style={{
-                            backgroundColor: guest.enrollmentType === "event" ? "rgba(239, 68, 68, 0.1)" : "rgba(79, 70, 229, 0.1)",
-                            borderWidth: 1,
-                            borderColor: guest.enrollmentType === "event" ? "rgba(239, 68, 68, 0.2)" : "rgba(79, 70, 229, 0.2)",
-                          }}
-                        >
-                          <Text 
-                            className="text-sm font-bold"
-                            style={{ color: guest.enrollmentType === "event" ? "#dc2626" : "#4f46e5" }}
-                          >
-                            {(guest.name.split(" ").map(n => n[0]).join("").substring(0, 2) || "G").toUpperCase()}
-                          </Text>
-                        </View>
-
-                        <View>
-                          <View className="flex-row items-center gap-2 flex-wrap">
-                            <Text className="text-sm font-bold text-slate-900">{guest.name}</Text>
-                            {guest.isVIP && (
-                              <View className="rounded bg-amber-100 px-1.5 py-0.5 border border-amber-200">
-                                <Text className="text-[10px] font-black text-amber-700">VIP</Text>
-                              </View>
-                            )}
-                            <View 
-                              className={`rounded px-1.5 py-0.5 border ${
-                                guest.enrollmentType === "event" 
-                                  ? "bg-red-50 border-red-200" 
-                                  : "bg-indigo-50 border-indigo-200"
-                              }`}
-                            >
-                              <Text 
-                                className={`text-[10px] font-extrabold ${
-                                  guest.enrollmentType === "event" ? "text-red-700" : "text-indigo-700"
-                                }`}
-                              >
-                                {guest.enrollmentType === "event" ? "Synergy Sphere" : "Masterclass"}
-                              </Text>
-                            </View>
-                          </View>
-                          <Text className="text-xs text-slate-500 mt-0.5">{guest.email}</Text>
-                          {guest.companyName ? (
-                            <Text className="text-[11px] text-slate-600 mt-1 flex-row items-center">
-                              🏢 {guest.companyName}
-                            </Text>
-                          ) : null}
-                        </View>
-                      </View>
-
-                      {/* Right Section: Status Badge & Actions */}
-                      <View className="flex-row items-center justify-end gap-3 mt-2 md:mt-0 border-t border-slate-100 pt-2.5 md:border-t-0 md:pt-0">
-                        
-                        {/* Status badge */}
-                        <View className={`rounded-full px-2.5 py-1 ${statusColor}`}>
-                          <Text className="text-[10px] font-extrabold">{statusText}</Text>
-                        </View>
-
-                        {/* Action buttons */}
-                        <View className="flex-row items-center gap-1.5">
-                          {status !== "arrived" && (
-                            <TouchableOpacity
-                              onPress={() => handleManualCheckIn(guest)}
-                              className="rounded bg-emerald-50 p-1.5 border border-emerald-200 hover:bg-emerald-100"
-                            >
-                              <Ionicons name="checkmark-done" size={14} color="#059669" />
-                            </TouchableOpacity>
-                          )}
-                          
-                          <TouchableOpacity
-                            onPress={() => handleDelete(guest)}
-                            className="rounded bg-red-50 p-1.5 border border-red-200 hover:bg-red-100"
-                          >
-                            <Ionicons name="trash" size={14} color="#dc2626" />
-                          </TouchableOpacity>
-                        </View>
-
-                      </View>
-                    </View>
-                  );
-                })}
-              </View>
-            )}
           </View>
-          
+
         </View>
 
       </View>

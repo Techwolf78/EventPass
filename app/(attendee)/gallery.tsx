@@ -191,7 +191,7 @@ export default function GalleryScreen() {
   const eventTitle =
     enrollmentType === "masterclass" ? "Gryphon Academy's\nMasterclass 3.0" : "Gryphon Academy's\nSynergy Sphere 2.0";
   const pastEventTitle =
-    enrollmentType === "masterclass" ? "Gryphon Academy's Masterclass 3.0" : "Gryphon Academy's Synergy Sphere 1.0";
+    enrollmentType === "masterclass" ? "Masterclass 2.0" : "Synergy Sphere";
 
   if (loading) {
     return (

@@ -76,6 +76,22 @@ function RootLayoutInner() {
   const isConnected = useIsConnected();
   const [showOfflinePass, setShowOfflinePass] = useState(false);
 
+  const router = useRouter();
+  const segments = useSegments();
+  const isPublicPage = !!(segments[0] && [
+    "privacy-policy",
+    "terms-and-conditions",
+    "delete-account",
+    "account-privacy",
+    "about",
+    "support",
+    "marketing",
+    "analytics",
+    "email",
+    "webagenda",
+    "webguest",
+  ].includes(segments[0]));
+
   useEffect(() => {
     if (isConnected) {
       setShowOfflinePass(false);
@@ -84,20 +100,6 @@ function RootLayoutInner() {
 
   useCheckInNotifications();
   const [showAnimatedSplash, setShowAnimatedSplash] = useState(true);
-
-  const router = useRouter();
-  const segments = useSegments();
-  const isPublicPage = !!(segments[0] && [
-    "privacy-policy",
-    "terms-and-conditions",
-    "delete-account",
-    "about",
-    "support",
-    "marketing",
-    "analytics",
-    "email",
-    "webagenda",
-  ].includes(segments[0]));
 
   useEffect(() => {
     async function prepare() {
@@ -132,12 +134,14 @@ function RootLayoutInner() {
       "privacy-policy",
       "terms-and-conditions",
       "delete-account",
+      "account-privacy",
       "about",
       "support",
       "marketing",
       "analytics",
       "email",
       "webagenda",
+      "webguest",
     ]);
     const isLegalPage = legalPages.has(segments[0]);
 
@@ -223,8 +227,10 @@ function RootLayoutInner() {
               "about",
               "support",
               "delete-account",
+              "account-privacy",
               "email",
               "webagenda",
+              "webguest",
             ].includes(segments[0])
               ? {
                   maxWidth: 600,

@@ -112,12 +112,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const idTokenResult = await firebaseUser.getIdTokenResult();
             if (
               idTokenResult.claims.superadmin === true ||
-              firebaseUser.email === "superadmin@test.com"
+              firebaseUser.email === "superadmin@test.com" ||
+              firebaseUser.email === "admin@gryphonacademy.co.in"
             ) {
               currentRole = "superadmin";
             } else if (
               idTokenResult.claims.admin === true ||
-              firebaseUser.email === "admin@test.com"
+              firebaseUser.email === "admin@test.com" ||
+              firebaseUser.email === "connect@gryphonacademy.co.in"
             ) {
               currentRole = "admin";
             }

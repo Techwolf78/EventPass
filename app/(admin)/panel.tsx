@@ -11,6 +11,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import {
   subscribeToCheckInLog,
   AttendanceRecord,
@@ -23,6 +24,7 @@ import {
 } from '@/utils/firestore';
 import { formatTimeAgo } from '@/utils/time';
 import { getEnrollmentDisplayName } from '@/hooks/use-attendee-theme';
+import { useAuth } from '@/context/AuthContext';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Ionicons } from '@expo/vector-icons';
@@ -50,6 +52,8 @@ interface AgendaWithType extends Omit<EventData, 'date' | 'agenda'> {
 
 export default function AdminPanelScreen() {
   const insets = useSafeAreaInsets();
+  const { logout } = useAuth();
+  const router = useRouter();
   const [agendas, setAgendas] = useState<AgendaWithType[]>([]);
   const [selectedType, setSelectedType] = useState<EnrollmentType>('masterclass');
   const [checkInLog, setCheckInLog] = useState<AttendanceRecord[]>([]);
@@ -60,8 +64,6 @@ export default function AdminPanelScreen() {
   const [exporting, setExporting] = useState(false);
   const [registeredCount, setRegisteredCount] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
-
-  const currentAgenda = agendas.find((a) => a.type === selectedType);
 
   const loadAgendas = useCallback(async () => {
     setLoading(true);
@@ -255,6 +257,26 @@ export default function AdminPanelScreen() {
             <Text style={styles.headerTitle}>Attendance</Text>
             <Text style={styles.headerSubtitle}>ADMIN • LIVE DASHBOARD</Text>
           </View>
+          <TouchableOpacity
+            onPress={async () => {
+              await logout();
+              router.replace('/(auth)/login');
+            }}
+            activeOpacity={0.7}
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 8,
+              backgroundColor: "#FFFFFF",
+              justifyContent: "center",
+              alignItems: "center",
+              borderWidth: 1,
+              borderColor: "#E5E7EB",
+            }}
+          >
+            <Ionicons name="log-out-outline" size={18} color="#000000" />
+          </TouchableOpacity>
         </View>
 
         {/* Type Selector - Masterclass / Event */}
@@ -290,32 +312,7 @@ export default function AdminPanelScreen() {
             </View>
           </View>
 
-        {/* Event Info Card */}
-        {currentAgenda && (
-          <View style={styles.eventInfoCard}>
-            <View style={styles.eventInfoContent}>
-              <View style={styles.eventIconContainer}>
-                <Ionicons
-                  name={selectedType === 'masterclass' ? 'school' : 'calendar'}
-                  size={24}
-                  color="#000000"
-                />
-              </View>
-              <View style={styles.eventInfoText}>
-                <Text style={styles.eventInfoTitle}>{currentAgenda.title}</Text>
-                <Text style={styles.eventInfoDate}>
-                  {currentAgenda.date?.toDate
-                    ? currentAgenda.date.toDate().toLocaleDateString('en-US', {
-                      weekday: 'long',
-                      month: 'long',
-                      day: 'numeric',
-                    })
-                    : 'Date TBA'}
-                </Text>
-              </View>
-            </View>
-          </View>
-        )}
+
 
         {/* Stats Cards */}
         <View style={styles.statsRow}>
@@ -412,22 +409,6 @@ export default function AdminPanelScreen() {
             })
           )}
         </View>
-
-        {/* Export Button */}
-        <TouchableOpacity
-          style={[styles.exportBtn, exporting && styles.exportBtnDisabled]}
-          onPress={handleExport}
-          disabled={exporting}
-        >
-          {exporting ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <>
-              <Ionicons name="download" size={18} color="#fff" />
-              <Text style={styles.exportBtnText}>Export attendance CSV</Text>
-            </>
-          )}
-        </TouchableOpacity>
 
         <View style={{ height: insets.bottom + 100 }} />
       </ScrollView>

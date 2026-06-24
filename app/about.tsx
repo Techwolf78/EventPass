@@ -130,7 +130,7 @@ export default function AboutGryphonAcademy() {
               marginTop: 4,
             }}
           >
-            V1.0.6
+            V1.0.7
           </Text>
 
           {/* Legal / Provider details */}

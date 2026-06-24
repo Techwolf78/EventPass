@@ -38,7 +38,7 @@ import {
   Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 
 type WebAlertButton = {
   text: string;
@@ -106,8 +106,9 @@ type FilterStatus = "all" | GuestStatus;
 
 export default function GuestListScreen() {
   const insets = useSafeAreaInsets();
-  const { role } = useAuth();
+  const { role, logout } = useAuth();
   const canEdit = role === "superadmin";
+  const router = useRouter();
 
   const [guests, setGuests] = useState<GuestListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -127,6 +128,7 @@ export default function GuestListScreen() {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
   const [checkedInIds, setCheckedInIds] = useState<Set<string>>(new Set());
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<"all" | "event" | "masterclass">("all");
 
   // CSV Upload Modal state
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -620,6 +622,10 @@ export default function GuestListScreen() {
   const filteredGuests = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
     return guests.filter((guest) => {
+      if (selectedEvent !== "all" && guest.enrollmentType !== selectedEvent) {
+        return false;
+      }
+
       const matchesSearch =
         guest.name.toLowerCase().includes(normalizedQuery) ||
         guest.email.toLowerCase().includes(normalizedQuery);
@@ -628,15 +634,20 @@ export default function GuestListScreen() {
       if (filterStatus === "all") return true;
       return getGuestStatus(guest, checkedInIds) === filterStatus;
     });
-  }, [guests, searchQuery, filterStatus, checkedInIds]);
+  }, [guests, searchQuery, filterStatus, checkedInIds, selectedEvent]);
 
-  const arrivedCount = guests.filter(
+  const filteredByEventGuests = useMemo(() => {
+    if (selectedEvent === "all") return guests;
+    return guests.filter((g) => g.enrollmentType === selectedEvent);
+  }, [guests, selectedEvent]);
+
+  const arrivedCount = filteredByEventGuests.filter(
     (guest) => getGuestStatus(guest, checkedInIds) === "arrived",
   ).length;
-  const unarrivedCount = guests.filter(
+  const unarrivedCount = filteredByEventGuests.filter(
     (guest) => getGuestStatus(guest, checkedInIds) === "unarrived",
   ).length;
-  const pendingCount = guests.filter(
+  const pendingCount = filteredByEventGuests.filter(
     (guest) => getGuestStatus(guest, checkedInIds) === "pending",
   ).length;
 
@@ -676,7 +687,7 @@ export default function GuestListScreen() {
       {/* Stats Cards */}
       <View style={styles.statsRow}>
         <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{guests.length}</Text>
+          <Text style={styles.statNumber}>{filteredByEventGuests.length}</Text>
           <Text style={styles.statLabel}>Total guests</Text>
         </View>
         <View style={styles.statCard}>
@@ -937,42 +948,67 @@ export default function GuestListScreen() {
           </View>
         )}
 
-        {/* Upload CSV Card */}
-        {canEdit && (
-          <TouchableOpacity
-            style={styles.uploadCard}
-            onPress={() => {
-              resetUploadModal();
-              setShowUploadModal(true);
-            }}
-          >
-            <View style={styles.uploadContent}>
-              <View style={styles.uploadIconBg}>
-                <Ionicons name="cloud-upload" size={22} color="#000000" />
-              </View>
-              <View style={styles.uploadTextBlock}>
-                <Text style={styles.uploadTitle}>Upload CSV file</Text>
-                <Text style={styles.uploadSubtitle}>
-                  name, email, enrollmentType, company, linkedinUrl
-                </Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
-          </TouchableOpacity>
-        )}
 
-        {/* Section Header with active filter display */}
+
+        {/* Section Header with active filter display and Event Toggle */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>
-            {filterStatus === "all"
-              ? "ALL GUESTS"
-              : filterStatus === "arrived"
-                ? "ARRIVED GUESTS"
-                : filterStatus === "unarrived"
-                  ? "UNARRIVED GUESTS"
-                  : "PENDING GUESTS"}
-          </Text>
-          <Text style={styles.sectionCount}>{filteredGuests.length}</Text>
+          <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6 }}>
+            <Text style={styles.sectionTitle}>
+              {filterStatus === "all"
+                ? "ALL GUESTS"
+                : filterStatus === "arrived"
+                  ? "ARRIVED GUESTS"
+                  : filterStatus === "unarrived"
+                    ? "UNARRIVED GUESTS"
+                    : "PENDING GUESTS"}
+            </Text>
+            <Text style={styles.sectionCount}>{filteredGuests.length}</Text>
+          </View>
+
+          {/* Event Toggle buttons */}
+          <View style={{ flexDirection: "row", gap: 6, alignItems: "center" }}>
+            <TouchableOpacity
+              onPress={() => setSelectedEvent("all")}
+              style={{
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: 6,
+                backgroundColor: selectedEvent === "all" ? "#000" : "#F3F4F6",
+              }}
+            >
+              <Text style={{ fontSize: 10, fontWeight: "700", color: selectedEvent === "all" ? "#FFF" : "#4B5563" }}>
+                ALL
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setSelectedEvent("event")}
+              style={{
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: 6,
+                backgroundColor: selectedEvent === "event" ? "#000" : "#F3F4F6",
+              }}
+            >
+              <Text style={{ fontSize: 10, fontWeight: "700", color: selectedEvent === "event" ? "#FFF" : "#4B5563" }}>
+                SNS 2.0
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setSelectedEvent("masterclass")}
+              style={{
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: 6,
+                backgroundColor: selectedEvent === "masterclass" ? "#000" : "#F3F4F6",
+              }}
+            >
+              <Text style={{ fontSize: 10, fontWeight: "700", color: selectedEvent === "masterclass" ? "#FFF" : "#4B5563" }}>
+                MC 3.0
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Guest List */}
@@ -1796,16 +1832,16 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: "row",
     paddingHorizontal: 20,
-    gap: 12,
-    marginBottom: 20,
-    marginTop: 16,
+    gap: 8,
+    marginBottom: 12,
+    marginTop: 10,
   },
   statCard: {
     flex: 1,
     backgroundColor: "#FFFFFF",
     borderRadius: 8,
-    paddingVertical: 16,
-    paddingHorizontal: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#E5E7EB",
@@ -1825,10 +1861,10 @@ const styles = StyleSheet.create({
     color: "#000000",
   },
   statLabel: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: "600",
     color: "#9CA3AF",
-    marginTop: 4,
+    marginTop: 2,
     textAlign: "center",
     textTransform: "uppercase",
   },
@@ -2273,5 +2309,56 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: "#FFFFFF",
+  },
+  eventToggleBar: {
+    flexDirection: "row",
+    backgroundColor: "#FFFFFF",
+    marginHorizontal: 20,
+    marginTop: 12,
+    marginBottom: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    padding: 3,
+  },
+  eventToggleOption: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 6,
+    gap: 5,
+    borderRadius: 6,
+  },
+  eventToggleOptionActive: {
+    backgroundColor: "#F3F4F6",
+  },
+  eventRadioCircle: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: "#9CA3AF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  eventRadioCircleActive: {
+    borderColor: "#000000",
+  },
+  eventRadioInner: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: "#000000",
+  },
+  eventToggleText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#6B7280",
+    textTransform: "uppercase",
+  },
+  eventToggleTextActive: {
+    color: "#000000",
+    fontWeight: "700",
   },
 });

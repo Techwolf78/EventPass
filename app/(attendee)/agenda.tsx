@@ -275,7 +275,8 @@ export default function AgendaScreen() {
                 </Text>
                 <View 
                   style={{
-                    paddingHorizontal: 10,
+                    paddingLeft: 10,
+                    paddingRight: 12,
                     paddingVertical: 4,
                     borderRadius: 8,
                     backgroundColor: "#ffffff",
@@ -283,7 +284,7 @@ export default function AgendaScreen() {
                     borderColor: palette.primaryBorder,
                   }}
                 >
-                  <Text style={{ fontSize: 9, fontWeight: "800", textTransform: "uppercase", color: palette.primaryText }}>
+                  <Text style={{ fontSize: 9, fontWeight: "800", textTransform: "uppercase", color: palette.primaryText, paddingRight: 2 }}>
                     {liveSession.tag || "Session"}
                   </Text>
                 </View>
@@ -344,12 +345,12 @@ export default function AgendaScreen() {
                   >
                     <Ionicons name="mic" size={14} color={palette.primary} />
                   </View>
-                  <View>
+                  <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 10, fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5 }}>
                       Speaker
                     </Text>
                     <Text style={{ fontSize: 14, fontWeight: "800", color: palette.primaryText, marginTop: 1 }}>
-                      {liveSession.speaker}
+                      {liveSession.speaker.split("|").map(part => part.trim()).join("\n")}
                     </Text>
                   </View>
                 </View>
@@ -464,7 +465,8 @@ export default function AgendaScreen() {
                         {/* Event Category Tag */}
                         <View 
                           style={{
-                            paddingHorizontal: 8,
+                            paddingLeft: 8,
+                            paddingRight: 10,
                             paddingVertical: 3,
                             borderRadius: 8,
                             backgroundColor: isLive ? palette.primarySoft : "#f1f5f9",
@@ -477,7 +479,8 @@ export default function AgendaScreen() {
                               fontSize: 9, 
                               fontWeight: "800", 
                               textTransform: "uppercase",
-                              color: isLive ? palette.primaryText : "#475569" 
+                              color: isLive ? palette.primaryText : "#475569",
+                              paddingRight: 2
                             }}
                           >
                             {item.tag || "Regular"}
@@ -532,21 +535,23 @@ export default function AgendaScreen() {
                             />
                           </TouchableOpacity>
                         ) : item.speaker && item.speaker.trim() !== "" ? (
-                          <View style={{ flexDirection: "row", alignItems: "center" }}>
+                          <View style={{ flexDirection: "row", alignItems: "center", flex: 1, marginRight: 8 }}>
                             <Ionicons
                               name="mic-outline"
                               size={14}
                               color={isLive ? palette.primary : "#64748b"}
+                              style={{ marginTop: 2, alignSelf: 'flex-start' }}
                             />
                             <Text 
                               style={{ 
                                 fontSize: 12, 
                                 fontWeight: "600", 
                                 marginLeft: 4,
-                                color: isLive ? palette.primary : "#475569" 
+                                color: isLive ? palette.primary : "#475569",
+                                flex: 1
                               }}
                             >
-                              {item.speaker}
+                              {item.speaker.split("|").map(part => part.trim()).join("\n")}
                             </Text>
                           </View>
                         ) : (

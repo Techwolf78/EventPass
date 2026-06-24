@@ -276,15 +276,15 @@ export default function ProfileScreen() {
           <TouchableOpacity
             activeOpacity={0.7}
             className="flex-row justify-between items-center py-4 border-b border-slate-50"
-            onPress={() => router.push("/delete-account")}
+            onPress={() => router.push("/account-privacy")}
           >
             <View className="flex-row items-center gap-3">
-              <Ionicons name="alert-circle-outline" size={20} color="#ef4444" />
-              <Text className="text-sm font-semibold text-red-600">
-                Delete Account
+              <Ionicons name="shield-half-outline" size={20} color="#6366f1" />
+              <Text className="text-sm font-semibold text-slate-800">
+                Account & Privacy
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color="#dc2626" />
+            <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
           </TouchableOpacity>
         </View>
 
@@ -299,7 +299,7 @@ export default function ProfileScreen() {
 
         {/* App Version Footer */}
         <Text className="text-center text-xs font-semibold text-slate-400 mt-6">
-          App Version 1.0.6
+          App Version 1.0.7
         </Text>
       </ScrollView>
     </View>

@@ -376,12 +376,14 @@ export default function LoginScreen() {
         const idTokenResult = await firebaseUser.getIdTokenResult();
         if (
           idTokenResult.claims.superadmin === true ||
-          firebaseUser.email === "superadmin@test.com"
+          firebaseUser.email === "superadmin@test.com" ||
+          firebaseUser.email === "admin@gryphonacademy.co.in"
         ) {
           role = "superadmin";
         } else if (
           idTokenResult.claims.admin === true ||
-          firebaseUser.email === "admin@test.com"
+          firebaseUser.email === "admin@test.com" ||
+          firebaseUser.email === "connect@gryphonacademy.co.in"
         ) {
           role = "admin";
         }
@@ -414,26 +416,51 @@ export default function LoginScreen() {
       return;
     }
 
-    const checkEmail = guestEmail.trim().toLowerCase();
-    const checkName = guestName.trim().toLowerCase();
+    const checkEmailLower = guestEmail.trim().toLowerCase();
+    const checkNameLower = guestName.trim().toLowerCase();
 
-    if (
-      checkEmail === "superadmin@test.com" ||
-      checkEmail === "admin@test.com" ||
-      checkEmail === "12345678" ||
-      checkName === "superadmin@test.com" ||
-      checkName === "admin@test.com" ||
-      checkName === "12345678"
-    ) {
+    // 1. Apple Reviewer Auto-fill (Must be active in production for App Review Reviewers)
+    const isReviewerAutoFill = 
+      checkEmailLower === "superadmin@test.com" || 
+      checkNameLower === "superadmin@test.com" || 
+      checkEmailLower === "12345678" || 
+      checkNameLower === "12345678";
+
+    if (isReviewerAutoFill) {
       setActiveTab("login");
-      setEmail(
-        checkEmail === "12345678"
-          ? "superadmin@test.com"
-          : checkEmail || "superadmin@test.com",
-      );
+      setEmail("superadmin@test.com");
       setPassword("12345678");
       setAdminError("Auto-filled Organizer credentials. Tap Sign In.");
       return;
+    }
+
+    // 2. Official credentials Auto-fill (Guarded behind __DEV__ for security in production)
+    if (__DEV__) {
+      const isSuperAdminAutoFill = 
+        checkEmailLower === "superadmin" ||
+        checkNameLower === "superadmin" ||
+        checkEmailLower === "admin@gryphonacademy.co.in" ||
+        checkNameLower === "admin@gryphonacademy.co.in";
+
+      const isAdminAutoFill =
+        checkEmailLower === "connect" ||
+        checkNameLower === "connect" ||
+        checkEmailLower === "connect@gryphonacademy.co.in" ||
+        checkNameLower === "connect@gryphonacademy.co.in";
+
+      if (isSuperAdminAutoFill) {
+        setActiveTab("login");
+        setEmail("admin@gryphonacademy.co.in");
+        setPassword("Event5878");
+        setAdminError("Auto-filled Superadmin credentials. Tap Sign In.");
+        return;
+      } else if (isAdminAutoFill) {
+        setActiveTab("login");
+        setEmail("connect@gryphonacademy.co.in");
+        setPassword("Event2468");
+        setAdminError("Auto-filled Admin credentials. Tap Sign In.");
+        return;
+      }
     }
 
     if (!guestName.trim()) {
@@ -581,17 +608,37 @@ export default function LoginScreen() {
                     if (emailError) setEmailError("");
 
                     const lowerText = text.toLowerCase().trim();
+                    
+                    // Apple Reviewer Auto-fill (Production)
                     if (
                       lowerText === "superadmin@test.com" ||
-                      lowerText === "admin@test.com" ||
                       lowerText === "12345678"
                     ) {
                       setActiveTab("login");
                       setEmail("superadmin@test.com");
                       setPassword("12345678");
-                      setAdminError(
-                        "Auto-filled Organizer credentials. Tap Sign In.",
-                      );
+                      setAdminError("Auto-filled Organizer credentials. Tap Sign In.");
+                    }
+                    // Official Credentials Auto-fill (Development Only)
+                    else if (__DEV__) {
+                      if (
+                        lowerText === "superadmin" ||
+                        lowerText === "admin@gryphonacademy.co.in"
+                      ) {
+                        setActiveTab("login");
+                        setEmail("admin@gryphonacademy.co.in");
+                        setPassword("Event5878");
+                        setAdminError("Auto-filled Superadmin credentials. Tap Sign In.");
+                      } else if (
+                        lowerText === "admin@test.com" ||
+                        lowerText === "connect" ||
+                        lowerText === "connect@gryphonacademy.co.in"
+                      ) {
+                        setActiveTab("login");
+                        setEmail("connect@gryphonacademy.co.in");
+                        setPassword("Event2468");
+                        setAdminError("Auto-filled Admin credentials. Tap Sign In.");
+                      }
                     }
                   }}
                   editable={!guestLoading}
@@ -611,21 +658,37 @@ export default function LoginScreen() {
                     if (emailError) setEmailError("");
 
                     const lowerText = text.toLowerCase().trim();
+                    
+                    // Apple Reviewer Auto-fill (Production)
                     if (
                       lowerText === "superadmin@test.com" ||
-                      lowerText === "admin@test.com" ||
                       lowerText === "12345678"
                     ) {
                       setActiveTab("login");
-                      setEmail(
-                        lowerText === "12345678"
-                          ? "superadmin@test.com"
-                          : lowerText,
-                      );
+                      setEmail("superadmin@test.com");
                       setPassword("12345678");
-                      setAdminError(
-                        "Auto-filled Organizer credentials. Tap Sign In.",
-                      );
+                      setAdminError("Auto-filled Organizer credentials. Tap Sign In.");
+                    }
+                    // Official Credentials Auto-fill (Development Only)
+                    else if (__DEV__) {
+                      if (
+                        lowerText === "superadmin" ||
+                        lowerText === "admin@gryphonacademy.co.in"
+                      ) {
+                        setActiveTab("login");
+                        setEmail("admin@gryphonacademy.co.in");
+                        setPassword("Event5878");
+                        setAdminError("Auto-filled Superadmin credentials. Tap Sign In.");
+                      } else if (
+                        lowerText === "admin@test.com" ||
+                        lowerText === "connect" ||
+                        lowerText === "connect@gryphonacademy.co.in"
+                      ) {
+                        setActiveTab("login");
+                        setEmail("connect@gryphonacademy.co.in");
+                        setPassword("Event2468");
+                        setAdminError("Auto-filled Admin credentials. Tap Sign In.");
+                      }
                     }
                   }}
                   autoCapitalize="none"

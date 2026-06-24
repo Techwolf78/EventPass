@@ -21,7 +21,6 @@ import {
   Platform,
   ScrollView,
   StatusBar,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -266,8 +265,8 @@ export default function DeleteAccount() {
           borderBottomWidth: 1,
           borderBottomColor: "#f1f5f9",
           paddingHorizontal: 16,
-          paddingBottom: 14,
-          paddingTop: insets.top > 0 ? insets.top + 8 : 20,
+          paddingBottom: 8,
+          paddingTop: insets.top > 0 ? insets.top + 4 : 12,
           backgroundColor: "#ffffff",
         }}
       >
@@ -462,14 +461,14 @@ export default function DeleteAccount() {
             <View style={{ flexDirection: "row", alignItems: "center" }}>
               <Ionicons name="close-circle-outline" size={18} color="#ef4444" style={{ marginRight: 10 }} />
               <Text style={{ fontSize: 13, fontWeight: "600", color: "#475569" }}>
-                You won't be able to access your certificates
+                You won&apos;t be able to access your certificates
               </Text>
             </View>
 
             <View style={{ flexDirection: "row", alignItems: "center" }}>
               <Ionicons name="close-circle-outline" size={18} color="#ef4444" style={{ marginRight: 10 }} />
               <Text style={{ fontSize: 13, fontWeight: "600", color: "#475569" }}>
-                Event organizers won't see your check-in history
+                Event organizers won&apos;t see your check-in history
               </Text>
             </View>
 
@@ -570,7 +569,7 @@ export default function DeleteAccount() {
                 Can I recover my account after deletion?
               </Text>
               <Text style={{ fontSize: 13, color: "#64748b", marginTop: 4, lineHeight: 18 }}>
-                No, account deletion is permanent. Contact support before confirming deletion if you're reconsidering.
+                No, account deletion is permanent. Contact support before confirming deletion if you&apos;re reconsidering.
               </Text>
             </View>
 
@@ -579,7 +578,7 @@ export default function DeleteAccount() {
                 What happens to my event attendance records?
               </Text>
               <Text style={{ fontSize: 13, color: "#64748b", marginTop: 4, lineHeight: 18 }}>
-                Your personal data will be deleted. Event organizers may retain anonymized statistics, but won't be able to link them to you.
+                Your personal data will be deleted. Event organizers may retain anonymized statistics, but won&apos;t be able to link them to you.
               </Text>
             </View>
           </View>
