@@ -35,7 +35,7 @@ app.post('/api/send-email', async (req, res) => {
   if (mailOptions.pdfFilename) {
     attachments.push({
       filename: mailOptions.pdfFilename,
-      path: path.join(process.cwd(), 'assets', 'images', mailOptions.pdfFilename)
+      path: path.join(process.cwd(), 'screenshots', mailOptions.pdfFilename)
     });
   }
 
