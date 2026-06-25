@@ -35,7 +35,21 @@ import {
   getCandidateByQRToken,
   getGuestByQRToken,
   subscribeToCheckInStatus,
+  getMasterclassAgenda,
+  getEventAgenda,
 } from "../../utils/firestore";
+
+// Helper to safely get JS Date from Firebase Timestamp or date representation
+const getEventDate = (dateVal: any): Date | null => {
+  if (!dateVal) return null;
+  if (typeof dateVal.toDate === "function") {
+    return dateVal.toDate();
+  }
+  if (dateVal.seconds !== undefined) {
+    return new Date(dateVal.seconds * 1000);
+  }
+  return new Date(dateVal);
+};
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function QRPassScreen() {
@@ -57,6 +71,9 @@ export default function QRPassScreen() {
   const [isSaved, setIsSaved] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const certificateRef = useRef<any>(null);
+
+  // Dynamic Event Date
+  const [agendaDate, setAgendaDate] = useState<Date | null>(null);
 
   // Notification states
   const [permissionStatus, setPermissionStatus] =
@@ -220,13 +237,34 @@ export default function QRPassScreen() {
     setRefreshing(false);
   }, [activeToken]);
 
+  useEffect(() => {
+    const fetchEventDate = async () => {
+      if (!candidate?.enrollmentType) return;
+      try {
+        const isM = candidate.enrollmentType.toLowerCase() === "masterclass";
+        const agenda = isM ? await getMasterclassAgenda() : await getEventAgenda();
+        if (agenda?.date) {
+          const dateVal = getEventDate(agenda.date);
+          setAgendaDate(dateVal);
+        }
+      } catch (error) {
+        console.error("Error fetching agenda date:", error);
+      }
+    };
+    fetchEventDate();
+  }, [candidate?.enrollmentType]);
+
   // ── Derived values ──────────────────────────────────────────────────────────
   const isMasterclass =
     candidate?.enrollmentType?.toLowerCase() === "masterclass";
   const eventName = isMasterclass
     ? "Gryphon Academy's\nMasterclass 3.0"
     : "Gryphon Academy's\nSynergy Sphere 2.0";
-  const eventDate = "June 27, 2026";
+  
+  const displayEventDate = agendaDate
+    ? agendaDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+    : "June 27, 2026";
+  const eventDate = displayEventDate;
   const eventLocation = "Ritz-Carlton, Pune";
 
   const brandColor = isMasterclass ? "#06b6d4" : "#ef4444";
@@ -239,7 +277,7 @@ export default function QRPassScreen() {
     ? `EVNT-2025-${candidate.qrToken.substring(0, 4).toUpperCase()}`
     : "EVNT-2025-XXXX";
 
-  const eventDateTime = new Date("2026-06-27");
+  const eventDateTime = agendaDate ? new Date(agendaDate) : new Date("2026-06-27");
   eventDateTime.setHours(23, 59, 59, 999);
   const now = new Date();
   const isPostEvent = now > eventDateTime;

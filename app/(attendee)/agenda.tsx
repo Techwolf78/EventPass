@@ -33,6 +33,24 @@ const parseTimeToMinutes = (timeStr: string): number => {
   }
 };
 
+// Helper to safely get JS Date from Firebase Timestamp or date representation
+const getEventDate = (dateVal: any): Date | null => {
+  if (!dateVal) return null;
+  if (typeof dateVal.toDate === "function") {
+    return dateVal.toDate();
+  }
+  if (dateVal.seconds !== undefined) {
+    return new Date(dateVal.seconds * 1000);
+  }
+  return new Date(dateVal);
+};
+
+// Helper to get short month name
+const getMonthShortName = (date: Date): string => {
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return months[date.getMonth()];
+};
+
 export default function AgendaScreen() {
   const { qrToken } = useLocalSearchParams();
   const { user } = useAuth();
@@ -88,22 +106,56 @@ export default function AgendaScreen() {
     return () => clearInterval(timer);
   }, []);
 
+  const agendaItems = React.useMemo(() => {
+    if (!agenda?.agenda) return [];
+    return [...agenda.agenda].sort(
+      (a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time)
+    );
+  }, [agenda]);
+
   // Get actual current time in minutes from state
   const actualCurrentMinutes =
     currentTime.getHours() * 60 + currentTime.getMinutes();
 
-  const getSessionStatus = (timeStr: string) => {
+  const getSessionStatus = (timeStr: string, index?: number) => {
     const minutes = parseTimeToMinutes(timeStr);
     if (!minutes) return "upcoming";
 
-    const duration = 60; // Assume 1 hour
+    const eventDate = (agenda?.date ? getEventDate(agenda.date) : null) || new Date("2026-06-27");
+
+    const todayMidnight = new Date(
+      currentTime.getFullYear(),
+      currentTime.getMonth(),
+      currentTime.getDate()
+    ).getTime();
+    const eventMidnight = new Date(
+      eventDate.getFullYear(),
+      eventDate.getMonth(),
+      eventDate.getDate()
+    ).getTime();
+
+    if (todayMidnight < eventMidnight) {
+      return "upcoming";
+    }
+    if (todayMidnight > eventMidnight) {
+      return "completed";
+    }
+
+    // Same day: calculate based on active time window
+    const idx = index !== undefined ? index : agendaItems.findIndex((item) => item.time === timeStr);
+    const nextItem = idx !== -1 && idx < agendaItems.length - 1 ? agendaItems[idx + 1] : null;
+    const nextMinutes = nextItem ? parseTimeToMinutes(nextItem.time) : null;
+
+    // If there is a next session, this session ends when the next session starts.
+    // Otherwise, assume it lasts for 60 minutes.
+    const endMinutes = nextMinutes && nextMinutes > minutes ? nextMinutes : minutes + 60;
 
     if (
       actualCurrentMinutes >= minutes &&
-      actualCurrentMinutes < minutes + duration
+      actualCurrentMinutes < endMinutes
     ) {
       return "live";
-    } else if (actualCurrentMinutes >= minutes + duration) {
+    } else if (actualCurrentMinutes >= endMinutes) {
       return "completed";
     } else {
       return "upcoming";
@@ -125,10 +177,12 @@ export default function AgendaScreen() {
 
   const isMasterclass = resolvedEnrollmentType === "masterclass";
   const displayTitle = isMasterclass ? "Gryphon Academy's\nMasterclass 3.0" : "Gryphon Academy's\nSynergy Sphere 2.0";
-  const displayDate = "June 27, 2026";
+  
+  const eventDate = (agenda?.date ? getEventDate(agenda.date) : null) || new Date("2026-06-27");
+  const displayDate = eventDate
+    ? eventDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+    : "June 27, 2026";
   const displayLocation = "Ritz-Carlton, Pune";
-
-  const agendaItems = agenda?.agenda || [];
 
   const liveSession = agendaItems.find(
     (item) => getSessionStatus(item.time) === "live"
@@ -230,10 +284,10 @@ export default function AgendaScreen() {
               }}
             >
               <Text style={{ fontSize: 8, fontWeight: "800", color: palette.primaryText, letterSpacing: 1, textTransform: "uppercase" }}>
-                June
+                {eventDate ? getMonthShortName(eventDate) : "June"}
               </Text>
               <Text style={{ fontSize: 16, fontWeight: "900", color: palette.primaryText, marginTop: -2, lineHeight: 18 }}>
-                27
+                {eventDate ? eventDate.getDate() : "27"}
               </Text>
             </View>
           </View>
@@ -362,7 +416,7 @@ export default function AgendaScreen() {
         {/* Timeline Section */}
         <View style={{ paddingHorizontal: 20 }}>
           {agendaItems.map((item, index) => {
-            const status = getSessionStatus(item.time);
+            const status = getSessionStatus(item.time, index);
             const isLive = status === "live";
             const isCompleted = status === "completed";
             const isLast = index === agendaItems.length - 1;
