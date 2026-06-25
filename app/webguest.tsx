@@ -308,47 +308,6 @@ export default function WebGuestDashboard() {
     return result.sort((a, b) => a.name.localeCompare(b.name));
   }, [guests, searchQuery, filterType, filterStatus, getGuestStatus]);
 
-  const [testingCheckIn, setTestingCheckIn] = useState(false);
-
-  const handleTestCheckInRandomGuests = async () => {
-    const unarrivedGuests = guests.filter(g => getGuestStatus(g) !== "arrived");
-    if (unarrivedGuests.length === 0) {
-      showAlert("No Guests", "No unarrived guests found to check in.");
-      return;
-    }
-
-    // Pick up to 5 random ones
-    const shuffled = [...unarrivedGuests].sort(() => 0.5 - Math.random());
-    const selected = shuffled.slice(0, 5);
-
-    setTestingCheckIn(true);
-    showAlert("Test Started", `Checking in ${selected.length} random guests with a 2-second delay...`);
-
-    const targetEventId = "test-event";
-
-    for (let i = 0; i < selected.length; i++) {
-      const guest = selected[i];
-      try {
-        console.log(`[Testing] Checking in ${guest.name} (${i + 1}/${selected.length})...`);
-        await registerAndCheckInPendingGuest(
-          guest.id,
-          targetEventId,
-          "web-dashboard-admin"
-        );
-        await loadData();
-      } catch (error: any) {
-        console.error(`[Testing] Failed to check in ${guest.name}:`, error);
-      }
-
-      if (i < selected.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      }
-    }
-
-    setTestingCheckIn(false);
-    showAlert("Test Completed", "Finished checking in random guests.");
-  };
-
   return (
     <ScrollView className="flex-1 bg-slate-50">
       <View className="mx-auto w-full max-w-[1400px] px-4 py-8 md:px-8">
@@ -368,22 +327,6 @@ export default function WebGuestDashboard() {
               <View className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
               <Text className="text-xs font-semibold text-slate-600">Live Firebase DB Connected</Text>
             </View>
-            <TouchableOpacity 
-              onPress={handleTestCheckInRandomGuests}
-              disabled={testingCheckIn}
-              className={`rounded-full px-4 py-2 border flex-row items-center gap-2 shadow-sm ${
-                testingCheckIn ? "bg-amber-100 border-amber-300" : "bg-amber-500 border-amber-600 hover:bg-amber-600"
-              }`}
-            >
-              {testingCheckIn ? (
-                <ActivityIndicator size="small" color="#d97706" />
-              ) : (
-                <Ionicons name="flask" size={14} color="#fff" />
-              )}
-              <Text className={`text-xs font-bold ${testingCheckIn ? "text-amber-800" : "text-white"}`}>
-                {testingCheckIn ? "Testing..." : "Test 5 Check-ins (2s)"}
-              </Text>
-            </TouchableOpacity>
             <TouchableOpacity 
               onPress={loadData}
               className="rounded-full bg-white p-2.5 border border-slate-200 hover:bg-slate-50 shadow-sm"

@@ -88,6 +88,7 @@ function RootLayoutInner() {
     "marketing",
     "analytics",
     "email",
+    "whatsapp",
     "webagenda",
     "webguest",
   ].includes(segments[0]));
@@ -140,6 +141,7 @@ function RootLayoutInner() {
       "marketing",
       "analytics",
       "email",
+      "whatsapp",
       "webagenda",
       "webguest",
     ]);
@@ -229,6 +231,7 @@ function RootLayoutInner() {
               "delete-account",
               "account-privacy",
               "email",
+              "whatsapp",
               "webagenda",
               "webguest",
             ].includes(segments[0])
