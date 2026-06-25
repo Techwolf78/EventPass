@@ -92,6 +92,36 @@ app.post('/api/send-email', async (req, res) => {
   }
 });
 
+app.post('/api/verify-smtp', async (req, res) => {
+  const { smtpConfig } = req.body;
+
+  if (!smtpConfig) {
+    return res.status(400).json({ error: 'Missing smtpConfig in request body' });
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: smtpConfig.host,
+    port: parseInt(smtpConfig.port, 10),
+    secure: smtpConfig.secure,
+    auth: {
+      user: smtpConfig.auth.user,
+      pass: smtpConfig.auth.pass,
+    },
+    tls: {
+      ciphers: 'SSLv3',
+      rejectUnauthorized: false
+    }
+  });
+
+  try {
+    await transporter.verify();
+    return res.status(200).json({ success: true, message: 'SMTP credentials verified successfully' });
+  } catch (error) {
+    console.error('SMTP Verification failed:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Local nodemailer mail server is running on http://localhost:${PORT}`);

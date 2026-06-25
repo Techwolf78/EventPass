@@ -74,6 +74,46 @@ export default function EmailDashboard() {
   const [connectionMessage, setConnectionMessage] = useState("");
   const [attachedPdf, setAttachedPdf] = useState<{ filename: string; content: string } | null>(null);
 
+  // SMTP Authentication states
+  const [isVerified, setIsVerified] = useState<boolean | null>(null);
+  const [verifying, setVerifying] = useState(false);
+
+  const verifySmtp = async () => {
+    setVerifying(true);
+    setIsVerified(null);
+    console.log("Starting SMTP Verification...", { host, port, secure, user });
+    try {
+      const smtpConfig = {
+        host,
+        port,
+        secure,
+        auth: { user, pass },
+      };
+      const res = await fetch("http://localhost:3001/api/verify-smtp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ smtpConfig }),
+      });
+      const data = await res.json();
+      console.log("SMTP Verification response from local server:", res.status, data);
+      if (res.ok && data.success) {
+        setIsVerified(true);
+        console.log("SMTP Verification SUCCESS: Connection established.");
+        alert("SMTP Connection Verified successfully! (Status is now Green)");
+      } else {
+        setIsVerified(false);
+        console.error("SMTP Verification FAILED on server:", data.error || "Unknown login error");
+        alert("SMTP Verification failed: " + (data.error || "Unknown login error"));
+      }
+    } catch (e: any) {
+      setIsVerified(false);
+      console.error("SMTP Verification NETWORK/CONNECTION ERROR:", e);
+      alert("Network connection error: " + e.message);
+    } finally {
+      setVerifying(false);
+    }
+  };
+
   // Load SMTP config based on template type (separated storage to prevent branding bleed)
   useEffect(() => {
     try {
@@ -755,6 +795,7 @@ Gryphon Academy Team`;
     }
 
     try {
+      console.log(`[sendEmail] Sending campaign email to ${rec.email}...`, { host, port, secure, user, subject });
       const response = await fetch("http://localhost:3001/api/send-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -762,7 +803,9 @@ Gryphon Academy Team`;
       });
 
       const data = await response.json();
+      console.log(`[sendEmail] Response from server for ${rec.email}:`, response.status, data);
       if (response.ok && data.success) {
+        console.log(`[sendEmail] SUCCESS: Email successfully sent to ${rec.email}`);
         setRecipients(prev => {
           const copy = [...prev];
           copy[index] = { ...copy[index], status: "success" };
@@ -770,9 +813,11 @@ Gryphon Academy Team`;
         });
         return true;
       } else {
+        console.error(`[sendEmail] FAILED on server for ${rec.email}:`, data.error);
         throw new Error(data.error || "Failed sending email");
       }
     } catch (e: any) {
+      console.error(`[sendEmail] NETWORK/PROCESSING EXCEPTION for ${rec.email}:`, e);
       setRecipients(prev => {
         const copy = [...prev];
         copy[index] = { ...copy[index], status: "failed", error: e.message };
@@ -845,24 +890,33 @@ Gryphon Academy Team`;
         {/* Left Column - Configurations */}
         <View style={styles.columnLeft}>
           {/* SMTP Settings */}
-          {/* SMTP Settings - Hidden as they are now securely hardcoded and auto-switching dynamically
+          {/* SMTP Settings */}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>SMTP Settings (Outlook Defaults)</Text>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottomWidth: 1, borderBottomColor: "#334155", paddingBottom: 8 }}>
+              <Text style={{ fontSize: 16, fontWeight: "bold", color: "#F8FAFC" }}>SMTP Settings</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: isVerified === true ? "#10B981" : isVerified === false ? "#EF4444" : "#64748B" }} />
+                <Text style={{ fontSize: 12, fontWeight: "bold", color: isVerified === true ? "#10B981" : isVerified === false ? "#EF4444" : "#94A3B8" }}>
+                  {isVerified === true ? "Authenticated ✓" : isVerified === false ? "Auth Failed ✗" : "Not Tested"}
+                </Text>
+              </View>
+            </View>
+
             <View style={styles.inputGroup}>
               <Text style={styles.label}>SMTP Host</Text>
-              <TextInput style={styles.input} value={host} onChangeText={setHost} placeholder="smtp.office365.com" />
+              <TextInput style={styles.input} value={host} onChangeText={(val) => { setHost(val); setIsVerified(null); }} placeholder="smtp.office365.com" />
             </View>
 
             <View style={{ flexDirection: "row", gap: 12 }}>
               <View style={[styles.inputGroup, { flex: 1 }]}>
                 <Text style={styles.label}>Port</Text>
-                <TextInput style={styles.input} value={port} onChangeText={setPort} placeholder="587" keyboardType="numeric" />
+                <TextInput style={styles.input} value={port} onChangeText={(val) => { setPort(val); setIsVerified(null); }} placeholder="587" keyboardType="numeric" />
               </View>
               <View style={[styles.inputGroup, { flex: 1, justifyContent: "center" }]}>
                 <Text style={styles.label}>SSL / Secure</Text>
                 <TouchableOpacity
                   style={[styles.toggleBtn, secure && styles.toggleBtnActive]}
-                  onPress={() => setSecure(!secure)}
+                  onPress={() => { setSecure(!secure); setIsVerified(null); }}
                 >
                   <Text style={[styles.toggleBtnText, secure && styles.toggleBtnTextActive]}>
                     {secure ? "Enabled (SSL)" : "Disabled (TLS/STARTTLS)"}
@@ -879,6 +933,7 @@ Gryphon Academy Team`;
                 onChangeText={(val) => {
                   setUser(val);
                   setFromEmail(val);
+                  setIsVerified(null);
                 }}
                 placeholder="synergysphere@gryphonacademy.co.in"
                 autoCapitalize="none"
@@ -890,7 +945,7 @@ Gryphon Academy Team`;
               <TextInput
                 style={styles.input}
                 value={pass}
-                onChangeText={setPass}
+                onChangeText={(val) => { setPass(val); setIsVerified(null); }}
                 placeholder="••••••••••••"
                 secureTextEntry
                 autoCapitalize="none"
@@ -908,11 +963,28 @@ Gryphon Academy Team`;
               </View>
             </View>
 
-            <TouchableOpacity style={styles.primaryButton} onPress={saveSmtpConfig}>
-              <Text style={styles.primaryButtonText}>Save SMTP Settings Local</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
+              <TouchableOpacity
+                style={[
+                  styles.primaryButton,
+                  { flex: 1.2, backgroundColor: isVerified === true ? "#10B981" : isVerified === false ? "#EF4444" : "#3B82F6" }
+                ]}
+                onPress={verifySmtp}
+                disabled={verifying}
+              >
+                {verifying ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.primaryButtonText}>
+                    {isVerified === true ? "Authenticated ✓" : "Authenticate SMTP"}
+                  </Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.primaryButton, { flex: 0.8, backgroundColor: "#475569" }]} onPress={saveSmtpConfig}>
+                <Text style={styles.primaryButtonText}>Save Config</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-          */}
 
           {/* App Config */}
           <View style={styles.card}>
