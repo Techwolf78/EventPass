@@ -9,8 +9,10 @@ import {
   ActivityIndicator,
   RefreshControl,
   Platform,
+  Modal,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import * as FileSystem from "expo-file-system/legacy";
 import { getGuestList, getCheckedInCandidateIds, GuestListItem } from "@/utils/firestore";
 
 const supportHref = "/support" as any;
@@ -215,6 +217,7 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isUsingMockData, setIsUsingMockData] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -306,6 +309,64 @@ export default function AnalyticsPage() {
 
   const { rows, stats } = filteredAndCategorized;
 
+  const handleExport = async (type: "all" | "arrived") => {
+    setShowExportModal(false);
+    
+    const tabGuests = guests.filter((g) => g.enrollmentType === activeTab);
+    const dataToExport = type === "all" 
+      ? tabGuests 
+      : tabGuests.filter((g) => getGuestStatus(g) === "arrived");
+
+    if (dataToExport.length === 0) {
+      alert("No data to export.");
+      return;
+    }
+
+    const headers = ["Name", "Email", "Enrollment Type", "Company Name", "VIP Status", "Attendance Status"];
+    const csvRows = [headers.join(",")];
+    
+    for (const guest of dataToExport) {
+      const status = getGuestStatus(guest);
+      const statusText = status === "arrived" ? "Checked-in" : status === "unarrived" ? "Registered" : "Pending";
+      const row = [
+        `"${guest.name.replace(/"/g, '""')}"`,
+        `"${guest.email.replace(/"/g, '""')}"`,
+        `"${guest.enrollmentType.replace(/"/g, '""')}"`,
+        `"${(guest.companyName || "").replace(/"/g, '""')}"`,
+        `"${guest.isVIP ? "VIP" : "Regular"}"`,
+        `"${statusText}"`
+      ];
+      csvRows.push(row.join(","));
+    }
+    
+    const csvContent = csvRows.join("\n");
+    const filename = `${activeTab}_attendees_${type}_${new Date().toISOString().split('T')[0]}.csv`;
+
+    try {
+      if (Platform.OS === "web") {
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        const fileUri = `${FileSystem.cacheDirectory}${filename}`;
+        await FileSystem.writeAsStringAsync(fileUri, csvContent);
+        const { default: Sharing } = await import("expo-sharing");
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(fileUri, { mimeType: "text/csv" });
+        } else {
+          alert(`File saved to: ${fileUri}`);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Could not export data.");
+    }
+  };
+
   return (
     <ScrollView
       className="flex-1 bg-slate-50"
@@ -347,6 +408,15 @@ export default function AnalyticsPage() {
               ) : (
                 <Ionicons name="refresh" size={16} color="#0f172a" />
               )}
+            </TouchableOpacity>
+
+            {/* Export Button */}
+            <TouchableOpacity
+              onPress={() => setShowExportModal(true)}
+              className="flex-row items-center justify-center gap-1.5 px-3 py-2 bg-white border border-slate-200 rounded-full shadow-sm hover:bg-slate-50 active:scale-95 transition-transform"
+            >
+              <Ionicons name="download-outline" size={14} color="#0f172a" />
+              <Text className="text-xs font-bold text-slate-900">Export</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -772,6 +842,84 @@ export default function AnalyticsPage() {
         </View>
 
       </View>
+
+      {/* Premium Export Modal */}
+      <Modal
+        visible={showExportModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowExportModal(false)}
+      >
+        <View className="flex-1 justify-center items-center bg-slate-900/60 p-4">
+          <View className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl border border-slate-100">
+            {/* Modal Header */}
+            <View className="flex-row justify-between items-center mb-6">
+              <View className="flex-row items-center gap-2.5">
+                <View className="bg-slate-100 p-2 rounded-xl">
+                  <Ionicons name="download" size={20} color="#0f172a" />
+                </View>
+                <Text className="text-xl font-bold text-slate-900">Export Attendees</Text>
+              </View>
+              <TouchableOpacity 
+                onPress={() => setShowExportModal(false)}
+                className="p-1 bg-slate-50 rounded-full hover:bg-slate-100"
+              >
+                <Ionicons name="close" size={20} color="#64748b" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Modal Info */}
+            <Text className="text-sm font-medium text-slate-500 mb-6">
+              Choose the data range you want to export as an Excel-compatible CSV file for {activeTab === "event" ? "Synergy Sphere" : "Masterclass"}.
+            </Text>
+
+            {/* Modal Options */}
+            <View className="gap-3.5 mb-6">
+              {/* Option 1: Export All */}
+              <TouchableOpacity
+                onPress={() => handleExport("all")}
+                activeOpacity={0.8}
+                className="flex-row items-center gap-4 p-4 border border-slate-100 rounded-2xl bg-slate-50/50 hover:bg-slate-50 active:scale-[0.98] transition-all"
+              >
+                <View className="bg-blue-50 p-2.5 rounded-xl">
+                  <Ionicons name="people" size={20} color="#2563eb" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-sm font-extrabold text-slate-900">Export: All</Text>
+                  <Text className="text-xs font-semibold text-slate-400 mt-0.5">
+                    Downloads list of all invited/registered attendees
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Option 2: Export Arrived Only */}
+              <TouchableOpacity
+                onPress={() => handleExport("arrived")}
+                activeOpacity={0.8}
+                className="flex-row items-center gap-4 p-4 border border-slate-100 rounded-2xl bg-slate-50/50 hover:bg-slate-50 active:scale-[0.98] transition-all"
+              >
+                <View className="bg-emerald-50 p-2.5 rounded-xl">
+                  <Ionicons name="checkmark-circle" size={20} color="#059669" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-sm font-extrabold text-slate-900">Export: Arrived Only</Text>
+                  <Text className="text-xs font-semibold text-slate-400 mt-0.5">
+                    Downloads only attendees who have checked in
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            {/* Cancel Button */}
+            <TouchableOpacity
+              onPress={() => setShowExportModal(false)}
+              className="w-full py-3.5 bg-slate-100 rounded-2xl items-center active:bg-slate-200 transition-colors"
+            >
+              <Text className="text-sm font-bold text-slate-700">Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }

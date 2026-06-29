@@ -73,6 +73,8 @@ export default function EmailDashboard() {
   const [serverStatus, setServerStatus] = useState<"unknown" | "online" | "offline">("unknown");
   const [connectionMessage, setConnectionMessage] = useState("");
   const [attachedPdf, setAttachedPdf] = useState<{ filename: string; content: string } | null>(null);
+  const [attendeeSource, setAttendeeSource] = useState<"file" | "paste">("file");
+  const [pastedJson, setPastedJson] = useState("");
 
   // SMTP Authentication states
   const [isVerified, setIsVerified] = useState<boolean | null>(null);
@@ -246,6 +248,35 @@ export default function EmailDashboard() {
       }
     };
     reader.readAsText(file);
+  };
+
+  const parsePastedJson = () => {
+    if (!pastedJson.trim()) {
+      alert("Please paste some JSON first.");
+      return;
+    }
+    try {
+      const json = JSON.parse(pastedJson);
+      const list = Array.isArray(json) ? json : [json];
+      const parsedList: Recipient[] = list.map((item: any) => {
+        return {
+          name: item.Name || item.name || "Attendee",
+          email: item.Email || item.email || "",
+          status: "pending" as const,
+        };
+      }).filter(r => r.email); // Must have email
+
+      if (parsedList.length === 0) {
+        alert("No valid attendees with emails found in the JSON.");
+        return;
+      }
+
+      setRecipients(parsedList);
+      setSelectedRecipientIndex(0);
+      alert(`Successfully loaded ${parsedList.length} attendees!`);
+    } catch (err: any) {
+      alert("Error parsing JSON text: " + err.message);
+    }
   };
 
   // Generate templates content dynamically
@@ -1037,25 +1068,95 @@ Gryphon Academy Team`;
               </View>
             </View>
 
-            {/* JSON File Input */}
+            {/* JSON File/Text Input Options */}
             <View style={styles.inputGroup}>
-              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                <Text style={styles.label}>Upload Attendees JSON File</Text>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <Text style={styles.label}>Attendees JSON Data</Text>
                 <TouchableOpacity onPress={downloadTemplateJson} style={styles.downloadTemplateLink}>
                   <Text style={styles.downloadTemplateText}>Download Sample JSON</Text>
                 </TouchableOpacity>
               </View>
-              <div style={{ marginTop: 8 }}>
-                <input
-                  type="file"
-                  accept=".json"
-                  onChange={handleJsonUpload}
+
+              {/* Source Selector Tabs */}
+              <View style={{ flexDirection: "row", gap: 10, marginBottom: 12 }}>
+                <TouchableOpacity
                   style={{
-                    color: "#94A3B8",
-                    fontSize: "14px",
+                    flex: 1,
+                    paddingVertical: 8,
+                    backgroundColor: attendeeSource === "file" ? "#3B82F6" : "#0F172A",
+                    borderRadius: 8,
+                    alignItems: "center",
+                    borderWidth: 1,
+                    borderColor: attendeeSource === "file" ? "#3B82F6" : "#334155",
                   }}
-                />
-              </div>
+                  onPress={() => setAttendeeSource("file")}
+                >
+                  <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "600" }}>Upload JSON File</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    paddingVertical: 8,
+                    backgroundColor: attendeeSource === "paste" ? "#3B82F6" : "#0F172A",
+                    borderRadius: 8,
+                    alignItems: "center",
+                    borderWidth: 1,
+                    borderColor: attendeeSource === "paste" ? "#3B82F6" : "#334155",
+                  }}
+                  onPress={() => setAttendeeSource("paste")}
+                >
+                  <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "600" }}>Paste JSON Text</Text>
+                </TouchableOpacity>
+              </View>
+
+              {attendeeSource === "file" ? (
+                <div style={{ marginTop: 8, padding: "12px", backgroundColor: "#0F172A", borderRadius: "8px", border: "1px solid #334155" }}>
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={handleJsonUpload}
+                    style={{
+                      color: "#94A3B8",
+                      fontSize: "14px",
+                      width: "100%",
+                    }}
+                  />
+                </div>
+              ) : (
+                <View style={{ marginTop: 8 }}>
+                  <textarea
+                    value={pastedJson}
+                    onChange={(e: any) => setPastedJson(e.target.value)}
+                    placeholder={`[\n  {\n    "Name": "John Doe",\n    "Email": "john.doe@example.com"\n  }\n]`}
+                    style={{
+                      backgroundColor: "#0F172A",
+                      color: "#FFFFFF",
+                      padding: "12px",
+                      borderRadius: "8px",
+                      border: "1px solid #334155",
+                      fontSize: "14px",
+                      fontFamily: "monospace",
+                      width: "100%",
+                      height: "150px",
+                      resize: "vertical",
+                      outline: "none",
+                    }}
+                  />
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: "#10B981",
+                      paddingVertical: 10,
+                      borderRadius: 8,
+                      alignItems: "center",
+                      marginTop: 10,
+                    }}
+                    onPress={parsePastedJson}
+                  >
+                    <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "bold" }}>Parse & Load Attendees</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
               <Text style={styles.helperText}>
                 JSON format: array of objects with Name and Email keys.
               </Text>

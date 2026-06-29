@@ -1165,7 +1165,25 @@ export async function deleteGuest(
   guestId: string,
 ): Promise<{ success: boolean; message: string }> {
   try {
-    await deleteDoc(doc(db, "guestList", guestId));
+    const batch = writeBatch(db);
+    
+    // Delete from guestList
+    batch.delete(doc(db, "guestList", guestId));
+    
+    // Delete from candidates
+    batch.delete(doc(db, "candidates", guestId));
+    
+    // Delete all matching attendance records
+    const attendanceQuery = query(
+      collection(db, "attendance"),
+      where("candidateId", "==", guestId),
+    );
+    const attendanceSnap = await getDocs(attendanceQuery);
+    attendanceSnap.docs.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+
+    await batch.commit();
     return { success: true, message: "Guest deleted successfully" };
   } catch (error) {
     console.error("Error deleting guest:", error);
@@ -1189,6 +1207,13 @@ export async function updateGuest(
 ): Promise<{ success: boolean; message: string }> {
   try {
     const guestRef = doc(db, "guestList", guestId);
+    const guestSnap = await getDoc(guestRef);
+
+    if (!guestSnap.exists()) {
+      return { success: false, message: "Guest not found in guest list" };
+    }
+
+    const guestData = guestSnap.data() as GuestListItem;
     const updateData: any = {};
 
     if (updates.name) {
@@ -1211,7 +1236,27 @@ export async function updateGuest(
       updateData.isVIP = updates.isVIP;
     }
 
-    await setDoc(guestRef, updateData, { merge: true });
+    const batch = writeBatch(db);
+    batch.set(guestRef, updateData, { merge: true });
+
+    // Synchronize changes to 'candidates' collection if guest is registered
+    if (guestData.status === "registered") {
+      const candidateRef = doc(db, "candidates", guestId);
+      const candidateUpdateData: any = {};
+      
+      if (updates.name) candidateUpdateData.name = updates.name.trim();
+      if (updates.email) candidateUpdateData.email = updates.email.toLowerCase().trim();
+      if (updates.enrollmentType) candidateUpdateData.enrollmentType = updates.enrollmentType;
+      if (updates.linkedinUrl !== undefined) candidateUpdateData.linkedinUrl = updates.linkedinUrl || null;
+      if (updates.companyName !== undefined) candidateUpdateData.companyName = updates.companyName || "";
+      if (updates.isVIP !== undefined) candidateUpdateData.isVIP = updates.isVIP;
+
+      if (Object.keys(candidateUpdateData).length > 0) {
+        batch.set(candidateRef, candidateUpdateData, { merge: true });
+      }
+    }
+
+    await batch.commit();
     return { success: true, message: "Guest updated successfully" };
   } catch (error) {
     console.error("Error updating guest:", error);
