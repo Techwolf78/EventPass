@@ -91,6 +91,7 @@ function RootLayoutInner() {
     "whatsapp",
     "webagenda",
     "webguest",
+    "formresponses",
   ].includes(segments[0]));
 
   useEffect(() => {
@@ -144,6 +145,7 @@ function RootLayoutInner() {
       "whatsapp",
       "webagenda",
       "webguest",
+      "formresponses",
     ]);
     const isLegalPage = legalPages.has(segments[0]);
 
@@ -234,6 +236,7 @@ function RootLayoutInner() {
               "whatsapp",
               "webagenda",
               "webguest",
+              "formresponses",
             ].includes(segments[0])
               ? {
                   maxWidth: 600,

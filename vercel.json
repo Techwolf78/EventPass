@@ -4,6 +4,10 @@
   "framework": null,
   "rewrites": [
     {
+      "source": "/formresponses",
+      "destination": "/formresponses.html"
+    },
+    {
       "source": "/privacy-policy",
       "destination": "/privacy-policy.html"
     },

@@ -19,7 +19,9 @@ import {
   AppState,
   AppStateStatus,
   StyleSheet,
+  TextInput,
 } from "react-native";
+import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import NotificationBell from "@/components/qr-pass/NotificationBell";
 import NotificationPermissionModal from "@/components/qr-pass/NotificationPermissionModal";
@@ -37,6 +39,8 @@ import {
   subscribeToCheckInStatus,
   getMasterclassAgenda,
   getEventAgenda,
+  hasSubmittedFeedback,
+  submitEventFeedback,
 } from "../../utils/firestore";
 
 // Helper to safely get JS Date from Firebase Timestamp or date representation
@@ -74,6 +78,23 @@ export default function QRPassScreen() {
 
   // Dynamic Event Date
   const [agendaDate, setAgendaDate] = useState<Date | null>(null);
+
+  // Feedback states
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
+  const [formName, setFormName] = useState("");
+  const [formOrg, setFormOrg] = useState("");
+  const [formFavorite, setFormFavorite] = useState("");
+  const [formInterests, setFormInterests] = useState<string[]>([]);
+  const [formExperience, setFormExperience] = useState("");
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (candidate) {
+      setFormName(candidate.name || "");
+      setFormOrg(candidate.companyName || "");
+    }
+  }, [candidate]);
 
   // Notification states
   const [permissionStatus, setPermissionStatus] =
@@ -185,6 +206,24 @@ export default function QRPassScreen() {
           : null;
 
         setCandidate(candidateWithCompany);
+
+        // Check feedback submission status
+        if (candidateData) {
+          try {
+            const localCheck = await AsyncStorage.getItem(`feedback_submitted_${candidateData.id}`);
+            if (localCheck === "true") {
+              setFeedbackSubmitted(true);
+            } else {
+              const firestoreCheck = await hasSubmittedFeedback(candidateData.id);
+              if (firestoreCheck) {
+                setFeedbackSubmitted(true);
+                await AsyncStorage.setItem(`feedback_submitted_${candidateData.id}`, "true");
+              }
+            }
+          } catch (e) {
+            console.error("Error checking feedback status:", e);
+          }
+        }
       } catch (error) {
         console.error("Error fetching candidate data:", error);
       }
@@ -447,6 +486,448 @@ export default function QRPassScreen() {
   }
 
   if (isPostEvent) {
+    if (!feedbackSubmitted && !isMasterclass) {
+      const q3Options = [
+        "The Keynote Addresses",
+        "The Panel Discussion — The Adventurous Intelligence: Deficit or Dominance?",
+        "The Networking & Conversations",
+        "The Awards Ceremony",
+        "The Overall Experience & Hospitality",
+      ];
+
+      const q4Options = [
+        "Professor of Practice (POP) for our Esteemed Academic Partners",
+        "Guest Lecturer",
+        "Board of Advisor",
+        "Mentorship for Students",
+        "Campus Hiring Industry Board",
+        "Domain-Specific Training",
+        "Training Content Co-Creation",
+        "Niche Skills Training (SAP, Project Management, Product Management, etc.)",
+        "None of the above, but happy to stay connected",
+      ];
+
+      const experienceSuggestions = ["Insightful", "Inspiring", "Innovative", "Engaging", "Well-Organized"];
+
+      const toggleInterest = (interest: string) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        if (interest === "None of the above, but happy to stay connected") {
+          setFormInterests([interest]);
+        } else {
+          setFormInterests((prev) => {
+            const filtered = prev.filter(
+              (item) => item !== "None of the above, but happy to stay connected"
+            );
+            if (filtered.includes(interest)) {
+              return filtered.filter((item) => item !== interest);
+            } else {
+              return [...filtered, interest];
+            }
+          });
+        }
+      };
+
+      const selectFavorite = (option: string) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        setFormFavorite(option);
+      };
+
+      const appendExperienceWord = (word: string) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setFormExperience((prev) => {
+          const trimmed = prev.trim();
+          if (!trimmed) return word;
+          if (trimmed.toLowerCase().includes(word.toLowerCase())) return prev;
+          return `${trimmed}, ${word}`;
+        });
+      };
+
+      const handleFormSubmit = async () => {
+        const errors: Record<string, string> = {};
+        if (!formName.trim()) errors.name = "Name is required";
+        if (!formOrg.trim()) errors.organisation = "Organisation is required";
+        if (!formFavorite) errors.favoritePart = "Please select an option";
+        if (formInterests.length === 0) errors.interests = "Please select at least one option";
+        if (!formExperience.trim()) errors.experienceWords = "Feedback is required";
+
+        if (Object.keys(errors).length > 0) {
+          setFormErrors(errors);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          setToastType("warning");
+          setToastMessage("Please fill in all required fields.");
+          setTimeout(() => setToastMessage(""), 4000);
+          return;
+        }
+
+        setFormErrors({});
+        setSubmittingFeedback(true);
+
+        try {
+          const res = await submitEventFeedback({
+            candidateId: candidate?.id || activeToken,
+            name: formName.trim(),
+            organisation: formOrg.trim(),
+            favoritePart: formFavorite,
+            interests: formInterests,
+            experienceWords: formExperience.trim(),
+            submittedAt: new Date(),
+          });
+
+          if (res.success) {
+            await AsyncStorage.setItem(`feedback_submitted_${candidate?.id || activeToken}`, "true");
+            setFeedbackSubmitted(true);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            setToastType("success");
+            setToastMessage("Thank you for your feedback!");
+            setTimeout(() => setToastMessage(""), 4000);
+          } else {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            setToastType("warning");
+            setToastMessage(res.message || "Failed to submit feedback. Please try again.");
+            setTimeout(() => setToastMessage(""), 4000);
+          }
+        } catch (err: any) {
+          console.error("Error submitting feedback:", err);
+          setToastType("warning");
+          setToastMessage("An error occurred. Please try again.");
+          setTimeout(() => setToastMessage(""), 4000);
+        } finally {
+          setSubmittingFeedback(false);
+        }
+      };
+
+      return (
+        <View style={{ flex: 1, backgroundColor: "#ffffff" }}>
+          <StatusBar barStyle="dark-content" />
+          <ScrollView
+            contentContainerStyle={{
+              paddingTop: insets.top + 24,
+              paddingBottom: insets.bottom + 120,
+              paddingHorizontal: 20,
+            }}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Header section */}
+            <View style={{ alignItems: "center", marginBottom: 28 }}>
+              <View
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 28,
+                  backgroundColor: brandAccentBg,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: 16,
+                  borderWidth: 1.5,
+                  borderColor: brandBorderColor,
+                }}
+              >
+                <Ionicons name="chatbubbles" size={24} color={brandColor} />
+              </View>
+              <Text
+                style={{
+                  fontSize: 24,
+                  fontWeight: "900",
+                  color: "#0f172a",
+                  textAlign: "center",
+                  marginBottom: 8,
+                }}
+              >
+                Synergy Sphere 2.0
+              </Text>
+              <Text
+                style={{
+                  fontSize: 15,
+                  fontWeight: "700",
+                  color: "#475569",
+                  textAlign: "center",
+                  marginBottom: 12,
+                }}
+              >
+                Post-Event Experience & Engagement Form
+              </Text>
+              <Text
+                style={{
+                  fontSize: 13,
+                  color: "#64748b",
+                  textAlign: "center",
+                  lineHeight: 20,
+                  paddingHorizontal: 12,
+                }}
+              >
+                Thank you for being a part of Synergy Sphere 2.0 — The Adventurous Intelligence. Your presence made the evening meaningful, and we would love to hear your thoughts. This short form takes less than 2 minutes.
+              </Text>
+            </View>
+
+            {/* Form Fields */}
+            <View style={{ gap: 20 }}>
+              {/* Q1. Name */}
+              <View>
+                <Text style={styles.formLabel}>Q1. Name</Text>
+                <TextInput
+                  style={[
+                    styles.formInput,
+                    formErrors.name ? { borderColor: "#ef4444" } : null,
+                  ]}
+                  placeholder="Enter your name"
+                  placeholderTextColor="#94a3b8"
+                  value={formName}
+                  onChangeText={(val) => {
+                    setFormName(val);
+                    if (val.trim()) {
+                      setFormErrors((prev) => {
+                        const copy = { ...prev };
+                        delete copy.name;
+                        return copy;
+                      });
+                    }
+                  }}
+                />
+                {formErrors.name ? (
+                  <Text style={styles.errorText}>{formErrors.name}</Text>
+                ) : null}
+              </View>
+
+              {/* Q2. Organisation */}
+              <View>
+                <Text style={styles.formLabel}>Q2. Organisation</Text>
+                <TextInput
+                  style={[
+                    styles.formInput,
+                    formErrors.organisation ? { borderColor: "#ef4444" } : null,
+                  ]}
+                  placeholder="Enter your organisation"
+                  placeholderTextColor="#94a3b8"
+                  value={formOrg}
+                  onChangeText={(val) => {
+                    setFormOrg(val);
+                    if (val.trim()) {
+                      setFormErrors((prev) => {
+                        const copy = { ...prev };
+                        delete copy.organisation;
+                        return copy;
+                      });
+                    }
+                  }}
+                />
+                {formErrors.organisation ? (
+                  <Text style={styles.errorText}>{formErrors.organisation}</Text>
+                ) : null}
+              </View>
+
+              {/* Q3. Favorite part of the evening */}
+              <View>
+                <Text style={styles.formLabel}>
+                  Q3. Which part of the evening resonated with you the most?
+                </Text>
+                <View style={{ gap: 10, marginTop: 4 }}>
+                  {q3Options.map((option) => {
+                    const isSelected = formFavorite === option;
+                    return (
+                      <TouchableOpacity
+                        key={option}
+                        style={[
+                          styles.optionCard,
+                          isSelected
+                            ? {
+                                borderColor: brandColor,
+                                backgroundColor: brandAccentBg,
+                              }
+                            : null,
+                        ]}
+                        activeOpacity={0.7}
+                        onPress={() => {
+                          selectFavorite(option);
+                          setFormErrors((prev) => {
+                            const copy = { ...prev };
+                            delete copy.favoritePart;
+                            return copy;
+                          });
+                        }}
+                      >
+                        <View style={{ flex: 1, marginRight: 12 }}>
+                          <Text
+                            style={[
+                              styles.optionText,
+                              isSelected ? { color: brandTextColor, fontWeight: "700" } : null,
+                            ]}
+                          >
+                            {option}
+                          </Text>
+                        </View>
+                        <View
+                          style={[
+                            styles.radioCircle,
+                            isSelected ? { borderColor: brandColor, backgroundColor: brandColor } : null,
+                          ]}
+                        >
+                          {isSelected && (
+                            <Ionicons name="checkmark" size={12} color="#ffffff" />
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+                {formErrors.favoritePart ? (
+                  <Text style={styles.errorText}>{formErrors.favoritePart}</Text>
+                ) : null}
+              </View>
+
+              {/* Q4. Engagement Interests */}
+              <View>
+                <Text style={styles.formLabel}>
+                  Q4. Which of the following would you be interested in exploring with us? (Select all that apply)
+                </Text>
+                <View style={{ gap: 10, marginTop: 8 }}>
+                  {q4Options.map((option) => {
+                    const isSelected = formInterests.includes(option);
+                    return (
+                      <TouchableOpacity
+                        key={option}
+                        style={[
+                          styles.optionCard,
+                          isSelected
+                            ? {
+                                borderColor: brandColor,
+                                backgroundColor: brandAccentBg,
+                              }
+                            : null,
+                        ]}
+                        activeOpacity={0.7}
+                        onPress={() => {
+                          toggleInterest(option);
+                          setFormErrors((prev) => {
+                            const copy = { ...prev };
+                            delete copy.interests;
+                            return copy;
+                          });
+                        }}
+                      >
+                        <View style={{ flex: 1, marginRight: 12 }}>
+                          <Text
+                            style={[
+                              styles.optionText,
+                              isSelected ? { color: brandTextColor, fontWeight: "700" } : null,
+                            ]}
+                          >
+                            {option}
+                          </Text>
+                        </View>
+                        <View
+                          style={[
+                            {
+                              width: 20,
+                              height: 20,
+                              borderRadius: 4,
+                              borderWidth: 2,
+                              borderColor: "#cbd5e1",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            },
+                            isSelected ? { borderColor: brandColor, backgroundColor: brandColor } : null,
+                          ]}
+                        >
+                          {isSelected && (
+                            <Ionicons name="checkmark" size={12} color="#ffffff" />
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+                {formErrors.interests ? (
+                  <Text style={styles.errorText}>{formErrors.interests}</Text>
+                ) : null}
+              </View>
+
+              {/* Q5. Words to describe experience */}
+              <View>
+                <Text style={styles.formLabel}>
+                  Q5. What words would you use to describe your experience of the event?
+                </Text>
+                <TextInput
+                  style={[
+                    styles.formInput,
+                    { height: 80, textAlignVertical: "top", paddingTop: 10 },
+                    formErrors.experienceWords ? { borderColor: "#ef4444" } : null,
+                  ]}
+                  placeholder="e.g. Inspiring and excellently executed event"
+                  placeholderTextColor="#94a3b8"
+                  multiline
+                  numberOfLines={3}
+                  value={formExperience}
+                  onChangeText={(val) => {
+                    setFormExperience(val);
+                    if (val.trim()) {
+                      setFormErrors((prev) => {
+                        const copy = { ...prev };
+                        delete copy.experienceWords;
+                        return copy;
+                      });
+                    }
+                  }}
+                />
+                
+                {/* Word Suggestions */}
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                  {experienceSuggestions.map((word) => (
+                    <TouchableOpacity
+                      key={word}
+                      style={styles.suggestionBadge}
+                      onPress={() => appendExperienceWord(word)}
+                    >
+                      <Text style={styles.suggestionText}>+ {word}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {formErrors.experienceWords ? (
+                  <Text style={styles.errorText}>{formErrors.experienceWords}</Text>
+                ) : null}
+              </View>
+
+              {/* Submit Button */}
+              <TouchableOpacity
+                style={[
+                  styles.submitButton,
+                  { backgroundColor: brandColor },
+                  submittingFeedback ? { opacity: 0.8 } : null,
+                ]}
+                activeOpacity={0.8}
+                onPress={handleFormSubmit}
+                disabled={submittingFeedback}
+              >
+                {submittingFeedback ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <>
+                    <Text style={styles.submitButtonText}>Submit Feedback</Text>
+                    <Ionicons name="arrow-forward" size={18} color="#ffffff" style={{ marginLeft: 6 }} />
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* Closing note */}
+            <View style={{ marginTop: 36, alignItems: "center" }}>
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: "#94a3b8",
+                  textAlign: "center",
+                  lineHeight: 18,
+                }}
+              >
+                Thank you once again for being part of Synergy Sphere 2.0. We look forward to staying in touch.{"\n\n"}
+                <Text style={{ fontWeight: "700" }}>Gryphon Academy Pvt. Ltd.</Text>
+              </Text>
+            </View>
+          </ScrollView>
+        </View>
+      );
+    }
+
     return (
       <View style={{ flex: 1, backgroundColor: "#ffffff" }}>
         <StatusBar barStyle="dark-content" />
@@ -1599,5 +2080,99 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     marginLeft: 8,
+  },
+  formLabel: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#475569",
+    marginBottom: 6,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+  formInput: {
+    backgroundColor: "#f8fafc",
+    borderWidth: 1.5,
+    borderColor: "#e2e8f0",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: "#0f172a",
+  },
+  errorText: {
+    color: "#ef4444",
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 4,
+  },
+  optionCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f8fafc",
+    borderWidth: 1.5,
+    borderColor: "#e2e8f0",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  optionText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#334155",
+    lineHeight: 20,
+  },
+  radioCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#cbd5e1",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pillChip: {
+    backgroundColor: "#f1f5f9",
+    borderWidth: 1.5,
+    borderColor: "#e2e8f0",
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  pillText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#475569",
+  },
+  suggestionBadge: {
+    backgroundColor: "#f8fafc",
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: "#cbd5e1",
+  },
+  suggestionText: {
+    fontSize: 11,
+    color: "#475569",
+    fontWeight: "600",
+  },
+  submitButton: {
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    marginTop: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  submitButtonText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "800",
+    letterSpacing: 0.5,
   },
 });

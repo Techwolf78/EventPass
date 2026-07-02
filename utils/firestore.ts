@@ -1356,3 +1356,74 @@ export async function registerAndCheckInPendingGuest(
     return { success: false, message: error.message || "Failed to register and check in" };
   }
 }
+
+// ============== EVENT FEEDBACK LOGIC ==============
+
+export interface EventFeedback {
+  id?: string;
+  candidateId: string;
+  name: string;
+  organisation: string;
+  favoritePart: string;
+  interests: string[];
+  experienceWords: string;
+  submittedAt: Timestamp;
+}
+
+/**
+ * Submit feedback for the event
+ */
+export async function submitEventFeedback(
+  feedback: Omit<EventFeedback, "submittedAt"> & { submittedAt: Date }
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const feedbackRef = doc(collection(db, "eventFeedback"));
+    await setDoc(feedbackRef, {
+      ...feedback,
+      submittedAt: Timestamp.fromDate(feedback.submittedAt),
+    });
+    return { success: true, message: "Feedback submitted successfully" };
+  } catch (error: any) {
+    console.error("Error submitting feedback:", error);
+    return { success: false, message: error.message || "Failed to submit feedback" };
+  }
+}
+
+/**
+ * Check if candidate has submitted feedback
+ */
+export async function hasSubmittedFeedback(candidateId: string): Promise<boolean> {
+  try {
+    const q = query(
+      collection(db, "eventFeedback"),
+      where("candidateId", "==", candidateId)
+    );
+    const snapshot = await getDocs(q);
+    return !snapshot.empty;
+  } catch (error) {
+    console.error("Error checking feedback status:", error);
+    return false;
+  }
+}
+
+/**
+ * Get all event feedback responses
+ */
+export async function getAllEventFeedback(): Promise<EventFeedback[]> {
+  try {
+    const q = query(
+      collection(db, "eventFeedback"),
+      orderBy("submittedAt", "desc")
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as EventFeedback[];
+  } catch (error) {
+    console.error("Error fetching all feedback:", error);
+    return [];
+  }
+}
+
+
